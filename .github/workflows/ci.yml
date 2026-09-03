@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    env:
+      # corepack downloads the pinned pnpm from package.json's packageManager
+      # field; never prompt for confirmation on CI.
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Enable corepack (pnpm)
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Integration tests
+        run: pnpm test:integration
+
+      - name: Build distributable
+        run: pnpm build
+
+      - name: Build and verify the checked-in Action bundle
+        run: |
+          git ls-files --error-unmatch action/dist/cli.mjs
+          pnpm action:build
+          git diff --exit-code -- action/dist/cli.mjs
+
+      # Typecheck, lint, and unit tests above already include the agent.
+      - name: Validate agent discovery
+        run: pnpm agent:info
+
+      - name: Pack, install, and smoke-test the published artifact
+        run: |
+          pack_dir="$RUNNER_TEMP/diff0-pack"
+          consumer_dir="$RUNNER_TEMP/diff0-consumer"
+          mkdir -p "$pack_dir" "$consumer_dir"
+          package_name="$(npm pack --silent --pack-destination "$pack_dir")"
+          npm install --ignore-scripts --prefix "$consumer_dir" "$pack_dir/$package_name"
+          "$consumer_dir/node_modules/.bin/diff0" --help >/dev/null
+          echo "DIFF0_SMOKE_BIN=$consumer_dir/node_modules/.bin/diff0" >> "$GITHUB_ENV"
+
+      - name: Switch to the minimum supported Node version
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Smoke-test the installed package on Node 20
+        run: |
+          "$DIFF0_SMOKE_BIN" --help >/dev/null
+
+  website:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Enable corepack (pnpm)
+        run: corepack enable
+
+      - name: Install website dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build static website
+        run: pnpm build

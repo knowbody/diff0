@@ -1,0 +1,26 @@
+name: diff0
+
+on: pull_request
+
+permissions:
+  contents: read
+  pull-requests: write # required for the sticky PR comment
+
+jobs:
+  diff0:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # required: diff0 checks the base ref out locally
+          persist-credentials: false # do not expose the job token to evaluated head code
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      # Pin an immutable release.
+      - uses: knowbody/diff0/action@v0.1.0
+        with:
+          working-directory: .
+          runs: "3"
+          install-mode: scripts-off
+          fail-on: regression

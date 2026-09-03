@@ -1,0 +1,28 @@
+{
+  "name": "diff0-website",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.15.1",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "gen:transcript": "node scripts/gen-transcript.mjs",
+    "gen:og": "node scripts/gen-og.mjs"
+  },
+  "dependencies": {
+    "geist": "1.7.2",
+    "next": "16.3.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "satori": "^0.29.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.0"
+  }
+}

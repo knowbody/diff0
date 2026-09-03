@@ -1,0 +1,290 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renderMarkdown snapshots > renders the all-green scenario 1`] = `
+"<!-- diff0-report -->
+## diff0: main...feat/cleanup 🟢
+
+**No regressions or behavioral drift detected across 3 runs per ref.**
+
+eve 0.29.5 · model \`mock-model\` · 3 runs per ref · sandbox docker (inferred) · comparison cost $0.1830 (gateway)
+
+### Evals
+
+| Eval | Base | Head | Status |
+| :-- | :--: | :--: | :-- |
+| \`sql/join\` | 3/3 | 3/3 | ✅ pass |
+| \`weather/forecast\` | 3/3 | 3/3 | ✅ pass |
+
+### Behavioral drift
+
+No behavioral drift detected across 3 runs per ref.
+
+### Cost & performance
+
+| Metric | Base (median) | Head (median) | Δ |
+| :-- | --: | --: | :-- |
+| Cost / session | $0.0300 | $0.0310 | +3% |
+| Tokens in | 1,000 | 1,000 | +0% |
+| Tokens out | 200 | 200 | +0% |
+| Cache-read tokens | 0 | 0 | n/a |
+| Cache-write tokens | 0 | 0 | n/a |
+| Duration | 12.0s | 12.0s | +0% |
+
+### Changed files
+
+- \`README.md\` (+5 −1)
+
+_1 file changed, 5 insertions(+), 1 deletion(-). File attribution is correlational, not causal._
+
+<details>
+<summary>Per-run raw summaries</summary>
+
+**base — \`main\` @ \`aaa1111\`**
+
+| Run | Evals passed | Tool calls | Skills loaded | Cost | Duration |
+| :-- | :-- | --: | :-- | --: | --: |
+| 1 | 2/2 | 3 | \`unit-conversion\` | $0.0300 | 12.0s |
+| 2 | 2/2 | 3 | \`unit-conversion\` | $0.0300 | 12.0s |
+| 3 | 2/2 | 3 | \`unit-conversion\` | $0.0300 | 12.0s |
+
+**head — \`feat/cleanup\` @ \`bbb2222\`**
+
+| Run | Evals passed | Tool calls | Skills loaded | Cost | Duration |
+| :-- | :-- | --: | :-- | --: | --: |
+| 1 | 2/2 | 3 | \`unit-conversion\` | $0.0310 | 12.0s |
+| 2 | 2/2 | 3 | \`unit-conversion\` | $0.0310 | 12.0s |
+| 3 | 2/2 | 3 | \`unit-conversion\` | $0.0310 | 12.0s |
+
+</details>
+
+> ⚠️ External side effects (for example writes to third-party systems) are not observed; the comparison covers captured evals, traces, fingerprints, cost, and timing only.
+
+---
+
+_Statistical comparison across 3 runs per ref — LLM runs are nondeterministic; treat proportions, not absolutes._
+"
+`;
+
+exports[`renderMarkdown snapshots > renders the drift-only-yellow scenario 1`] = `
+"<!-- diff0-report -->
+## diff0: main...feat/tighter-prompt 🟡
+
+**No confirmed eval regressions across 3 runs per ref — behavioral changes inconclusive, cost drift detected.**
+
+eve 0.29.5 · model \`mock-model\` · 3 runs per ref · sandbox docker (inferred) · comparison cost $0.2144 (gateway)
+
+### Evals
+
+| Eval | Base | Head | Status |
+| :-- | :--: | :--: | :-- |
+| \`weather/brooklyn\` | 3/3 | 3/3 | ✅ pass |
+| \`weather/forecast\` | 3/3 | 3/3 | ✅ pass |
+
+### Behavioral drift
+
+**Skills**
+
+- \`unit-conversion\` (unattributed): loaded in 3 of 3 base runs → 1 of 3 head runs — **inconclusive** (Fisher raw p=0.4, Holm p=0.4)
+
+**Tool sequences**
+
+- unattributed calls, base most common (in 3 of 3 runs): \`get_weather → convert_units → done\`
+- unattributed calls, head most common (in 2 of 3 runs): \`get_weather → done\`
+- unattributed calls: most common tool sequence diverges: base saw it in 3 of 3 runs, head saw a different one in 2 of 3 runs — modal sequences differ, but within-ref variation makes the change inconclusive
+- \`convert_units\` in unattributed calls: median 1 call(s)/run on base → 0 on head — **inconclusive**
+
+**Tool inputs**
+
+- \`done\` call 1 (unattributed): input fingerprint changed — **inconclusive** across 3 base / 3 head captured calls (raw inputs are never stored)
+
+### Cost & performance
+
+| Metric | Base (median) | Head (median) | Δ |
+| :-- | --: | --: | :-- |
+| Cost / session | $0.0300 ($0.0290–$0.0310) | $0.0414 ($0.0400–$0.0430) | +38% |
+| Tokens in | 1,000 | 1,150 | +15% |
+| Tokens out | 200 | 210 | +5% |
+| Cache-read tokens | 0 | 0 | n/a |
+| Cache-write tokens | 0 | 0 | n/a |
+| Duration | 12.0s | 13.1s | +9% |
+
+### Changed files
+
+- \`agent/prompts.ts\` (+12 −4)
+- \`agent/tools.ts\` (+3 −1)
+
+_2 files changed, 15 insertions(+), 5 deletions(-). File attribution is correlational, not causal._
+
+<details>
+<summary>Per-run raw summaries</summary>
+
+**base — \`main\` @ \`aaa1111\`**
+
+| Run | Evals passed | Tool calls | Skills loaded | Cost | Duration |
+| :-- | :-- | --: | :-- | --: | --: |
+| 1 | 2/2 | 3 | \`unit-conversion\` | $0.0290 | 12.0s |
+| 2 | 2/2 | 3 | \`unit-conversion\` | $0.0300 | 12.0s |
+| 3 | 2/2 | 3 | \`unit-conversion\` | $0.0310 | 12.0s |
+
+**head — \`feat/tighter-prompt\` @ \`bbb2222\`**
+
+| Run | Evals passed | Tool calls | Skills loaded | Cost | Duration |
+| :-- | :-- | --: | :-- | --: | --: |
+| 1 | 2/2 | 2 | none | $0.0400 | 13.1s |
+| 2 | 2/2 | 2 | none | $0.0414 | 13.1s |
+| 3 | 2/2 | 3 | \`unit-conversion\` | $0.0430 | 13.1s |
+
+</details>
+
+> ⚠️ External side effects (for example writes to third-party systems) are not observed; the comparison covers captured evals, traces, fingerprints, cost, and timing only.
+
+---
+
+_Statistical comparison across 3 runs per ref — LLM runs are nondeterministic; treat proportions, not absolutes._
+"
+`;
+
+exports[`renderMarkdown snapshots > renders the flaky-mixed scenario 1`] = `
+"<!-- diff0-report -->
+## diff0: main...feat/model-swap 🟡
+
+**No confirmed eval regressions across 3 runs per ref — 1 eval removed, 1 eval added, 2 eval changes inconclusive, 1 flaky eval, comparison validity warnings.**
+
+eve 0.29.5 · model base \`gpt-5\` / head \`claude-opus-4\` · 3 runs per ref · sandbox docker (inferred) · comparison cost unavailable
+
+> **⚠️ Comparison validity warnings**
+> - model differs between refs: base=gpt-5, head=claude-opus-4
+
+### Evals
+
+| Eval | Base | Head | Status |
+| :-- | :--: | :--: | :-- |
+| \`old/eval\` | 3/3 | — | ➖ removed |
+| \`flaky/head\` | 3/3 | 1/3 | 🟡 lower pass rate (inconclusive) · Fisher raw p=0.2 · Holm p=0.4 |
+| \`flaky/both\` | 2/3 | 2/3 | 🟠 flaky (base + head) |
+| \`new/eval\` | — | 3/3 | ➕ added |
+| \`was/failing\` | 0/3 | 3/3 | 🟡 higher pass rate (inconclusive) · _hint: two-proportion z = -2.45 (0/3 base vs 3/3 head) — a directional hint only, not statistical significance at this sample size_ · Fisher raw p=0.05 · Holm p=0.15 |
+
+### Behavioral drift
+
+No behavioral drift detected across 3 runs per ref.
+
+### Cost & performance
+
+| Metric | Base (median) | Head (median) | Δ |
+| :-- | --: | --: | :-- |
+| Cost / session | — | — | unavailable (no cost data) |
+| Tokens in | 1,000 | 1,000 | +0% |
+| Tokens out | 200 | 200 | +0% |
+| Cache-read tokens | 0 | 0 | n/a |
+| Cache-write tokens | 0 | 0 | n/a |
+| Duration | 12.0s | 12.0s | +0% |
+
+<details>
+<summary>Per-run raw summaries</summary>
+
+**base — \`main\` @ \`aaa1111\`**
+
+| Run | Evals passed | Tool calls | Skills loaded | Cost | Duration |
+| :-- | :-- | --: | :-- | --: | --: |
+| 1 | 3/4 | 0 | none | — | 12.0s |
+| 2 | 2/4 | 0 | none | — | 12.0s |
+| 3 | 3/4 | 0 | none | — | 12.0s |
+
+**head — \`feat/model-swap\` @ \`bbb2222\`**
+
+| Run | Evals passed | Tool calls | Skills loaded | Cost | Duration |
+| :-- | :-- | --: | :-- | --: | --: |
+| 1 | 3/4 | 0 | none | — | 12.0s |
+| 2 | 3/4 | 0 | none | — | 12.0s |
+| 3 | 3/4 | 0 | none | — | 12.0s |
+
+</details>
+
+> ⚠️ Borderline results at N=3 — consider --runs 5 or more for a clearer signal.
+
+> ⚠️ External side effects (for example writes to third-party systems) are not observed; the comparison covers captured evals, traces, fingerprints, cost, and timing only.
+
+---
+
+_Statistical comparison across 3 runs per ref — LLM runs are nondeterministic; treat proportions, not absolutes._
+"
+`;
+
+exports[`renderMarkdown snapshots > renders the regression-red scenario 1`] = `
+"<!-- diff0-report -->
+## diff0: main...feat/new-planner 🔴
+
+**1 eval regressed across 4 runs per ref: sql/join.**
+
+eve 0.29.5 · model \`mock-model\` · 4 runs per ref · sandbox docker (inferred) · comparison cost $0.4080 (gateway)
+
+### Evals
+
+| Eval | Base | Head | Status |
+| :-- | :--: | :--: | :-- |
+| \`sql/join\` | 4/4 | 0/4 | 🔴 **REGRESSED** · _hint: two-proportion z = 2.83 (4/4 base vs 0/4 head) — a directional hint only, not statistical significance at this sample size_ · Fisher raw p=0.0143 · Holm p=0.0286 |
+| \`weather/forecast\` | 4/4 | 4/4 | ✅ pass |
+
+### Behavioral drift
+
+**Tool sequences**
+
+- unattributed calls, base most common (in 4 of 4 runs): \`run_sql → done\`
+- unattributed calls, head most common (in 4 of 4 runs): \`run_sql → run_sql → done\`
+- unattributed calls: most common tool sequence diverges: base saw it in 4 of 4 runs, head saw a different one in 4 of 4 runs — each sequence repeated consistently within its ref
+- \`run_sql\` in unattributed calls: median 1 call(s)/run on base → 2 on head — **stable**
+
+**Tool inputs**
+
+- \`done\` call 1 (unattributed): input fingerprint changed — **stable** across 4 base / 4 head captured calls (raw inputs are never stored)
+
+### Cost & performance
+
+| Metric | Base (median) | Head (median) | Δ |
+| :-- | --: | --: | :-- |
+| Cost / session | $0.0500 | $0.0520 | +4% |
+| Tokens in | 1,000 | 1,000 | +0% |
+| Tokens out | 200 | 200 | +0% |
+| Cache-read tokens | 0 | 0 | n/a |
+| Cache-write tokens | 0 | 0 | n/a |
+| Duration | 12.0s | 12.0s | +0% |
+
+### Changed files
+
+- \`agent/planner.ts\` (+40 −12)
+
+_1 file changed, 40 insertions(+), 12 deletions(-). File attribution is correlational, not causal._
+
+<details>
+<summary>Per-run raw summaries</summary>
+
+**base — \`main\` @ \`aaa1111\`**
+
+| Run | Evals passed | Tool calls | Skills loaded | Cost | Duration |
+| :-- | :-- | --: | :-- | --: | --: |
+| 1 | 2/2 | 2 | none | $0.0500 | 12.0s |
+| 2 | 2/2 | 2 | none | $0.0500 | 12.0s |
+| 3 | 2/2 | 2 | none | $0.0500 | 12.0s |
+| 4 | 2/2 | 2 | none | $0.0500 | 12.0s |
+
+**head — \`feat/new-planner\` @ \`bbb2222\`**
+
+| Run | Evals passed | Tool calls | Skills loaded | Cost | Duration |
+| :-- | :-- | --: | :-- | --: | --: |
+| 1 | 1/2 | 3 | none | $0.0520 | 12.0s |
+| 2 | 1/2 | 3 | none | $0.0520 | 12.0s |
+| 3 | 1/2 | 3 | none | $0.0520 | 12.0s |
+| 4 | 1/2 | 3 | none | $0.0520 | 12.0s |
+
+</details>
+
+> ⚠️ Borderline results at N=4 — consider --runs 5 or more for a clearer signal.
+
+> ⚠️ External side effects (for example writes to third-party systems) are not observed; the comparison covers captured evals, traces, fingerprints, cost, and timing only.
+
+---
+
+_Statistical comparison across 4 runs per ref — LLM runs are nondeterministic; treat proportions, not absolutes._
+"
+`;

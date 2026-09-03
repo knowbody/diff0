@@ -1,0 +1,1245 @@
+{
+  "//": "USD per single token (multiply by 1e6 for per-million display). User-editable: diff0 falls back to this table when no cost data is present in traces. Regenerate with: pnpm run refresh-prices",
+  "source": "https://ai-gateway.vercel.sh/v1/models",
+  "fetchedAt": "2026-09-02T20:40:00.817Z",
+  "models": {
+    "alibaba/qwen-3-14b": {
+      "inputPerToken": 1.2e-7,
+      "outputPerToken": 2.4e-7
+    },
+    "alibaba/qwen-3-235b": {
+      "inputPerToken": 2.2e-7,
+      "outputPerToken": 8.8e-7
+    },
+    "alibaba/qwen-3-30b": {
+      "inputPerToken": 1.2e-7,
+      "outputPerToken": 5e-7
+    },
+    "alibaba/qwen-3-32b": {
+      "inputPerToken": 1.6e-7,
+      "outputPerToken": 6.4e-7
+    },
+    "alibaba/qwen-3.6-max-preview": {
+      "inputPerToken": 0.0000013,
+      "outputPerToken": 0.0000078,
+      "cacheReadPerToken": 2.6e-7,
+      "cacheWritePerToken": 0.000001625
+    },
+    "alibaba/qwen3-235b-a22b-thinking": {
+      "inputPerToken": 4e-7,
+      "outputPerToken": 0.000004
+    },
+    "alibaba/qwen3-coder": {
+      "inputPerToken": 0.0000015,
+      "outputPerToken": 0.0000075,
+      "cacheReadPerToken": 3e-7
+    },
+    "alibaba/qwen3-coder-30b-a3b": {
+      "inputPerToken": 1.5e-7,
+      "outputPerToken": 6e-7
+    },
+    "alibaba/qwen3-coder-next": {
+      "inputPerToken": 5e-7,
+      "outputPerToken": 0.0000012
+    },
+    "alibaba/qwen3-coder-plus": {
+      "inputPerToken": 0.000001,
+      "outputPerToken": 0.000005,
+      "cacheReadPerToken": 2e-7
+    },
+    "alibaba/qwen3-max": {
+      "inputPerToken": 0.0000012,
+      "outputPerToken": 0.000006,
+      "cacheReadPerToken": 2.4e-7
+    },
+    "alibaba/qwen3-max-preview": {
+      "inputPerToken": 0.0000012,
+      "outputPerToken": 0.000006,
+      "cacheReadPerToken": 2.4e-7
+    },
+    "alibaba/qwen3-max-thinking": {
+      "inputPerToken": 0.0000012,
+      "outputPerToken": 0.000006,
+      "cacheReadPerToken": 2.4e-7
+    },
+    "alibaba/qwen3-next-80b-a3b-instruct": {
+      "inputPerToken": 1.5e-7,
+      "outputPerToken": 0.0000012
+    },
+    "alibaba/qwen3-next-80b-a3b-thinking": {
+      "inputPerToken": 1.5e-7,
+      "outputPerToken": 0.0000012
+    },
+    "alibaba/qwen3-vl-235b-a22b-instruct": {
+      "inputPerToken": 4e-7,
+      "outputPerToken": 0.0000016
+    },
+    "alibaba/qwen3-vl-instruct": {
+      "inputPerToken": 4e-7,
+      "outputPerToken": 0.0000016
+    },
+    "alibaba/qwen3-vl-thinking": {
+      "inputPerToken": 4e-7,
+      "outputPerToken": 0.000004
+    },
+    "alibaba/qwen3.5-flash": {
+      "inputPerToken": 1e-7,
+      "outputPerToken": 4e-7,
+      "cacheReadPerToken": 1e-9,
+      "cacheWritePerToken": 1.25e-7
+    },
+    "alibaba/qwen3.5-plus": {
+      "inputPerToken": 4e-7,
+      "outputPerToken": 0.0000024,
+      "cacheReadPerToken": 4e-8,
+      "cacheWritePerToken": 5e-7
+    },
+    "alibaba/qwen3.6-27b": {
+      "inputPerToken": 6e-7,
+      "outputPerToken": 0.0000036
+    },
+    "alibaba/qwen3.6-plus": {
+      "inputPerToken": 5e-7,
+      "outputPerToken": 0.000003,
+      "cacheReadPerToken": 1e-7,
+      "cacheWritePerToken": 6.25e-7
+    },
+    "alibaba/qwen3.7-flash": {
+      "inputPerToken": 3e-8,
+      "outputPerToken": 1.3e-7,
+      "cacheReadPerToken": 6e-9,
+      "cacheWritePerToken": 3.8e-8
+    },
+    "alibaba/qwen3.7-max": {
+      "inputPerToken": 0.0000025,
+      "outputPerToken": 0.0000075,
+      "cacheReadPerToken": 5e-7,
+      "cacheWritePerToken": 0.000003125
+    },
+    "alibaba/qwen3.7-plus": {
+      "inputPerToken": 4e-7,
+      "outputPerToken": 0.0000016,
+      "cacheReadPerToken": 8e-8,
+      "cacheWritePerToken": 5e-7
+    },
+    "alibaba/qwen3.8-2.4t-a95b": {
+      "inputPerToken": 0.000002,
+      "outputPerToken": 0.000006,
+      "cacheReadPerToken": 2.5e-7
+    },
+    "alibaba/qwen3.8-27b": {
+      "inputPerToken": 5e-7,
+      "outputPerToken": 0.000003,
+      "cacheReadPerToken": 1e-7,
+      "cacheWritePerToken": 6.25e-7
+    },
+    "alibaba/qwen3.8-flash": {
+      "inputPerToken": 1.6e-7,
+      "outputPerToken": 4.7e-7,
+      "cacheReadPerToken": 1.6e-8,
+      "cacheWritePerToken": 2e-7
+    },
+    "alibaba/qwen3.8-flash-next": {
+      "inputPerToken": 1.2e-7,
+      "outputPerToken": 4e-7,
+      "cacheReadPerToken": 1e-8
+    },
+    "alibaba/qwen3.8-max": {
+      "inputPerToken": 0.000002,
+      "outputPerToken": 0.000006,
+      "cacheReadPerToken": 2.5e-7,
+      "cacheWritePerToken": 0.0000025
+    },
+    "alibaba/qwen3.8-max-0902": {
+      "inputPerToken": 0.000002,
+      "outputPerToken": 0.000006,
+      "cacheReadPerToken": 2.5e-7,
+      "cacheWritePerToken": 0.0000025
+    },
+    "amazon/nova-2-lite": {
+      "inputPerToken": 3e-7,
+      "outputPerToken": 0.0000025,
+      "cacheReadPerToken": 7.5e-8
+    },
+    "amazon/nova-lite": {
+      "inputPerToken": 6e-8,
+      "outputPerToken": 2.4e-7
+    },
+    "amazon/nova-micro": {
+      "inputPerToken": 3.5e-8,
+      "outputPerToken": 1.4e-7
+    },
+    "amazon/nova-pro": {
+      "inputPerToken": 8e-7,
+      "outputPerToken": 0.0000032
+    },
+    "anthropic/claude-3-haiku": {
+      "inputPerToken": 2.5e-7,
+      "outputPerToken": 0.00000125,
+      "cacheReadPerToken": 3e-8,
+      "cacheWritePerToken": 3e-7
+    },
+    "anthropic/claude-fable-5": {
+      "inputPerToken": 0.00001,
+      "outputPerToken": 0.00005,
+      "cacheReadPerToken": 0.000001,
+      "cacheWritePerToken": 0.0000125
+    },
+    "anthropic/claude-fable-5.1": {
+      "inputPerToken": 0.00001,
+      "outputPerToken": 0.00005,
+      "cacheReadPerToken": 2.5e-7,
+      "cacheWritePerToken": 0.0000125
+    },
+    "anthropic/claude-haiku-4.5": {
+      "inputPerToken": 0.000001,
+      "outputPerToken": 0.000005,
+      "cacheReadPerToken": 1e-7,
+      "cacheWritePerToken": 0.00000125
+    },
+    "anthropic/claude-opus-4": {
+      "inputPerToken": 0.000015,
+      "outputPerToken": 0.000075,
+      "cacheReadPerToken": 0.0000015,
+      "cacheWritePerToken": 0.00001875
+    },
+    "anthropic/claude-opus-4.5": {
+      "inputPerToken": 0.000005,
+      "outputPerToken": 0.000025,
+      "cacheReadPerToken": 5e-7,
+      "cacheWritePerToken": 0.00000625
+    },
+    "anthropic/claude-opus-4.6": {
+      "inputPerToken": 0.000005,
+      "outputPerToken": 0.000025,
+      "cacheReadPerToken": 5e-7,
+      "cacheWritePerToken": 0.00000625
+    },
+    "anthropic/claude-opus-4.7": {
+      "inputPerToken": 0.000005,
+      "outputPerToken": 0.000025,
+      "cacheReadPerToken": 5e-7,
+      "cacheWritePerToken": 0.00000625
+    },
+    "anthropic/claude-opus-4.8": {
+      "inputPerToken": 0.000005,
+      "outputPerToken": 0.000025,
+      "cacheReadPerToken": 5e-7,
+      "cacheWritePerToken": 0.00000625
+    },
+    "anthropic/claude-opus-4.8-fast": {
+      "inputPerToken": 0.00001,
+      "outputPerToken": 0.00005,
+      "cacheReadPerToken": 0.000001,
+      "cacheWritePerToken": 0.0000125
+    },
+    "anthropic/claude-opus-5": {
+      "inputPerToken": 0.000005,
+      "outputPerToken": 0.000025,
+      "cacheReadPerToken": 5e-7,
+      "cacheWritePerToken": 0.00000625
+    },
+    "anthropic/claude-opus-5-fast": {
+      "inputPerToken": 0.00001,
+      "outputPerToken": 0.00005,
+      "cacheReadPerToken": 0.000001,
+      "cacheWritePerToken": 0.0000125
+    },
+    "anthropic/claude-sonnet-4": {
+      "inputPerToken": 0.000003,
+      "outputPerToken": 0.000015,
+      "cacheReadPerToken": 3e-7,
+      "cacheWritePerToken": 0.00000375
+    },
+    "anthropic/claude-sonnet-4.5": {
+      "inputPerToken": 0.000003,
+      "outputPerToken": 0.000015,
+      "cacheReadPerToken": 3e-7,
+      "cacheWritePerToken": 0.00000375
+    },
+    "anthropic/claude-sonnet-4.6": {
+      "inputPerToken": 0.000003,
+      "outputPerToken": 0.000015,
+      "cacheReadPerToken": 3e-7,
+      "cacheWritePerToken": 0.00000375
+    },
+    "anthropic/claude-sonnet-5": {
+      "inputPerToken": 0.000002,
+      "outputPerToken": 0.00001,
+      "cacheReadPerToken": 2e-7,
+      "cacheWritePerToken": 0.0000025
+    },
+    "arcee-ai/trinity-large-thinking": {
+      "inputPerToken": 2.5e-7,
+      "outputPerToken": 9e-7
+    },
+    "bytedance/seed-1.6": {
+      "inputPerToken": 2.5e-7,
+      "outputPerToken": 0.000002,
+      "cacheReadPerToken": 5e-8
+    },
+    "bytedance/seed-1.8": {
+      "inputPerToken": 2.5e-7,
+      "outputPerToken": 0.000002,
+      "cacheReadPerToken": 5e-8
+    },
+    "cohere/command-a": {
+      "inputPerToken": 0.0000025,
+      "outputPerToken": 0.00001
+    },
+    "deepseek/deepseek-r1": {
+      "inputPerToken": 0.00000135,
+      "outputPerToken": 0.0000054
+    },
+    "deepseek/deepseek-v3.1": {
+      "inputPerToken": 2.5e-7,
+      "outputPerToken": 9.5e-7,
+      "cacheReadPerToken": 1.3e-7
+    },
+    "deepseek/deepseek-v3.1-terminus": {
+      "inputPerToken": 2.7e-7,
+      "outputPerToken": 0.000001,
+      "cacheReadPerToken": 1.35e-7
+    },
+    "deepseek/deepseek-v3.2": {
+      "inputPerToken": 2.8e-7,
+      "outputPerToken": 4.2e-7,
+      "cacheReadPerToken": 2.8e-8
+    },
+    "deepseek/deepseek-v3.2-thinking": {
+      "inputPerToken": 6.2e-7,
+      "outputPerToken": 0.00000185
+    },
+    "deepseek/deepseek-v4-flash": {
+      "inputPerToken": 1.3e-7,
+      "outputPerToken": 2.6e-7,
+      "cacheReadPerToken": 2.8e-8
+    },
+    "deepseek/deepseek-v4-flash-0731": {
+      "inputPerToken": 7.6e-8,
+      "outputPerToken": 1.53e-7,
+      "cacheReadPerToken": 1.4e-8
+    },
+    "deepseek/deepseek-v4-flash-vision-exp": {
+      "inputPerToken": 2.2e-7,
+      "outputPerToken": 6.6e-7,
+      "cacheReadPerToken": 7e-9
+    },
+    "deepseek/deepseek-v4-pro": {
+      "inputPerToken": 6.6e-7,
+      "outputPerToken": 0.00000198,
+      "cacheReadPerToken": 2.2e-8
+    },
+    "deepseek/deepseek-v4-pro-0813": {
+      "inputPerToken": 6.6e-7,
+      "outputPerToken": 0.00000198,
+      "cacheReadPerToken": 6.6e-8
+    },
+    "google/gemini-2.5-flash": {
+      "inputPerToken": 3e-7,
+      "outputPerToken": 0.0000025,
+      "cacheReadPerToken": 3e-8
+    },
+    "google/gemini-2.5-flash-image": {
+      "inputPerToken": 3e-7,
+      "outputPerToken": 0.0000025,
+      "cacheReadPerToken": 3e-8
+    },
+    "google/gemini-2.5-flash-lite": {
+      "inputPerToken": 1e-7,
+      "outputPerToken": 4e-7,
+      "cacheReadPerToken": 1e-8
+    },
+    "google/gemini-2.5-pro": {
+      "inputPerToken": 0.00000125,
+      "outputPerToken": 0.00001,
+      "cacheReadPerToken": 1.25e-7
+    },
+    "google/gemini-3-flash": {
+      "inputPerToken": 5e-7,
+      "outputPerToken": 0.000003,
+      "cacheReadPerToken": 5e-8
+    },
+    "google/gemini-3-pro-image": {
+      "inputPerToken": 0.000002,
+      "outputPerToken": 0.000012,
+      "cacheReadPerToken": 2e-7
+    },
+    "google/gemini-3.1-flash-image": {
+      "inputPerToken": 5e-7,
+      "outputPerToken": 0.000003,
+      "cacheReadPerToken": 5e-8
+    },
+    "google/gemini-3.1-flash-image-preview": {
+      "inputPerToken": 5e-7,
+      "outputPerToken": 0.000003,
+      "cacheReadPerToken": 5e-8
+    },
+    "google/gemini-3.1-flash-lite": {
+      "inputPerToken": 2.5e-7,
+      "outputPerToken": 0.0000015,
+      "cacheReadPerToken": 3e-8
+    },
+    "google/gemini-3.1-flash-lite-image": {
+      "inputPerToken": 2.5e-7,
+      "outputPerToken": 0.0000015,
+      "cacheReadPerToken": 3e-8
+    },
+    "google/gemini-3.1-pro-preview": {
+      "inputPerToken": 0.000002,
+      "outputPerToken": 0.000012,
+      "cacheReadPerToken": 2e-7
+    },
+    "google/gemini-3.5-flash": {
+      "inputPerToken": 0.0000015,
+      "outputPerToken": 0.000009,
+      "cacheReadPerToken": 1.5e-7
+    },
+    "google/gemini-3.5-flash-lite": {
+      "inputPerToken": 3e-7,
+      "outputPerToken": 0.0000025,
+      "cacheReadPerToken": 3e-8
+    },
+    "google/gemini-3.5-transcribe": {
+      "inputPerToken": 0.000002,
+      "outputPerToken": 0.000012
+    },
+    "google/gemini-3.6-flash": {
+      "inputPerToken": 7.5e-7,
+      "outputPerToken": 0.00000375,
+      "cacheReadPerToken": 7.5e-8
+    },
+    "google/gemini-3.7-flash": {
+      "inputPerToken": 7.5e-7,
+      "outputPerToken": 0.00000375,
+      "cacheReadPerToken": 7.5e-8
+    },
+    "google/gemini-3.8-flash": {
+      "inputPerToken": 7.5e-7,
+      "outputPerToken": 0.00000375,
+      "cacheReadPerToken": 7.5e-8
+    },
+    "google/gemini-omni-flash-preview": {
+      "inputPerToken": 0.0000015,
+      "outputPerToken": 0.000009
+    },
+    "google/gemma-4-26b-a4b-it": {
+      "inputPerToken": 1.5e-7,
+      "outputPerToken": 6e-7,
+      "cacheReadPerToken": 1.5e-8
+    },
+    "google/gemma-4-31b-it": {
+      "inputPerToken": 1.4e-7,
+      "outputPerToken": 4e-7
+    },
+    "inception/mercury-2": {
+      "inputPerToken": 2.5e-7,
+      "outputPerToken": 7.5e-7,
+      "cacheReadPerToken": 2.5e-8
+    },
+    "inception/mercury-coder-small": {
+      "inputPerToken": 2.5e-7,
+      "outputPerToken": 0.000001
+    },
+    "inclusionai/ling-3.0-flash": {
+      "inputPerToken": 6e-8,
+      "outputPerToken": 1.8e-7,
+      "cacheReadPerToken": 1.2e-8
+    },
+    "inclusionai/ling-3.0-flash-fin": {
+      "inputPerToken": 0,
+      "outputPerToken": 0
+    },
+    "inclusionai/ling-3.0-flash-fin-free": {
+      "inputPerToken": 0,
+      "outputPerToken": 0
+    },
+    "interfaze/interfaze-beta": {
+      "inputPerToken": 0.0000015,
+      "outputPerToken": 0.0000035
+    },
+    "kwaipilot/kat-coder-air-v2.5": {
+      "inputPerToken": 1.5e-7,
+      "outputPerToken": 6e-7,
+      "cacheReadPerToken": 3e-8
+    },
+    "kwaipilot/kat-coder-pro-v1": {
+      "inputPerToken": 3e-7,
+      "outputPerToken": 0.0000012,
+      "cacheReadPerToken": 6e-8
+    },
+    "kwaipilot/kat-coder-pro-v2": {
+      "inputPerToken": 3e-7,
+      "outputPerToken": 0.0000012,
+      "cacheReadPerToken": 6e-8
+    },
+    "kwaipilot/kat-coder-pro-v2.5": {
+      "inputPerToken": 7.4e-7,
+      "outputPerToken": 0.00000296,
+      "cacheReadPerToken": 1.5e-7
+    },
+    "meta/llama-3.1-70b": {
+      "inputPerToken": 7.2e-7,
+      "outputPerToken": 7.2e-7
+    },
+    "meta/llama-3.1-8b": {
+      "inputPerToken": 2.2e-7,
+      "outputPerToken": 2.2e-7
+    },
+    "meta/llama-3.3-70b": {
+      "inputPerToken": 7.2e-7,
+      "outputPerToken": 7.2e-7
+    },
+    "meta/llama-4-maverick": {
+      "inputPerToken": 2.4e-7,
+      "outputPerToken": 9.7e-7
+    },
+    "meta/llama-4-scout": {
+      "inputPerToken": 1.7e-7,
+      "outputPerToken": 6.6e-7
+    },
+    "meta/muse-glimmer-30b": {
+      "inputPerToken": 3.5e-7,
+      "outputPerToken": 0.0000015,
+      "cacheReadPerToken": 4e-8
+    },
+    "meta/muse-spark-1.1": {
+      "inputPerToken": 0.00000125,
+      "outputPerToken": 0.00000425,
+      "cacheReadPerToken": 1.5e-7
+    },
+    "meta/muse-spark-1.2": {
+      "inputPerToken": 0.00000125,
+      "outputPerToken": 0.00000425,
+      "cacheReadPerToken": 1.5e-7
+    },
+    "meta/muse-spark-1.2-contributor": {
+      "inputPerToken": 1e-7,
+      "outputPerToken": 2e-7,
+      "cacheReadPerToken": 2e-9
+    },
+    "meta/muse-spark-1.3": {
+      "inputPerToken": 0.00000125,
+      "outputPerToken": 0.00000425,
+      "cacheReadPerToken": 1.5e-7
+    },
+    "meta/muse-spark-1.3-contributor": {
+      "inputPerToken": 1e-7,
+      "outputPerToken": 2e-7,
+      "cacheReadPerToken": 2e-9
+    },
+    "minimax/minimax-m2": {
+      "inputPerToken": 3e-7,
+      "outputPerToken": 0.0000012,
+      "cacheReadPerToken": 3e-8,
+      "cacheWritePerToken": 3.75e-7
+    },
+    "minimax/minimax-m2.1": {
+      "inputPerToken": 3e-7,
+      "outputPerToken": 0.0000012,
+      "cacheReadPerToken": 3e-8,
+      "cacheWritePerToken": 3.75e-7
+    },
+    "minimax/minimax-m2.1-lightning": {
+      "inputPerToken": 3e-7,
+      "outputPerToken": 0.0000024,
+      "cacheReadPerToken": 3e-8,
+      "cacheWritePerToken": 3.75e-7
+    },
+    "minimax/minimax-m2.5": {
+      "inputPerToken": 3e-7,
+      "outputPerToken": 0.0000012,
+      "cacheReadPerToken": 3e-8,
+      "cacheWritePerToken": 3.75e-7
+    },
+    "minimax/minimax-m2.5-highspeed": {
+      "inputPerToken": 6e-7,
+      "outputPerToken": 0.0000024,
+      "cacheReadPerToken": 3e-8,
+      "cacheWritePerToken": 3.75e-7
+    },
+    "minimax/minimax-m2.7": {
+      "inputPerToken": 3e-7,
+      "outputPerToken": 0.0000012,
+      "cacheReadPerToken": 6e-8,
+      "cacheWritePerToken": 3.75e-7
+    },
+    "minimax/minimax-m2.7-free": {
+      "inputPerToken": 0,
+      "outputPerToken": 0
+    },
+    "minimax/minimax-m2.7-highspeed": {
+      "inputPerToken": 6e-7,
+      "outputPerToken": 0.0000024,
+      "cacheReadPerToken": 6e-8,
+      "cacheWritePerToken": 3.75e-7
+    },
+    "minimax/minimax-m3": {
+      "inputPerToken": 3e-7,
+      "outputPerToken": 0.0000012,
+      "cacheReadPerToken": 6e-8
+    },
+    "minimax/minimax-m3-free": {
+      "inputPerToken": 0,
+      "outputPerToken": 0
+    },
+    "mistral/codestral": {
+      "inputPerToken": 3e-7,
+      "outputPerToken": 9e-7
+    },
+    "mistral/devstral-2": {
+      "inputPerToken": 4e-7,
+      "outputPerToken": 0.000002
+    },
+    "mistral/devstral-small-2": {
+      "inputPerToken": 1e-7,
+      "outputPerToken": 3e-7
+    },
+    "mistral/ministral-14b": {
+      "inputPerToken": 2e-7,
+      "outputPerToken": 2e-7
+    },
+    "mistral/ministral-3b": {
+      "inputPerToken": 1e-7,
+      "outputPerToken": 1e-7
+    },
+    "mistral/ministral-8b": {
+      "inputPerToken": 1.5e-7,
+      "outputPerToken": 1.5e-7
+    },
+    "mistral/mistral-large-3": {
+      "inputPerToken": 5e-7,
+      "outputPerToken": 0.0000015
+    },
+    "mistral/mistral-medium": {
+      "inputPerToken": 4e-7,
+      "outputPerToken": 0.000002
+    },
+    "mistral/mistral-medium-3.5": {
+      "inputPerToken": 0.0000015,
+      "outputPerToken": 0.0000075
+    },
+    "mistral/mistral-nemo": {
+      "inputPerToken": 1.5e-7,
+      "outputPerToken": 1.5e-7
+    },
+    "mistral/mistral-small": {
+      "inputPerToken": 1e-7,
+      "outputPerToken": 3e-7
+    },
+    "mistral/pixtral-12b": {
+      "inputPerToken": 1.5e-7,
+      "outputPerToken": 1.5e-7
+    },
+    "moonshotai/kimi-k2": {
+      "inputPerToken": 5.7e-7,
+      "outputPerToken": 0.0000023
+    },
+    "moonshotai/kimi-k2-thinking": {
+      "inputPerToken": 4.7e-7,
+      "outputPerToken": 0.000002,
+      "cacheReadPerToken": 1.41e-7
+    },
+    "moonshotai/kimi-k2.5": {
+      "inputPerToken": 6e-7,
+      "outputPerToken": 0.000003,
+      "cacheReadPerToken": 1e-7
+    },
+    "moonshotai/kimi-k2.6": {
+      "inputPerToken": 9.5e-7,
+      "outputPerToken": 0.000004,
+      "cacheReadPerToken": 1.6e-7
+    },
+    "moonshotai/kimi-k2.7-code": {
+      "inputPerToken": 9.5e-7,
+      "outputPerToken": 0.000004,
+      "cacheReadPerToken": 1.6e-7
+    },
+    "moonshotai/kimi-k2.7-code-highspeed": {
+      "inputPerToken": 0.0000019,
+      "outputPerToken": 0.000008,
+      "cacheReadPerToken": 3.8e-7
+    },
+    "moonshotai/kimi-k3": {
+      "inputPerToken": 0.000003,
+      "outputPerToken": 0.000015,
+      "cacheReadPerToken": 3e-7
+    },
+    "moonshotai/kimi-k3-fast": {
+      "inputPerToken": 0.0000045,
+      "outputPerToken": 0.0000225,
+      "cacheReadPerToken": 4.5e-7
+    },
+    "morph/morph-v3-fast": {
+      "inputPerToken": 8e-7,
+      "outputPerToken": 0.0000012
+    },
+    "morph/morph-v3-large": {
+      "inputPerToken": 9e-7,
+      "outputPerToken": 0.0000019
+    },
+    "nvidia/nemotron-3-nano-30b-a3b": {
+      "inputPerToken": 5e-8,
+      "outputPerToken": 2.4e-7
+    },
+    "nvidia/nemotron-3-super-120b-a12b": {
+      "inputPerToken": 1.5e-7,
+      "outputPerToken": 6.5e-7
+    },
+    "nvidia/nemotron-3-ultra-550b-a55b": {
+      "inputPerToken": 6e-7,
+      "outputPerToken": 0.0000024,
+      "cacheReadPerToken": 1.2e-7
+    },
+    "nvidia/nemotron-3.5-lightning": {
+      "inputPerToken": 5e-8,
+      "outputPerToken": 2e-7,
+      "cacheReadPerToken": 1e-8
+    },
+    "nvidia/nemotron-nano-12b-v2-vl": {
+      "inputPerToken": 2e-7,
+      "outputPerToken": 6e-7
+    },
+    "nvidia/nemotron-nano-9b-v2": {
+      "inputPerToken": 6e-8,
+      "outputPerToken": 2.3e-7
+    },
+    "openai/gpt-3.5-turbo": {
+      "inputPerToken": 5e-7,
+      "outputPerToken": 0.0000015
+    },
+    "openai/gpt-4-turbo": {
+      "inputPerToken": 0.00001,
+      "outputPerToken": 0.00003
+    },
+    "openai/gpt-4.1": {
+      "inputPerToken": 0.000002,
+      "outputPerToken": 0.000008,
+      "cacheReadPerToken": 5e-7
+    },
+    "openai/gpt-4.1-fast": {
+      "inputPerToken": 0.0000035,
+      "outputPerToken": 0.000014,
+      "cacheReadPerToken": 8.75e-7
+    },
+    "openai/gpt-4.1-mini": {
+      "inputPerToken": 4e-7,
+      "outputPerToken": 0.0000016,
+      "cacheReadPerToken": 1e-7
+    },
+    "openai/gpt-4.1-mini-fast": {
+      "inputPerToken": 7e-7,
+      "outputPerToken": 0.0000028,
+      "cacheReadPerToken": 1.75e-7
+    },
+    "openai/gpt-4.1-nano": {
+      "inputPerToken": 1e-7,
+      "outputPerToken": 4e-7,
+      "cacheReadPerToken": 2.5e-8
+    },
+    "openai/gpt-4.1-nano-fast": {
+      "inputPerToken": 2e-7,
+      "outputPerToken": 8e-7,
+      "cacheReadPerToken": 5e-8
+    },
+    "openai/gpt-4o": {
+      "inputPerToken": 0.0000025,
+      "outputPerToken": 0.00001,
+      "cacheReadPerToken": 0.00000125
+    },
+    "openai/gpt-4o-fast": {
+      "inputPerToken": 0.00000425,
+      "outputPerToken": 0.000017,
+      "cacheReadPerToken": 0.000002125
+    },
+    "openai/gpt-4o-mini": {
+      "inputPerToken": 1.5e-7,
+      "outputPerToken": 6e-7,
+      "cacheReadPerToken": 7.5e-8
+    },
+    "openai/gpt-4o-mini-fast": {
+      "inputPerToken": 2.5e-7,
+      "outputPerToken": 0.000001,
+      "cacheReadPerToken": 1.25e-7
+    },
+    "openai/gpt-4o-mini-transcribe": {
+      "inputPerToken": 0.00000125,
+      "outputPerToken": 0.000005
+    },
+    "openai/gpt-4o-transcribe": {
+      "inputPerToken": 0.0000025,
+      "outputPerToken": 0.00001
+    },
+    "openai/gpt-5": {
+      "inputPerToken": 0.00000125,
+      "outputPerToken": 0.00001,
+      "cacheReadPerToken": 1.25e-7
+    },
+    "openai/gpt-5-fast": {
+      "inputPerToken": 0.0000025,
+      "outputPerToken": 0.00002,
+      "cacheReadPerToken": 2.5e-7
+    },
+    "openai/gpt-5-codex": {
+      "inputPerToken": 0.00000125,
+      "outputPerToken": 0.00001,
+      "cacheReadPerToken": 1.3e-7
+    },
+    "openai/gpt-5-mini": {
+      "inputPerToken": 2.5e-7,
+      "outputPerToken": 0.000002,
+      "cacheReadPerToken": 2.5e-8
+    },
+    "openai/gpt-5-mini-fast": {
+      "inputPerToken": 4.5e-7,
+      "outputPerToken": 0.0000036,
+      "cacheReadPerToken": 4.5e-8
+    },
+    "openai/gpt-5-nano": {
+      "inputPerToken": 5e-8,
+      "outputPerToken": 4e-7,
+      "cacheReadPerToken": 5e-9
+    },
+    "openai/gpt-5-pro": {
+      "inputPerToken": 0.000015,
+      "outputPerToken": 0.00012
+    },
+    "openai/gpt-5.1-codex": {
+      "inputPerToken": 0.00000125,
+      "outputPerToken": 0.00001,
+      "cacheReadPerToken": 1.3e-7
+    },
+    "openai/gpt-5.1-codex-max": {
+      "inputPerToken": 0.00000125,
+      "outputPerToken": 0.00001,
+      "cacheReadPerToken": 1.25e-7
+    },
+    "openai/gpt-5.1-codex-mini": {
+      "inputPerToken": 2.5e-7,
+      "outputPerToken": 0.000002,
+      "cacheReadPerToken": 3e-8
+    },
+    "openai/gpt-5.1-thinking": {
+      "inputPerToken": 0.00000125,
+      "outputPerToken": 0.00001,
+      "cacheReadPerToken": 1.25e-7
+    },
+    "openai/gpt-5.1-thinking-fast": {
+      "inputPerToken": 0.0000025,
+      "outputPerToken": 0.00002,
+      "cacheReadPerToken": 2.5e-7
+    },
+    "openai/gpt-5.2": {
+      "inputPerToken": 0.00000175,
+      "outputPerToken": 0.000014,
+      "cacheReadPerToken": 1.75e-7
+    },
+    "openai/gpt-5.2-fast": {
+      "inputPerToken": 0.0000035,
+      "outputPerToken": 0.000028,
+      "cacheReadPerToken": 3.5e-7
+    },
+    "openai/gpt-5.2-codex": {
+      "inputPerToken": 0.00000175,
+      "outputPerToken": 0.000014,
+      "cacheReadPerToken": 1.75e-7
+    },
+    "openai/gpt-5.2-pro": {
+      "inputPerToken": 0.000021,
+      "outputPerToken": 0.000168
+    },
+    "openai/gpt-5.3-codex": {
+      "inputPerToken": 0.00000175,
+      "outputPerToken": 0.000014,
+      "cacheReadPerToken": 1.75e-7
+    },
+    "openai/gpt-5.3-codex-fast": {
+      "inputPerToken": 0.0000035,
+      "outputPerToken": 0.000028,
+      "cacheReadPerToken": 3.5e-7
+    },
+    "openai/gpt-5.4": {
+      "inputPerToken": 0.0000025,
+      "outputPerToken": 0.000015,
+      "cacheReadPerToken": 2.5e-7
+    },
+    "openai/gpt-5.4-fast": {
+      "inputPerToken": 0.000005,
+      "outputPerToken": 0.00003,
+      "cacheReadPerToken": 5e-7
+    },
+    "openai/gpt-5.4-mini": {
+      "inputPerToken": 7.5e-7,
+      "outputPerToken": 0.0000045,
+      "cacheReadPerToken": 7.5e-8
+    },
+    "openai/gpt-5.4-mini-fast": {
+      "inputPerToken": 0.0000015,
+      "outputPerToken": 0.000009,
+      "cacheReadPerToken": 1.5e-7
+    },
+    "openai/gpt-5.4-nano": {
+      "inputPerToken": 2e-7,
+      "outputPerToken": 0.00000125,
+      "cacheReadPerToken": 2e-8
+    },
+    "openai/gpt-5.4-pro": {
+      "inputPerToken": 0.00003,
+      "outputPerToken": 0.00018
+    },
+    "openai/gpt-5.5": {
+      "inputPerToken": 0.000005,
+      "outputPerToken": 0.00003,
+      "cacheReadPerToken": 5e-7
+    },
+    "openai/gpt-5.5-fast": {
+      "inputPerToken": 0.0000125,
+      "outputPerToken": 0.000075,
+      "cacheReadPerToken": 0.00000125
+    },
+    "openai/gpt-5.5-pro": {
+      "inputPerToken": 0.00003,
+      "outputPerToken": 0.00018
+    },
+    "openai/gpt-5.6-luna": {
+      "inputPerToken": 2e-7,
+      "outputPerToken": 0.0000012,
+      "cacheReadPerToken": 2e-8,
+      "cacheWritePerToken": 2.5e-7
+    },
+    "openai/gpt-5.6-luna-fast": {
+      "inputPerToken": 4e-7,
+      "outputPerToken": 0.0000024,
+      "cacheReadPerToken": 4e-8,
+      "cacheWritePerToken": 2.5e-7
+    },
+    "openai/gpt-5.6-sol": {
+      "inputPerToken": 0.000002,
+      "outputPerToken": 0.00001,
+      "cacheReadPerToken": 2e-7,
+      "cacheWritePerToken": 0.0000025
+    },
+    "openai/gpt-5.6-sol-fast": {
+      "inputPerToken": 0.000004,
+      "outputPerToken": 0.00002,
+      "cacheReadPerToken": 4e-7,
+      "cacheWritePerToken": 0.0000025
+    },
+    "openai/gpt-5.6-terra": {
+      "inputPerToken": 0.000002,
+      "outputPerToken": 0.000012,
+      "cacheReadPerToken": 2e-7,
+      "cacheWritePerToken": 0.0000025
+    },
+    "openai/gpt-5.6-terra-fast": {
+      "inputPerToken": 0.000004,
+      "outputPerToken": 0.000024,
+      "cacheReadPerToken": 4e-7,
+      "cacheWritePerToken": 0.0000025
+    },
+    "openai/gpt-image-1": {
+      "inputPerToken": 0.000005,
+      "outputPerToken": 0.00004,
+      "cacheReadPerToken": 0.00000125
+    },
+    "openai/gpt-image-1-mini": {
+      "inputPerToken": 0.000002,
+      "outputPerToken": 0.000008,
+      "cacheReadPerToken": 2e-7
+    },
+    "openai/gpt-image-1.5": {
+      "inputPerToken": 0.000005,
+      "outputPerToken": 0.000032,
+      "cacheReadPerToken": 0.00000125
+    },
+    "openai/gpt-image-2": {
+      "inputPerToken": 0.000005,
+      "outputPerToken": 0.00003,
+      "cacheReadPerToken": 0.00000125
+    },
+    "openai/gpt-oss-120b": {
+      "inputPerToken": 1e-7,
+      "outputPerToken": 5e-7
+    },
+    "openai/gpt-oss-20b": {
+      "inputPerToken": 5e-8,
+      "outputPerToken": 2e-7
+    },
+    "openai/gpt-oss-safeguard-120b": {
+      "inputPerToken": 1.5e-7,
+      "outputPerToken": 6e-7
+    },
+    "openai/gpt-oss-safeguard-20b": {
+      "inputPerToken": 7e-8,
+      "outputPerToken": 2e-7
+    },
+    "openai/gpt-realtime-1.5": {
+      "inputPerToken": 0.000004,
+      "outputPerToken": 0.000016,
+      "cacheReadPerToken": 4e-7
+    },
+    "openai/gpt-realtime-2": {
+      "inputPerToken": 0.000004,
+      "outputPerToken": 0.000024,
+      "cacheReadPerToken": 4e-7
+    },
+    "openai/gpt-realtime-2.1": {
+      "inputPerToken": 0.000004,
+      "outputPerToken": 0.000024,
+      "cacheReadPerToken": 4e-7
+    },
+    "openai/gpt-realtime-mini": {
+      "inputPerToken": 6e-7,
+      "outputPerToken": 0.0000024,
+      "cacheReadPerToken": 6e-8
+    },
+    "openai/o1": {
+      "inputPerToken": 0.000015,
+      "outputPerToken": 0.00006,
+      "cacheReadPerToken": 0.0000075
+    },
+    "openai/o3": {
+      "inputPerToken": 0.000002,
+      "outputPerToken": 0.000008,
+      "cacheReadPerToken": 5e-7
+    },
+    "openai/o3-fast": {
+      "inputPerToken": 0.0000035,
+      "outputPerToken": 0.000014,
+      "cacheReadPerToken": 8.75e-7
+    },
+    "openai/o3-mini": {
+      "inputPerToken": 0.0000011,
+      "outputPerToken": 0.0000044,
+      "cacheReadPerToken": 5.5e-7
+    },
+    "openai/o3-pro": {
+      "inputPerToken": 0.00002,
+      "outputPerToken": 0.00008
+    },
+    "openai/o4-mini": {
+      "inputPerToken": 0.0000011,
+      "outputPerToken": 0.0000044,
+      "cacheReadPerToken": 2.75e-7
+    },
+    "openai/o4-mini-fast": {
+      "inputPerToken": 0.000002,
+      "outputPerToken": 0.000008,
+      "cacheReadPerToken": 5e-7
+    },
+    "poolside/laguna-s-2.1": {
+      "inputPerToken": 1e-7,
+      "outputPerToken": 2e-7,
+      "cacheReadPerToken": 1e-8
+    },
+    "poolside/laguna-s-2.1-free": {
+      "inputPerToken": 0,
+      "outputPerToken": 0
+    },
+    "sakana/fugu-ultra": {
+      "inputPerToken": 0.000005,
+      "outputPerToken": 0.00003,
+      "cacheReadPerToken": 5e-7
+    },
+    "sakana/namazu": {
+      "inputPerToken": 9.5e-7,
+      "outputPerToken": 0.000004,
+      "cacheReadPerToken": 1.5e-7
+    },
+    "stepfun/step-3.5-flash": {
+      "inputPerToken": 9e-8,
+      "outputPerToken": 3e-7,
+      "cacheReadPerToken": 2e-8
+    },
+    "stepfun/step-3.7-flash": {
+      "inputPerToken": 2e-7,
+      "outputPerToken": 0.00000115,
+      "cacheReadPerToken": 4e-8
+    },
+    "tencent/hy-mt2-lite": {
+      "inputPerToken": 4.4e-8,
+      "outputPerToken": 1.77e-7
+    },
+    "tencent/hy-mt2-plus": {
+      "inputPerToken": 7.4e-8,
+      "outputPerToken": 2.95e-7
+    },
+    "tencent/hy-mt2-pro": {
+      "inputPerToken": 7.4e-8,
+      "outputPerToken": 2.95e-7
+    },
+    "tencent/hy3": {
+      "inputPerToken": 1.4e-7,
+      "outputPerToken": 5.8e-7,
+      "cacheReadPerToken": 3.5e-8
+    },
+    "tencent/hy4-preview": {
+      "inputPerToken": 8.34e-7,
+      "outputPerToken": 0.000002501,
+      "cacheReadPerToken": 4.2e-8
+    },
+    "thinkingmachines/inkling": {
+      "inputPerToken": 0.000001,
+      "outputPerToken": 0.00000405,
+      "cacheReadPerToken": 1.7e-7
+    },
+    "thinkingmachines/inkling-small": {
+      "inputPerToken": 5e-7,
+      "outputPerToken": 0.0000012,
+      "cacheReadPerToken": 1e-7
+    },
+    "spacexai/grok-4.1-fast-non-reasoning": {
+      "inputPerToken": 2e-7,
+      "outputPerToken": 5e-7,
+      "cacheReadPerToken": 5e-8
+    },
+    "spacexai/grok-4.1-fast-reasoning": {
+      "inputPerToken": 2e-7,
+      "outputPerToken": 5e-7,
+      "cacheReadPerToken": 5e-8
+    },
+    "spacexai/grok-4.20-multi-agent": {
+      "inputPerToken": 0.00000125,
+      "outputPerToken": 0.0000025,
+      "cacheReadPerToken": 2e-7
+    },
+    "spacexai/grok-4.20-multi-agent-beta": {
+      "inputPerToken": 0.00000125,
+      "outputPerToken": 0.0000025,
+      "cacheReadPerToken": 2e-7
+    },
+    "spacexai/grok-4.20-non-reasoning": {
+      "inputPerToken": 0.00000125,
+      "outputPerToken": 0.0000025,
+      "cacheReadPerToken": 2e-7
+    },
+    "spacexai/grok-4.20-non-reasoning-beta": {
+      "inputPerToken": 0.00000125,
+      "outputPerToken": 0.0000025,
+      "cacheReadPerToken": 2e-7
+    },
+    "spacexai/grok-4.20-reasoning": {
+      "inputPerToken": 0.00000125,
+      "outputPerToken": 0.0000025,
+      "cacheReadPerToken": 2e-7
+    },
+    "spacexai/grok-4.20-reasoning-beta": {
+      "inputPerToken": 0.00000125,
+      "outputPerToken": 0.0000025,
+      "cacheReadPerToken": 2e-7
+    },
+    "spacexai/grok-4.3": {
+      "inputPerToken": 0.00000125,
+      "outputPerToken": 0.0000025,
+      "cacheReadPerToken": 2e-7
+    },
+    "spacexai/grok-4.5": {
+      "inputPerToken": 0.000002,
+      "outputPerToken": 0.000006,
+      "cacheReadPerToken": 3e-7
+    },
+    "spacexai/grok-4.6": {
+      "inputPerToken": 0.000002,
+      "outputPerToken": 0.000006,
+      "cacheReadPerToken": 5e-7
+    },
+    "spacexai/grok-build-0.1": {
+      "inputPerToken": 0.000001,
+      "outputPerToken": 0.000002,
+      "cacheReadPerToken": 2e-7
+    },
+    "xiaomi/mimo-v2.5": {
+      "inputPerToken": 1.4e-7,
+      "outputPerToken": 2.8e-7,
+      "cacheReadPerToken": 2.8e-9
+    },
+    "xiaomi/mimo-v2.5-pro": {
+      "inputPerToken": 4.35e-7,
+      "outputPerToken": 8.7e-7,
+      "cacheReadPerToken": 3.6e-9
+    },
+    "xiaomi/mimo-v2.5-pro-ultraspeed": {
+      "inputPerToken": 0.000001305,
+      "outputPerToken": 0.00000261,
+      "cacheReadPerToken": 1.08e-8
+    },
+    "zai/glm-4.5": {
+      "inputPerToken": 6e-7,
+      "outputPerToken": 0.0000022,
+      "cacheReadPerToken": 1.1e-7
+    },
+    "zai/glm-4.5-air": {
+      "inputPerToken": 2e-7,
+      "outputPerToken": 0.0000011,
+      "cacheReadPerToken": 3e-8
+    },
+    "zai/glm-4.5v": {
+      "inputPerToken": 6e-7,
+      "outputPerToken": 0.0000018,
+      "cacheReadPerToken": 1.1e-7
+    },
+    "zai/glm-4.6": {
+      "inputPerToken": 6e-7,
+      "outputPerToken": 0.0000022,
+      "cacheReadPerToken": 1.1e-7
+    },
+    "zai/glm-4.7": {
+      "inputPerToken": 6e-7,
+      "outputPerToken": 0.0000022,
+      "cacheReadPerToken": 1.2e-7
+    },
+    "zai/glm-4.7-flash": {
+      "inputPerToken": 7e-8,
+      "outputPerToken": 4e-7
+    },
+    "zai/glm-4.7-flashx": {
+      "inputPerToken": 6e-8,
+      "outputPerToken": 4e-7,
+      "cacheReadPerToken": 1e-8
+    },
+    "zai/glm-5": {
+      "inputPerToken": 0.000001,
+      "outputPerToken": 0.0000032
+    },
+    "zai/glm-5-turbo": {
+      "inputPerToken": 0.0000012,
+      "outputPerToken": 0.000004,
+      "cacheReadPerToken": 2.4e-7
+    },
+    "zai/glm-5.1": {
+      "inputPerToken": 0.0000014,
+      "outputPerToken": 0.0000044,
+      "cacheReadPerToken": 2.6e-7
+    },
+    "zai/glm-5.2": {
+      "inputPerToken": 8e-7,
+      "outputPerToken": 0.00000255,
+      "cacheReadPerToken": 1.6e-7
+    },
+    "zai/glm-5.2-fast": {
+      "inputPerToken": 0.0000021,
+      "outputPerToken": 0.0000066,
+      "cacheReadPerToken": 2.1e-7
+    },
+    "zai/glm-5.3": {
+      "inputPerToken": 0.0000014,
+      "outputPerToken": 0.0000044,
+      "cacheReadPerToken": 1.4e-7
+    },
+    "zai/glm-5.3-flash": {
+      "inputPerToken": 1.5e-7,
+      "outputPerToken": 5e-7,
+      "cacheReadPerToken": 3e-8
+    },
+    "zai/glm-5.3-promo-50": {
+      "inputPerToken": 7e-7,
+      "outputPerToken": 0.0000022,
+      "cacheReadPerToken": 1.3e-7
+    },
+    "zai/glm-5v-turbo": {
+      "inputPerToken": 0.0000012,
+      "outputPerToken": 0.000004,
+      "cacheReadPerToken": 2.4e-7
+    }
+  }
+}

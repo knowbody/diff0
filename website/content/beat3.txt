@@ -1,0 +1,49 @@
+diff0 main...simplify-pipeline  YELLOW
+  — No confirmed eval regressions across 5 runs per ref — 2 eval changes inconclusive,
+    behavioral drift detected
+eve 0.29.5 | model anthropic/claude-haiku-4.5 | 5 runs per ref | sandbox docker (inferred)
+  comparison cost $0.1188 (gateway)
+
+EVALS
+  revenue/reply-format       base 5/5   head 3/5   lower pass rate (inconclusive)
+    [score 1 -> 1 (+0); Fisher raw p=0.2222; Holm p=0.8889]
+  revenue/uses-sql-tool      base 5/5   head 4/5   lower pass rate (inconclusive)
+    [score 1 -> 1 (+0); Fisher raw p=0.5; Holm p=1]
+  revenue/no-failed-actions  base 5/5   head 5/5   pass
+    [score 1 -> 1 (+0)]
+  revenue/total-revenue      base 5/5   head 5/5   pass
+    [score 1 -> 1 (+0)]
+
+BEHAVIORAL DRIFT
+  subagents:
+    reporter (unattributed): used in 5 of 5 base runs -> 0 of 5 head runs
+      [statistically-confirmed; Fisher raw p=0.0079; Holm p=0.0159]
+
+COST & PERFORMANCE
+  cost/session        base $0.0141 ($0.0136–$0.0142)  head $0.0095 ($0.0077–$0.0126)  -33%
+  tokens in           base 82,370 (77,251–82,468)     head 55,282 (45,353–71,597)     -33%
+  tokens out          base 1,195 (1,177–1,225)        head 775 (642–1,113)            -35%
+  cache-read tokens   base unavailable                head unavailable                n/a
+  cache-write tokens  base unavailable                head unavailable                n/a
+  duration            base 37.0s (34.2s–37.3s)        head 22.1s (17.5s–26.5s)        -40%
+
+CHANGED FILES
+  agent/instructions.md (+0 -2)
+  1 file changed, 2 deletions(-). File attribution is correlational, not causal.
+
+PER-RUN RAW SUMMARIES
+  base main @ b8fb7f2
+    run 1: 4/4 evals passed, 8 tool calls, skills: revenue-definitions, $0.0142, 37.0s
+    run 2: 4/4 evals passed, 8 tool calls, skills: revenue-definitions, $0.0142, 34.2s
+    run 3: 4/4 evals passed, 8 tool calls, skills: revenue-definitions, $0.0141, 35.4s
+    run 4: 4/4 evals passed, 8 tool calls, skills: revenue-definitions, $0.0136, 37.2s
+    run 5: 4/4 evals passed, 8 tool calls, skills: revenue-definitions, $0.0140, 37.3s
+  head simplify-pipeline @ 77d4334
+    run 1: 4/4 evals passed, 8 tool calls, skills: revenue-definitions, $0.0098, 22.1s
+    run 2: 3/4 evals passed, 7 tool calls, skills: revenue-definitions, $0.0092, 21.0s
+    run 3: 3/4 evals passed, 7 tool calls, skills: revenue-definitions, $0.0095, 23.1s
+    run 4: 3/4 evals passed, 6 tool calls, skills: revenue-definitions, $0.0077, 17.5s
+    run 5: 4/4 evals passed, 10 tool calls, skills: revenue-definitions, $0.0126, 26.5s
+
+Statistical comparison across 5 runs per ref —
+LLM runs are nondeterministic; treat proportions, not absolutes.

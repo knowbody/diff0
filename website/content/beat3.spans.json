@@ -1,0 +1,306 @@
+[
+ [
+  {
+   "text": "diff0",
+   "cls": "bold money"
+  },
+  {
+   "text": " main...simplify-pipeline  ",
+   "cls": null
+  },
+  {
+   "text": "YELLOW",
+   "cls": "yellow bold"
+  }
+ ],
+ [
+  {
+   "text": "  — No confirmed eval regressions across 5 runs per ref — 2 eval changes inconclusive,",
+   "cls": null
+  }
+ ],
+ [
+  {
+   "text": "    behavioral drift detected",
+   "cls": null
+  }
+ ],
+ [
+  {
+   "text": "eve 0.29.5 | model anthropic/claude-haiku-4.5 | 5 runs per ref | sandbox docker (inferred)",
+   "cls": "dim"
+  }
+ ],
+ [
+  {
+   "text": "  comparison cost $0.1188 (gateway)",
+   "cls": "dim"
+  }
+ ],
+ [],
+ [
+  {
+   "text": "EVALS",
+   "cls": "bold"
+  }
+ ],
+ [
+  {
+   "text": "  revenue/reply-format       base 5/5   head 3/5   ",
+   "cls": null
+  },
+  {
+   "text": "lower pass rate (inconclusive)",
+   "cls": "yellow"
+  }
+ ],
+ [
+  {
+   "text": "    [score 1 -> 1 (+0); Fisher raw p=0.2222; Holm p=0.8889]",
+   "cls": null
+  }
+ ],
+ [
+  {
+   "text": "  revenue/uses-sql-tool      base 5/5   head 4/5   ",
+   "cls": null
+  },
+  {
+   "text": "lower pass rate (inconclusive)",
+   "cls": "yellow"
+  }
+ ],
+ [
+  {
+   "text": "    [score 1 -> 1 (+0); Fisher raw p=0.5; Holm p=1]",
+   "cls": null
+  }
+ ],
+ [
+  {
+   "text": "  revenue/no-failed-actions  base 5/5   head 5/5   ",
+   "cls": null
+  },
+  {
+   "text": "pass",
+   "cls": "green"
+  }
+ ],
+ [
+  {
+   "text": "    [score 1 -> 1 (+0)]",
+   "cls": null
+  }
+ ],
+ [
+  {
+   "text": "  revenue/total-revenue      base 5/5   head 5/5   ",
+   "cls": null
+  },
+  {
+   "text": "pass",
+   "cls": "green"
+  }
+ ],
+ [
+  {
+   "text": "    [score 1 -> 1 (+0)]",
+   "cls": null
+  }
+ ],
+ [],
+ [
+  {
+   "text": "BEHAVIORAL DRIFT",
+   "cls": "bold"
+  }
+ ],
+ [
+  {
+   "text": "  subagents:",
+   "cls": null
+  }
+ ],
+ [
+  {
+   "text": "    reporter (unattributed): used in 5 of 5 base runs -> 0 of 5 head runs",
+   "cls": "money"
+  }
+ ],
+ [
+  {
+   "text": "      [statistically-confirmed; Fisher raw p=0.0079; Holm p=0.0159]",
+   "cls": null
+  }
+ ],
+ [],
+ [
+  {
+   "text": "COST & PERFORMANCE",
+   "cls": "bold"
+  }
+ ],
+ [
+  {
+   "text": "  cost/session        base $0.0141 ($0.0136–$0.0142)  head $0.0095 ($0.0077–$0.0126)  -33%",
+   "cls": "money"
+  }
+ ],
+ [
+  {
+   "text": "  tokens in           base 82,370 (77,251–82,468)     head 55,282 (45,353–71,597)     -33%",
+   "cls": null
+  }
+ ],
+ [
+  {
+   "text": "  tokens out          base 1,195 (1,177–1,225)        head 775 (642–1,113)            -35%",
+   "cls": null
+  }
+ ],
+ [
+  {
+   "text": "  cache-read tokens   base unavailable                head unavailable                n/a",
+   "cls": null
+  }
+ ],
+ [
+  {
+   "text": "  cache-write tokens  base unavailable                head unavailable                n/a",
+   "cls": null
+  }
+ ],
+ [
+  {
+   "text": "  duration            base 37.0s (34.2s–37.3s)        head 22.1s (17.5s–26.5s)        -40%",
+   "cls": null
+  }
+ ],
+ [],
+ [
+  {
+   "text": "CHANGED FILES",
+   "cls": "bold"
+  }
+ ],
+ [
+  {
+   "text": "  agent/instructions.md (+0 -2)",
+   "cls": null
+  }
+ ],
+ [
+  {
+   "text": "  1 file changed, 2 deletions(-). File attribution is correlational, not causal.",
+   "cls": "dim"
+  }
+ ],
+ [],
+ [
+  {
+   "text": "PER-RUN RAW SUMMARIES",
+   "cls": "bold"
+  }
+ ],
+ [
+  {
+   "text": "  ",
+   "cls": null
+  },
+  {
+   "text": "base",
+   "cls": "bold"
+  },
+  {
+   "text": " main @ b8fb7f2",
+   "cls": null
+  }
+ ],
+ [
+  {
+   "text": "    run 1: 4/4 evals passed, 8 tool calls, skills: revenue-definitions, $0.0142, 37.0s",
+   "cls": null
+  }
+ ],
+ [
+  {
+   "text": "    run 2: 4/4 evals passed, 8 tool calls, skills: revenue-definitions, $0.0142, 34.2s",
+   "cls": null
+  }
+ ],
+ [
+  {
+   "text": "    run 3: 4/4 evals passed, 8 tool calls, skills: revenue-definitions, $0.0141, 35.4s",
+   "cls": null
+  }
+ ],
+ [
+  {
+   "text": "    run 4: 4/4 evals passed, 8 tool calls, skills: revenue-definitions, $0.0136, 37.2s",
+   "cls": null
+  }
+ ],
+ [
+  {
+   "text": "    run 5: 4/4 evals passed, 8 tool calls, skills: revenue-definitions, $0.0140, 37.3s",
+   "cls": null
+  }
+ ],
+ [
+  {
+   "text": "  ",
+   "cls": null
+  },
+  {
+   "text": "head",
+   "cls": "bold"
+  },
+  {
+   "text": " simplify-pipeline @ 77d4334",
+   "cls": null
+  }
+ ],
+ [
+  {
+   "text": "    run 1: 4/4 evals passed, 8 tool calls, skills: revenue-definitions, $0.0098, 22.1s",
+   "cls": null
+  }
+ ],
+ [
+  {
+   "text": "    run 2: 3/4 evals passed, 7 tool calls, skills: revenue-definitions, $0.0092, 21.0s",
+   "cls": null
+  }
+ ],
+ [
+  {
+   "text": "    run 3: 3/4 evals passed, 7 tool calls, skills: revenue-definitions, $0.0095, 23.1s",
+   "cls": null
+  }
+ ],
+ [
+  {
+   "text": "    run 4: 3/4 evals passed, 6 tool calls, skills: revenue-definitions, $0.0077, 17.5s",
+   "cls": null
+  }
+ ],
+ [
+  {
+   "text": "    run 5: 4/4 evals passed, 10 tool calls, skills: revenue-definitions, $0.0126, 26.5s",
+   "cls": null
+  }
+ ],
+ [],
+ [
+  {
+   "text": "Statistical comparison across 5 runs per ref —",
+   "cls": "dim"
+  }
+ ],
+ [
+  {
+   "text": "LLM runs are nondeterministic; treat proportions, not absolutes.",
+   "cls": "dim"
+  }
+ ]
+]

@@ -1,0 +1,261 @@
+# diff0 composite action
+#
+# REQUIREMENTS — the calling workflow MUST do these BEFORE `uses:`-ing this action:
+#   1. actions/checkout with `fetch-depth: 0` and `persist-credentials: false`.
+#      diff0 checks the base ref out into an isolated worktree, and evaluated
+#      head code must not inherit checkout's persisted GitHub token.
+#   2. actions/setup-node with Node 24 for current Eve releases. The diff0 CLI and action scripts
+#      themselves support Node >= 20, but the target app must satisfy its Eve engine requirement.
+#
+# Zero third-party action dependencies: composite `run` steps only.
+
+name: "diff0"
+description: "Catch your agent's drift. git diff tells you what changed in the code; diff0 tells you what changed in the agent."
+
+inputs:
+  base:
+    description: "Base git ref to compare against. Defaults to the PR base SHA; required on non-PR events."
+    default: ${{ github.event.pull_request.base.sha }}
+  head:
+    description: "Head git ref. Defaults to the PR head SHA (the CLI falls back to HEAD when empty)."
+    default: ${{ github.event.pull_request.head.sha }}
+  runs:
+    description: "Eval-suite executions per ref."
+    default: "3"
+  evals:
+    description: "Eval id/prefix filter (comma-separated). Empty runs all evals."
+    default: ""
+  fail-on:
+    description: "When to fail the check: regression | drift | never. Execution errors always fail."
+    default: "regression"
+  max-spend:
+    description: "USD hard cap passed through to the CLI (--max-spend). Empty means no cap."
+    default: ""
+  working-directory:
+    description: "Path of the eve app within the repo (maps to CLI --app-dir; the repo root is always the workflow checkout)."
+    default: "."
+  install-mode:
+    description: "Dependency install policy: scripts-off disables lifecycle/build scripts (default); scripts-on enables them. Legacy safe/trusted aliases are deprecated. Neither mode is a sandbox."
+    default: "scripts-off"
+  github-token:
+    description: "Token used to upsert the sticky PR comment (needs pull-requests: write)."
+    default: ${{ github.token }}
+  comment-key:
+    description: "Optional stable key for multiple independent sticky reports on the same PR."
+    default: ""
+  allow-untrusted-head:
+    description: "Allow fork PR head code to install and execute. Unsafe with secrets; defaults to false."
+    default: "false"
+
+outputs:
+  verdict:
+    description: "Report verdict: green | yellow | red. Empty when the CLI failed before producing a report."
+    value: ${{ steps.enforce.outputs.verdict }}
+  exit-code:
+    description: "Raw diff0 CLI exit code (the CLI itself runs with --fail-on never)."
+    value: ${{ steps.run.outputs.exit-code }}
+  report-md:
+    description: "Path to the markdown report."
+    value: ${{ steps.run.outputs.report-md }}
+  report-json:
+    description: "Path to the JSON report."
+    value: ${{ steps.run.outputs.report-json }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Enforce the PR trust boundary
+      shell: bash
+      env:
+        EVENT_NAME: ${{ github.event_name }}
+        IS_FORK_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        ALLOW_UNTRUSTED_HEAD: ${{ inputs.allow-untrusted-head }}
+        COMMENT_KEY: ${{ inputs.comment-key }}
+      run: |
+        case "$ALLOW_UNTRUSTED_HEAD" in
+          true|false) ;;
+          *)
+            echo "::error::diff0: invalid allow-untrusted-head input '$ALLOW_UNTRUSTED_HEAD' (expected true | false)."
+            exit 2
+            ;;
+        esac
+        if [ -n "$COMMENT_KEY" ] && ! [[ "$COMMENT_KEY" =~ ^[A-Za-z0-9._-]{1,64}$ ]]; then
+          echo "::error::diff0: invalid comment-key '$COMMENT_KEY' (use 1-64 letters, numbers, dots, underscores, or hyphens)."
+          exit 2
+        fi
+        if git -C "$GITHUB_WORKSPACE" config --local --get-regexp '^http\..*\.extraheader$' >/dev/null 2>&1; then
+          echo "::error::diff0: checkout credentials are persisted in the repository Git config. Head eval code could read that token. Set 'persist-credentials: false' on actions/checkout before running diff0."
+          exit 2
+        fi
+        if [ "$EVENT_NAME" = "pull_request_target" ] && [ "$ALLOW_UNTRUSTED_HEAD" != "true" ]; then
+          echo "::error::diff0: refusing pull_request_target by default. Head eval, tool, and runtime code would execute in a privileged context. Use pull_request, or explicitly set allow-untrusted-head: true only in an isolated secret-free job."
+          exit 2
+        fi
+        if [ "$IS_FORK_PR" = "true" ] && [ "$ALLOW_UNTRUSTED_HEAD" != "true" ]; then
+          echo "::error::diff0: fork PR refused. diff0 installs dependencies and executes code from the head ref. To opt in, use an isolated secret-free job and set allow-untrusted-head: true."
+          exit 2
+        fi
+
+    - name: Enable Corepack package managers
+      shell: bash
+      env:
+        COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+      run: corepack enable
+
+    - name: Run diff0
+      id: run
+      shell: bash
+      env:
+        INPUT_BASE: ${{ inputs.base }}
+        INPUT_HEAD: ${{ inputs.head }}
+        INPUT_RUNS: ${{ inputs.runs }}
+        INPUT_EVALS: ${{ inputs.evals }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_MAX_SPEND: ${{ inputs.max-spend }}
+        INPUT_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        INPUT_INSTALL_MODE: ${{ inputs.install-mode }}
+      run: |
+        # Validate cheap things up front, before any eval spend.
+        case "$INPUT_FAIL_ON" in
+          regression|drift|never) ;;
+          *)
+            echo "::error::diff0: invalid fail-on input '$INPUT_FAIL_ON' (expected regression | drift | never)."
+            exit 2
+            ;;
+        esac
+        case "$INPUT_INSTALL_MODE" in
+          scripts-off|scripts-on) ;;
+          safe)
+            echo "::warning::diff0: install-mode 'safe' is deprecated; use 'scripts-off'."
+            INPUT_INSTALL_MODE="scripts-off"
+            ;;
+          trusted)
+            echo "::warning::diff0: install-mode 'trusted' is deprecated; use 'scripts-on'."
+            INPUT_INSTALL_MODE="scripts-on"
+            ;;
+          *)
+            echo "::error::diff0: invalid install-mode input '$INPUT_INSTALL_MODE' (expected scripts-off | scripts-on)."
+            exit 2
+            ;;
+        esac
+        if [ "$INPUT_INSTALL_MODE" = "scripts-on" ]; then
+          echo "::warning::diff0: scripts-on mode executes lifecycle/build scripts from both compared refs. Neither install mode is a sandbox; use this only for reviewed refs. Package-registry auth remains available to the installer and scripts."
+        fi
+        if [ -z "$INPUT_BASE" ]; then
+          echo "::error::diff0: the 'base' input is empty. It defaults to the pull request base SHA, so on non-pull_request events you must pass 'base' explicitly."
+          exit 2
+        fi
+
+        report_dir="$(mktemp -d "$RUNNER_TEMP/diff0.XXXXXX")"
+        report_md="$report_dir/report.md"
+        report_json="$report_dir/report.json"
+
+        args=(run
+          --repo "$GITHUB_WORKSPACE"
+          --app-dir "$INPUT_WORKING_DIRECTORY"
+          --base "$INPUT_BASE"
+          --runs "$INPUT_RUNS"
+          --install-mode "$INPUT_INSTALL_MODE"
+          --fail-on never
+          --report-md "$report_md"
+          --report-json "$report_json"
+        )
+        # --head defaults to HEAD inside the CLI; only pass it when we have one.
+        if [ -n "$INPUT_HEAD" ]; then args+=(--head "$INPUT_HEAD"); fi
+        if [ -n "$INPUT_EVALS" ]; then args+=(--evals "$INPUT_EVALS"); fi
+        if [ -n "$INPUT_MAX_SPEND" ]; then args+=(--max-spend "$INPUT_MAX_SPEND"); fi
+
+        # The CLI always runs with --fail-on never so the report (and the PR
+        # comment in the next step) is produced before any failure. The fail-on
+        # INPUT is enforced in the final step from the JSON report's verdict.
+        set +e
+        node "$GITHUB_ACTION_PATH/dist/cli.mjs" "${args[@]}"
+        code=$?
+        set -e
+
+        echo "diff0 CLI exited with code $code"
+        {
+          echo "exit-code=$code"
+          echo "report-md=$report_md"
+          echo "report-json=$report_json"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Upsert sticky PR comment
+      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        REPORT_PATH: ${{ steps.run.outputs.report-md }}
+        COMMENT_KEY: ${{ inputs.comment-key }}
+        CLI_EXIT: ${{ steps.run.outputs.exit-code }}
+      run: |
+        if [ ! -f "$REPORT_PATH" ]; then
+          echo "::warning::diff0: no markdown report was produced (CLI exit $CLI_EXIT); skipping the PR comment."
+          exit 0
+        fi
+        node "$GITHUB_ACTION_PATH/upsert-comment.mjs"
+
+    - name: Enforce fail-on policy
+      id: enforce
+      shell: bash
+      env:
+        CLI_EXIT: ${{ steps.run.outputs.exit-code }}
+        FAIL_ON: ${{ inputs.fail-on }}
+        REPORT_JSON: ${{ steps.run.outputs.report-json }}
+      run: |
+        # Execution/config errors always fail, regardless of the fail-on policy.
+        case "$CLI_EXIT" in
+          0) ;;
+          2)
+            echo "::error::diff0: configuration error (exit 2) — see the CLI output above for the exact message."
+            exit 2
+            ;;
+          3)
+            echo "::error::diff0: execution error (exit 3) — an eval run or install crashed. See the CLI output above."
+            exit 3
+            ;;
+          4)
+            echo "::error::diff0: aborted — the --max-spend cap was exceeded (exit 4). See the CLI output above."
+            exit 4
+            ;;
+          *)
+            # The CLI ran with --fail-on never, so exit 1 (or anything else) is unexpected here.
+            echo "::error::diff0: CLI exited with unexpected code $CLI_EXIT."
+            exit "$CLI_EXIT"
+            ;;
+        esac
+
+        if [ ! -f "$REPORT_JSON" ]; then
+          echo "::error::diff0: CLI exited 0 but no JSON report was found at $REPORT_JSON."
+          exit 3
+        fi
+
+        if ! verdict="$(node -e '
+          const report = JSON.parse(require("node:fs").readFileSync(process.env.REPORT_JSON, "utf8"));
+          if (report.schemaVersion !== 3 || !["green", "yellow", "red"].includes(report.verdict)) {
+            process.exit(3);
+          }
+          process.stdout.write(report.verdict);
+        ')"; then
+          echo "::error::diff0: JSON report has an unsupported schema or invalid verdict."
+          exit 3
+        fi
+        echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
+
+        case "$FAIL_ON" in
+          regression)
+            if [ "$verdict" = "red" ]; then
+              echo "::error::diff0: eval regression detected (verdict: red, fail-on: regression). The full report is in the PR comment."
+              exit 1
+            fi
+            ;;
+          drift)
+            if [ "$verdict" = "red" ] || [ "$verdict" = "yellow" ]; then
+              echo "::error::diff0: verdict is $verdict (fail-on: drift). The full report is in the PR comment."
+              exit 1
+            fi
+            ;;
+          never) ;;
+        esac
+        echo "diff0 verdict: $verdict (fail-on: $FAIL_ON) — check passed."

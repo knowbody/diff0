@@ -1,0 +1,88 @@
+{
+  "name": "@knowbody/diff0",
+  "version": "0.1.0",
+  "description": "CLI for behavioral diffs of Eve agents: run an eval suite against two git refs and compare what the agent did.",
+  "keywords": [
+    "eve",
+    "vercel",
+    "agents",
+    "evals",
+    "regression",
+    "drift",
+    "ci"
+  ],
+  "type": "module",
+  "license": "MIT",
+  "author": "Mateusz Zatorski",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/knowbody/diff0.git"
+  },
+  "homepage": "https://diff0.io",
+  "bugs": "https://github.com/knowbody/diff0/issues",
+  "engines": {
+    "node": ">=20"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "packageManager": "pnpm@10.15.1",
+  "pnpm": {
+    "overrides": {
+      "nanoid@<3.3.18": "3.3.18"
+    }
+  },
+  "files": [
+    "dist",
+    "prices.json",
+    "README.md",
+    "LICENSE",
+    "action"
+  ],
+  "devDependencies": {
+    "@github-tools/eve-extension": "^0.3.2",
+    "@biomejs/biome": "^2.5.6",
+    "@types/node": "^26.1.2",
+    "@vercel/blob": "^2.8.0",
+    "@vercel/connect": "0.8.0",
+    "ai": "7.0.85",
+    "esbuild": "0.28.1",
+    "eve": "0.47.5",
+    "tsx": "^4.23.5",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10",
+    "zod": "4.4.3"
+  },
+  "dependencies": {
+    "commander": "^15.0.0",
+    "minimatch": "^10.2.6",
+    "picocolors": "^1.1.1",
+    "yaml": "^2.9.0"
+  },
+  "bin": {
+    "diff0": "dist/cli.js"
+  },
+  "exports": {},
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "action:build": "node scripts/build-action.mjs",
+    "typecheck": "tsc --noEmit && pnpm agent:typecheck",
+    "test": "pnpm test:unit",
+    "test:unit": "vitest run --exclude '**/*.integration.test.ts'",
+    "test:integration": "vitest run integration.test.ts",
+    "agent:build": "eve build",
+    "agent:check": "biome check agent evals test/agent-security.test.ts test/agent-publishing.test.ts",
+    "agent:dev": "eve dev",
+    "agent:eval": "eve eval",
+    "agent:info": "eve info",
+    "agent:start": "eve start",
+    "agent:test": "vitest run test/agent-security.test.ts test/agent-publishing.test.ts",
+    "agent:typecheck": "tsc -p agent/tsconfig.json",
+    "agent:validate": "pnpm agent:check && pnpm agent:typecheck && pnpm agent:test && pnpm agent:info",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "refresh-prices": "node scripts/refresh-prices.mjs",
+    "prepublishOnly": "pnpm build && pnpm action:build"
+  }
+}

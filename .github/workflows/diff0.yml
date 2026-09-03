@@ -1,0 +1,42 @@
+# Dogfood workflow: run diff0 on its own fixture agent.
+#
+# Every pull request behaviorally diffs fixtures/demo-agent between the PR
+# base and head, and upserts the sticky report comment on the PR. The demo
+# agent runs on eve's deterministic mock model, so this costs no provider
+# spend — it exists to prove the action end-to-end on every change.
+name: diff0
+
+on: pull_request
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  diff0:
+    # The Action executes application and eval code from both refs. Fork PRs
+    # remain covered by ordinary CI, but require maintainer review before this
+    # behavioral comparison is run.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      # fetch-depth: 0 is REQUIRED — diff0 checks the PR base ref out into
+      # an isolated worktree, and a shallow clone would not contain it.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # Head-controlled eval code must not be able to recover the job token
+          # from the checkout's persisted Git authentication config.
+          persist-credentials: false
+
+      # Node >= 24: the fixture demo-agent's engines field requires it
+      # (the diff0 CLI itself only needs >= 20).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - uses: ./action
+        with:
+          working-directory: fixtures/demo-agent
+          runs: "3"
+          fail-on: regression

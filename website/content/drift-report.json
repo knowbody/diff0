@@ -1,0 +1,364 @@
+{
+  "caveats": [],
+  "costPerf": {
+    "costUsd": {
+      "base": {
+        "max": 0.014238999999999998,
+        "median": 0.014054,
+        "min": 0.0135595
+      },
+      "deltaPct": -32.7,
+      "head": {
+        "max": 0.0126017,
+        "median": 0.009459,
+        "min": 0.0076673999999999996
+      }
+    },
+    "cacheReadTokens": {
+      "base": null,
+      "deltaPct": null,
+      "head": null
+    },
+    "cacheWriteTokens": {
+      "base": null,
+      "deltaPct": null,
+      "head": null
+    },
+    "durationMs": {
+      "base": {
+        "max": 37316,
+        "median": 37015,
+        "min": 34210
+      },
+      "deltaPct": -40.2,
+      "head": {
+        "max": 26476,
+        "median": 22133,
+        "min": 17520
+      }
+    },
+    "tokensIn": {
+      "base": {
+        "max": 82468,
+        "median": 82370,
+        "min": 77251
+      },
+      "deltaPct": -32.9,
+      "head": {
+        "max": 71597,
+        "median": 55282,
+        "min": 45353
+      }
+    },
+    "tokensOut": {
+      "base": {
+        "max": 1225,
+        "median": 1195,
+        "min": 1177
+      },
+      "deltaPct": -35.1,
+      "head": {
+        "max": 1113,
+        "median": 775,
+        "min": 642
+      }
+    }
+  },
+  "drift": {
+    "hasDrift": true,
+    "hasInconclusive": false,
+    "skills": [],
+    "subagents": [
+      {
+        "adjustedPValue": 0.015873,
+        "baseTotalRuns": 5,
+        "baseUsedRuns": 5,
+        "confidence": "statistically-confirmed",
+        "headTotalRuns": 5,
+        "headUsedRuns": 0,
+        "evalName": null,
+        "name": "reporter",
+        "pValue": 0.007937
+      }
+    ],
+    "toolSequences": [],
+    "toolInputs": [],
+    "finalOutputs": []
+  },
+  "evals": [
+    {
+      "baseExpectedRuns": 5,
+      "basePassed": 5,
+      "baseTotal": 5,
+      "headExpectedRuns": 5,
+      "headPassed": 3,
+      "headTotal": 5,
+      "name": "revenue/reply-format",
+      "softScores": {
+        "baseMedian": 1,
+        "classification": "within-threshold",
+        "delta": 0,
+        "headMedian": 1,
+        "materialThreshold": 0.1
+      },
+      "statisticalEvidence": {
+        "adjustedPValue": 0.888889,
+        "alpha": 0.05,
+        "classification": "inconclusive",
+        "comparisons": 4,
+        "correction": "holm",
+        "method": "one-sided-fisher-exact",
+        "note": "observed regression is inconclusive: one-sided Fisher exact raw p=0.2222, Holm-adjusted p=0.8889 > 0.05",
+        "pValue": 0.222222
+      },
+      "status": "inconclusive-regression"
+    },
+    {
+      "baseExpectedRuns": 5,
+      "basePassed": 5,
+      "baseTotal": 5,
+      "headExpectedRuns": 5,
+      "headPassed": 4,
+      "headTotal": 5,
+      "name": "revenue/uses-sql-tool",
+      "softScores": {
+        "baseMedian": 1,
+        "classification": "within-threshold",
+        "delta": 0,
+        "headMedian": 1,
+        "materialThreshold": 0.1
+      },
+      "statisticalEvidence": {
+        "adjustedPValue": 1,
+        "alpha": 0.05,
+        "classification": "inconclusive",
+        "comparisons": 4,
+        "correction": "holm",
+        "method": "one-sided-fisher-exact",
+        "note": "observed regression is inconclusive: one-sided Fisher exact raw p=0.5, Holm-adjusted p=1 > 0.05",
+        "pValue": 0.5
+      },
+      "status": "inconclusive-regression"
+    },
+    {
+      "baseExpectedRuns": 5,
+      "basePassed": 5,
+      "baseTotal": 5,
+      "headExpectedRuns": 5,
+      "headPassed": 5,
+      "headTotal": 5,
+      "name": "revenue/no-failed-actions",
+      "softScores": {
+        "baseMedian": 1,
+        "classification": "within-threshold",
+        "delta": 0,
+        "headMedian": 1,
+        "materialThreshold": 0.1
+      },
+      "statisticalEvidence": {
+        "adjustedPValue": null,
+        "alpha": 0.05,
+        "classification": "equivalent",
+        "comparisons": 4,
+        "correction": "holm",
+        "method": "one-sided-fisher-exact",
+        "note": "observed pass proportions are equal",
+        "pValue": null
+      },
+      "status": "pass"
+    },
+    {
+      "baseExpectedRuns": 5,
+      "basePassed": 5,
+      "baseTotal": 5,
+      "headExpectedRuns": 5,
+      "headPassed": 5,
+      "headTotal": 5,
+      "name": "revenue/total-revenue",
+      "softScores": {
+        "baseMedian": 1,
+        "classification": "within-threshold",
+        "delta": 0,
+        "headMedian": 1,
+        "materialThreshold": 0.1
+      },
+      "statisticalEvidence": {
+        "adjustedPValue": null,
+        "alpha": 0.05,
+        "classification": "equivalent",
+        "comparisons": 4,
+        "correction": "holm",
+        "method": "one-sided-fisher-exact",
+        "note": "observed pass proportions are equal",
+        "pValue": null
+      },
+      "status": "pass"
+    }
+  ],
+  "flakinessDetectable": true,
+  "meta": {
+    "base": {
+      "commitSha": "b8fb7f276061f622fa8ecd3862fac2983d335271",
+      "eveVersion": "0.29.5",
+      "model": "anthropic/claude-haiku-4.5",
+      "ref": "main",
+      "runs": 5,
+      "sandboxBackend": "docker",
+      "sandboxInferred": true
+    },
+    "costSource": "gateway",
+    "dataSources": {
+      "evalJson": "all",
+      "logs": "none",
+      "spans": "none"
+    },
+    "generatedAt": "2026-08-03T15:03:05.881Z",
+    "gitDiffStat": {
+      "files": [
+        {
+          "deletions": 2,
+          "insertions": 0,
+          "path": "agent/instructions.md"
+        }
+      ],
+      "summary": "1 file changed, 2 deletions(-)"
+    },
+    "head": {
+      "commitSha": "77d4334f3bdde54634ac4568142649a38aa7abc4",
+      "eveVersion": "0.29.5",
+      "model": "anthropic/claude-haiku-4.5",
+      "ref": "simplify-pipeline",
+      "runs": 5,
+      "sandboxBackend": "docker",
+      "sandboxInferred": true
+    },
+    "mismatches": [],
+    "runsPerRef": 5,
+    "totalComparisonCostUsd": 0.1187752
+  },
+  "runSummaries": {
+    "base": [
+      {
+        "costUsd": 0.014238999999999998,
+        "durationMs": 37015,
+        "evalsPassed": 4,
+        "evalsTotal": 4,
+        "runIndex": 0,
+        "skillsLoaded": [
+          "revenue-definitions"
+        ],
+        "toolCallCount": 8
+      },
+      {
+        "costUsd": 0.0141776,
+        "durationMs": 34210,
+        "evalsPassed": 4,
+        "evalsTotal": 4,
+        "runIndex": 1,
+        "skillsLoaded": [
+          "revenue-definitions"
+        ],
+        "toolCallCount": 8
+      },
+      {
+        "costUsd": 0.014053900000000001,
+        "durationMs": 35397,
+        "evalsPassed": 4,
+        "evalsTotal": 4,
+        "runIndex": 2,
+        "skillsLoaded": [
+          "revenue-definitions"
+        ],
+        "toolCallCount": 8
+      },
+      {
+        "costUsd": 0.0135595,
+        "durationMs": 37243,
+        "evalsPassed": 4,
+        "evalsTotal": 4,
+        "runIndex": 3,
+        "skillsLoaded": [
+          "revenue-definitions"
+        ],
+        "toolCallCount": 8
+      },
+      {
+        "costUsd": 0.0140004,
+        "durationMs": 37316,
+        "evalsPassed": 4,
+        "evalsTotal": 4,
+        "runIndex": 4,
+        "skillsLoaded": [
+          "revenue-definitions"
+        ],
+        "toolCallCount": 8
+      }
+    ],
+    "head": [
+      {
+        "costUsd": 0.0098186,
+        "durationMs": 22133,
+        "evalsPassed": 4,
+        "evalsTotal": 4,
+        "runIndex": 0,
+        "skillsLoaded": [
+          "revenue-definitions"
+        ],
+        "toolCallCount": 8
+      },
+      {
+        "costUsd": 0.009198600000000001,
+        "durationMs": 20956,
+        "evalsPassed": 3,
+        "evalsTotal": 4,
+        "runIndex": 1,
+        "skillsLoaded": [
+          "revenue-definitions"
+        ],
+        "toolCallCount": 7
+      },
+      {
+        "costUsd": 0.0094585,
+        "durationMs": 23105,
+        "evalsPassed": 3,
+        "evalsTotal": 4,
+        "runIndex": 2,
+        "skillsLoaded": [
+          "revenue-definitions"
+        ],
+        "toolCallCount": 7
+      },
+      {
+        "costUsd": 0.0076673999999999996,
+        "durationMs": 17520,
+        "evalsPassed": 3,
+        "evalsTotal": 4,
+        "runIndex": 3,
+        "skillsLoaded": [
+          "revenue-definitions"
+        ],
+        "toolCallCount": 6
+      },
+      {
+        "costUsd": 0.0126017,
+        "durationMs": 26476,
+        "evalsPassed": 4,
+        "evalsTotal": 4,
+        "runIndex": 4,
+        "skillsLoaded": [
+          "revenue-definitions"
+        ],
+        "toolCallCount": 10
+      }
+    ]
+  },
+  "schemaVersion": 3,
+  "verdict": "yellow",
+  "verdictReasons": [
+    "revenue/reply-format: passed 5/5 on base, 3/5 on head — observed regression is inconclusive: one-sided Fisher exact raw p=0.2222, Holm-adjusted p=0.8889 > 0.05",
+    "revenue/uses-sql-tool: passed 5/5 on base, 4/5 on head — observed regression is inconclusive: one-sided Fisher exact raw p=0.5, Holm-adjusted p=1 > 0.05",
+    "subagent drift: reporter used in 5 of 5 base runs vs 0 of 5 head runs (two-sided Fisher raw p=0.0079, Holm-adjusted p=0.0159)",
+    "cost drift: median cost/session changed -33% (threshold 25%)"
+  ],
+  "verdictSummary": "No confirmed eval regressions across 5 runs per ref — 2 eval changes inconclusive, behavioral drift detected"
+}

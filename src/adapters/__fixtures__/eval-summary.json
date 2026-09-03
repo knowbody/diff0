@@ -1,0 +1,125 @@
+{
+  "target": { "kind": "local", "url": "http://127.0.0.1:54321", "capabilities": { "devRoutes": true } },
+  "results": [
+    {
+      "id": "revenue/alpha",
+      "verdict": "passed",
+      "startedAt": "2026-08-03T10:00:00.000Z",
+      "completedAt": "2026-08-03T10:00:04.500Z",
+      "assertions": [
+        { "name": "succeeded", "score": 1, "severity": "gate", "passed": true },
+        {
+          "name": "judge.autoevals.factuality",
+          "score": 0.8,
+          "severity": "soft",
+          "threshold": 0.5,
+          "passed": true,
+          "message": "close enough"
+        }
+      ],
+      "result": {
+        "status": "completed",
+        "finalMessage": "TOTAL_REVENUE=42",
+        "derived": {
+          "toolCalls": [
+            {
+              "name": "run_sql",
+              "input": { "query": "SELECT 1" },
+              "output": { "rows": [] },
+              "status": "completed",
+              "turnIndex": 1
+            },
+            {
+              "name": "load_skill",
+              "input": { "skill": "revenue-definitions" },
+              "output": "loaded",
+              "status": "completed",
+              "turnIndex": 0
+            }
+          ],
+          "toolCallCount": 2,
+          "subagentCalls": [],
+          "subagentCallCount": 0
+        },
+        "events": [
+          { "type": "session.started", "data": {} },
+          {
+            "type": "step.completed",
+            "data": {
+              "finishReason": "tool-calls",
+              "usage": {
+                "inputTokens": 100,
+                "outputTokens": 50,
+                "cacheReadTokens": 0,
+                "cacheWriteTokens": 0,
+                "costUsd": 0.0012
+              }
+            }
+          },
+          {
+            "type": "step.completed",
+            "data": {
+              "finishReason": "stop",
+              "usage": {
+                "inputTokens": 200,
+                "outputTokens": 60,
+                "costUsd": 0.0034
+              }
+            }
+          },
+          { "type": "step.completed", "data": { "finishReason": "stop" } }
+        ],
+        "runtimeIdentity": {
+          "agentId": "demo-agent",
+          "eveVersion": "0.29.5",
+          "modelId": "anthropic/claude-sonnet-5"
+        }
+      }
+    },
+    {
+      "id": "revenue/beta",
+      "verdict": "failed",
+      "startedAt": "2026-08-03T10:00:04.600Z",
+      "completedAt": "2026-08-03T10:00:08.100Z",
+      "assertions": [
+        { "name": "calledTool(run_sql)", "score": 0, "severity": "gate", "passed": false }
+      ],
+      "result": {
+        "status": "completed",
+        "finalMessage": "no idea",
+        "derived": {
+          "toolCalls": [
+            {
+              "name": "run_sql",
+              "input": { "query": "SELECT 2" },
+              "output": { "rows": [] },
+              "status": "completed",
+              "turnIndex": 0
+            }
+          ],
+          "toolCallCount": 1,
+          "subagentCalls": [
+            { "name": "reporter", "status": "completed", "turnIndex": 0, "callId": "call_1" }
+          ],
+          "subagentCallCount": 1
+        },
+        "events": [
+          {
+            "type": "step.completed",
+            "data": {
+              "finishReason": "stop",
+              "usage": { "inputTokens": 40, "outputTokens": 10 }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "startedAt": "2026-08-03T10:00:00.000Z",
+  "completedAt": "2026-08-03T10:00:10.000Z",
+  "passed": 1,
+  "failed": 1,
+  "scored": 0,
+  "skipped": 0,
+  "errored": 0
+}

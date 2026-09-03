@@ -1,0 +1,17 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.6/schema.json",
+  "files": {
+    "includes": [
+      "src/**/*.ts",
+      "action/**/*.mjs",
+      "agent/**/*.ts",
+      "evals/**/*.ts",
+      "test/agent-security.test.ts",
+      "!**/dist",
+      "!**/node_modules",
+      "!fixtures"
+    ]
+  },
+  "linter": { "enabled": true, "rules": { "preset": "recommended" } },
+  "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 }
+}
