@@ -3,6 +3,9 @@
 The stable interface between the CLI, the GitHub Action, and the README. Changes here require
 updating all three.
 
+`diff0 --version` prints the installed package version. `diff0 --help` lists the available
+commands.
+
 ## `diff0 run`
 
 ```
@@ -20,7 +23,7 @@ diff0 run --base <ref> [--head <ref>] [options]
 | `--timeout <ms>` | eve default | Per-eval timeout (passed to `eve eval --timeout`) |
 | `--max-concurrency <n>` | eve default | Passed to `eve eval --max-concurrency` |
 | `--install-mode <mode>` | `scripts-off` | `scripts-off` disables dependency lifecycle/build scripts; `scripts-on` enables them for reviewed refs |
-| `--max-spend <usd>` | none | Hard cap; abort (exit 4) when cumulative measured cost would exceed it |
+| `--max-spend <usd>` | none | Measured-cost cap; abort (exit 4) when cumulative attributable cost would exceed it |
 | `--report-md <path>` | none | Write the markdown report here |
 | `--report-json <path>` | none | Write the JSON report here |
 | `--json` | off | Print the JSON report to stdout instead of the terminal render |
@@ -141,7 +144,7 @@ src/report/markdown.ts). The Action upserts the PR comment containing that marke
 | `evals` | all | Eval filter |
 | `install-mode` | `scripts-off` | `scripts-off` disables install scripts; `scripts-on` enables them for reviewed refs |
 | `fail-on` | `regression` | `regression` \| `drift` \| `never` — when to fail the check |
-| `max-spend` | none | USD cap passed through |
+| `max-spend` | none | Measured-cost USD cap passed through; unavailable cost cannot be enforced |
 | `working-directory` | `.` | Where the eve app lives (maps to CLI `--app-dir`; the repo root is always the workflow checkout) |
 | `github-token` | `${{ github.token }}` | For the sticky comment (needs `pull-requests: write`) |
 | `comment-key` | empty | Stable key for an independent sticky report when one PR runs multiple comparisons |

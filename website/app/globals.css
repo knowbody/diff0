@@ -1,6 +1,5 @@
 @import "tailwindcss";
 
-/* A warm editorial canvas with precise, high-contrast product surfaces. */
 :root {
   --bg: #f7f7f4;
   --fg: #171716;
@@ -10,16 +9,6 @@
   --accent-soft: rgba(204, 132, 30, 0.11);
   --card: #fdfdfb;
   --code-bg: #efefeb;
-
-  /* Terminal stays dark: it is a product surface, not page chrome. */
-  --term-bg: #0d0d0d;
-  --term-line: #282828;
-  --term-fg: #dedede;
-  --term-dim: #8f8f8f;
-  --term-yellow: #f5ae2d;
-  --term-green: #61c978;
-  --term-red: #ff7474;
-  --term-delrow-bg: rgba(248, 81, 73, 0.14);
 
   --gh-bg: #ffffff;
   --gh-header: #f6f8fa;
@@ -60,13 +49,6 @@
   --color-accent-soft: var(--accent-soft);
   --color-card: var(--card);
   --color-codebg: var(--code-bg);
-  --color-term-bg: var(--term-bg);
-  --color-term-line: var(--term-line);
-  --color-term-fg: var(--term-fg);
-  --color-term-dim: var(--term-dim);
-  --color-term-yellow: var(--term-yellow);
-  --color-term-green: var(--term-green);
-  --color-term-red: var(--term-red);
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
 }
@@ -130,67 +112,6 @@ button {
   background: var(--accent-soft);
 }
 
-/* Terminal transcript lines */
-.term-line {
-  min-height: 1.5em;
-  white-space: pre;
-}
-.t-yellow {
-  color: var(--term-yellow);
-}
-.t-green {
-  color: var(--term-green);
-}
-.t-red {
-  color: var(--term-red);
-}
-.t-dim {
-  color: var(--term-dim);
-}
-.t-bold {
-  font-weight: 600;
-}
-
-/* Beat 1: the two removed reporter-delegation lines read like GitHub's
-   deletion rows: a calm red-tinted row, normal-color text, medium weight.
-   The red lives only on the leading "-" marker (set in the span classes). */
-.term-delrow {
-  font-weight: 500;
-  background-color: var(--term-delrow-bg);
-}
-
-/* Beat 3: native details/summary for the per-run raw summaries. Works
-   without JS (collapsed but expandable). */
-.term-details > summary {
-  cursor: pointer;
-  list-style: none;
-  color: var(--term-dim);
-  min-height: 1.5em;
-}
-.term-details > summary::-webkit-details-marker {
-  display: none;
-}
-.term-details > summary::before {
-  content: "▸ ";
-}
-.term-details[open] > summary::before {
-  content: "▾ ";
-}
-
-/* Drift lines flash softly as they land during the replay */
-@keyframes land-flash {
-  from {
-    background-color: var(--accent-soft);
-  }
-  to {
-    background-color: transparent;
-  }
-}
-.landed-yellow {
-  animation: land-flash 900ms ease-out both;
-}
-
-/* Theme toggle icons follow the root class. */
 .icon-sun {
   display: block;
 }

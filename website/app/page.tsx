@@ -1,16 +1,14 @@
-import Beat3Replay from "@/components/Beat3Replay";
 import CopyButton from "@/components/CopyButton";
 import PrComment from "@/components/PrComment";
 import ThemeToggle from "@/components/ThemeToggle";
+import { readContent } from "@/lib/content";
 import { showcase } from "@/lib/showcase";
-import { beat3Spans, readContent } from "@/lib/transcripts";
 
 const GITHUB = "https://github.com/knowbody/diff0";
 const X = "https://x.com/matzatorski";
-const RUN_CMD =
-  "node /path/to/diff0/dist/cli.js run --base main --head HEAD --runs 5";
+const SHOWCASE_PR = showcase.pullRequestUrl;
+const RUN_CMD = "npx @knowbody/diff0 run --base main";
 const CLONE_CMD = "git clone https://github.com/knowbody/diff0 && cd diff0";
-const MOCK_DEMO_CMD = "bash demo/mock-demo.sh";
 
 function Mark() {
   return (
@@ -83,7 +81,6 @@ function ResultRow({ label, from, to, tone = "neutral" }: {
 }
 
 export default function Home() {
-  const beat3 = beat3Spans();
   const actionYaml = readContent("action.yml");
 
   return (
@@ -109,9 +106,9 @@ export default function Home() {
       <main id="top">
         <section className="hero-grid relative overflow-hidden border-b border-line">
           <div className="mx-auto max-w-[1240px] px-5 pt-20 pb-14 text-center sm:px-8 sm:pt-28 lg:pt-36">
-            <a href="#demo" className="group mx-auto mb-8 inline-flex items-center gap-2 rounded-full border border-line bg-card px-3 py-1.5 text-xs text-muted shadow-sm transition-colors hover:text-fg">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2 py-0.5 font-mono text-[10px] font-semibold tracking-wider text-accent uppercase">v0.1.0</span>
-              See the real run
+            <a href={SHOWCASE_PR} className="group mx-auto mb-8 inline-flex items-center gap-2 rounded-full border border-line bg-card px-3 py-1.5 text-xs text-muted shadow-sm transition-colors hover:text-fg">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2 py-0.5 font-mono text-[10px] font-semibold tracking-wider text-accent uppercase">v0.1.1</span>
+              See the live real-model run
               <span className="transition-transform group-hover:translate-x-0.5"><Arrow /></span>
             </a>
 
@@ -124,8 +121,8 @@ export default function Home() {
               diff0 compares how your agent behaves before and after a code change—so silent drift shows up before you merge it.
             </p>
             <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <a href="#quickstart" className="group inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-fg px-5 text-sm font-medium text-bg transition-transform hover:-translate-y-0.5 sm:w-auto">
-                Run the $0 demo <Arrow />
+              <a href={SHOWCASE_PR} className="group inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-fg px-5 text-sm font-medium text-bg transition-transform hover:-translate-y-0.5 sm:w-auto">
+                Open the showcase PR <Arrow diagonal />
               </a>
               <a href={GITHUB} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-line bg-card px-5 text-sm font-medium transition-colors hover:bg-codebg sm:w-auto">
                 View the source <Arrow diagonal />
@@ -153,13 +150,13 @@ export default function Home() {
                     <p className="mb-7 font-mono text-[10px] tracking-[0.16em] text-white/35 uppercase">source change</p>
                     <div className="font-mono text-xs leading-7 text-white/60 sm:text-[13px]">
                       <p className="text-white/35">agent/instructions.md</p>
-                      <p className="mt-3 rounded bg-[#ef5b5b]/10 px-2 text-[#ff8585]">− Delegate calculations to the reporter.</p>
-                      <p className="rounded bg-[#ef5b5b]/10 px-2 text-[#ff8585]">− Use its answer in the final response.</p>
+                      <p className="mt-3 rounded bg-[#ef5b5b]/10 px-2 text-[#ff8585]">− After computing a figure, delegate a one-line executive summary to the</p>
+                      <p className="rounded bg-[#ef5b5b]/10 px-2 text-[#ff8585]">− `reporter` subagent before replying.</p>
                     </div>
                     <div className="mt-8 rounded-lg border border-white/10 bg-white/[0.035] p-4">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-white/45">Existing eval suite</span>
-                        <span className="inline-flex items-center gap-1.5 text-[#61c978]"><span className="h-1.5 w-1.5 rounded-full bg-current" />4 / 4 passed</span>
+                        <span className="text-white/45">Eval observations</span>
+                        <span className="inline-flex items-center gap-1.5 text-[#61c978]"><span className="h-1.5 w-1.5 rounded-full bg-current" />59 / 60 passed</span>
                       </div>
                     </div>
                   </div>
@@ -172,15 +169,16 @@ export default function Home() {
                       <span className="rounded-full border border-[#f5ae2d]/30 bg-[#f5ae2d]/10 px-2.5 py-1 font-mono text-[10px] text-[#f5ae2d]">review</span>
                     </div>
                     <ResultRow label={`${showcase.subagent.name} subagent`} from={showcase.subagent.base} to={showcase.subagent.head} tone="warning" />
-                    <ResultRow label="eval pass rate" from={showcase.evalPasses.base} to={showcase.evalPasses.head} />
-                    <ResultRow label="cost / session" from={showcase.costPerSession.base} to={showcase.costPerSession.head} tone="good" />
+                    <ResultRow label="eval observations" from={showcase.evalPasses.base} to={showcase.evalPasses.head} />
+                    <ResultRow label="output tokens / run" from="1,067" to="630" tone="good" />
+                    <ResultRow label="duration / run" from="21.0s" to="11.4s" tone="good" />
                     <div className="mt-5 flex items-center gap-3 text-[11px] text-white/35">
                       <span>Fisher exact + Holm adjustment</span><span>·</span><span>N={showcase.runsPerRef} per ref</span>
                     </div>
                   </div>
                 </div>
               </div>
-              <p className="mt-5 text-center font-mono text-[10px] tracking-[0.14em] text-muted uppercase">One real prompt edit · {showcase.runsPerRef * 2} runs · {showcase.comparisonCost} total</p>
+              <p className="mt-5 text-center font-mono text-[10px] tracking-[0.14em] text-muted uppercase">One two-line prompt edit · {showcase.runsPerRef * 2} real-model suites · automated in GitHub Actions</p>
             </div>
           </div>
         </section>
@@ -226,9 +224,9 @@ export default function Home() {
             <article className="bg-card p-7 sm:p-9">
               <span className="font-mono text-[11px] text-muted">02</span>
               <h3 className="mt-12 text-xl font-medium tracking-[-0.025em]">Green evals</h3>
-              <p className="mt-2 max-w-[18rem] text-sm leading-6 text-muted">The showcased single run clears the suite. Repetition reveals what one green run misses.</p>
+              <p className="mt-2 max-w-[18rem] text-sm leading-6 text-muted">The head clears every eval observation. Repetition reveals what one green run misses.</p>
               <div className="mt-8 rounded-xl border border-line bg-codebg p-4 font-mono text-[11px] leading-6">
-                {["reply-format", "uses-sql-tool", "total-revenue"].map((x) => (
+                {["no-failed-actions", "uses-sql-tool", "total-revenue"].map((x) => (
                   <p key={x} className="flex items-center justify-between gap-3"><span className="truncate text-muted">{x}</span><span className="text-green-600">pass</span></p>
                 ))}
               </div>
@@ -258,7 +256,7 @@ export default function Home() {
               {[
                 ["01", "Checkout", "Base and head run in isolated git worktrees. Your working tree stays untouched."],
                 ["02", "Run", "Existing Eve evals run N times per ref, interleaved to reduce provider drift."],
-                ["03", "Collect", "Tool calls, subagents, skills, tokens, cost, and duration come from Eve's own artifacts."],
+                ["03", "Collect", "Tool calls, subagents, skills, tokens, available cost, and duration come from Eve's own artifacts."],
                 ["04", "Report", "Statistical changes and stable trace drift land in the terminal and one sticky PR comment."],
               ].map(([n, title, copy]) => (
                 <li key={n} className="grid grid-cols-[52px_1fr] gap-4 px-5 py-9 sm:grid-cols-[72px_1fr] sm:px-10 sm:py-11">
@@ -272,11 +270,21 @@ export default function Home() {
 
         <section id="demo" className="mx-auto max-w-[1240px] px-5 py-24 sm:px-8 sm:py-32">
           <div className="mb-12 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-            <div><Eyebrow>Recorded, not imagined</Eyebrow><h2 className="max-w-[720px] text-[clamp(2.6rem,5vw,4.5rem)] leading-[1] font-medium tracking-[-0.055em]">Watch the behavior change land.</h2></div>
-            <p className="max-w-[390px] text-sm leading-6 text-muted">Real output from {showcase.modelDisplay}. {showcase.runsPerRef} runs per ref. The full comparison cost {showcase.comparisonCost}.</p>
+            <div><Eyebrow>Live proof, not a mock</Eyebrow><h2 className="max-w-[720px] text-[clamp(2.6rem,5vw,4.5rem)] leading-[1] font-medium tracking-[-0.055em]">Inspect the run, the checks, and the source diff.</h2></div>
+            <p className="max-w-[430px] text-sm leading-6 text-muted">GitHub Actions called {showcase.modelDisplay} for {showcase.runsPerRef} runs per ref. The PR stays open so every claim can be checked against the workflow and bot-authored report.</p>
           </div>
-          <div className="rounded-[20px] bg-[#111] p-2 shadow-[0_28px_90px_rgba(0,0,0,0.14)] sm:p-3">
-            <Beat3Replay title={`~/diff0-demo (${showcase.head.ref})`} prompt={`diff0 run --base ${showcase.base.ref} --head ${showcase.head.ref} --runs ${showcase.runsPerRef}`} lines={beat3} />
+          <div className="grid overflow-hidden rounded-[20px] border border-line bg-card shadow-[0_28px_90px_rgba(0,0,0,0.1)] lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="p-7 sm:p-10 lg:border-r lg:border-line">
+              <p className="font-mono text-[11px] tracking-[0.16em] text-muted uppercase">Authoritative evidence</p>
+              <h3 className="mt-5 max-w-[580px] text-3xl font-medium tracking-[-0.04em]">One public PR. Real model calls. Reproducible provenance.</h3>
+              <p className="mt-5 max-w-[610px] leading-7 text-muted">The head passed all 30 eval observations while confirmed reporter delegation fell from 10/10 to 0/10 in each of three evals. The yellow verdict asks a human to review an intentional behavioral change.</p>
+              <a href={SHOWCASE_PR} className="mt-7 inline-flex h-11 items-center gap-2 rounded-full bg-fg px-5 text-sm font-medium text-bg">Open PR #8 <Arrow diagonal /></a>
+            </div>
+            <div className="divide-y divide-line">
+              {[["Model", showcase.model], ["Runs", `${showcase.runsPerRef} per ref`], ["Output tokens", "median −41%"], ["Duration", "median −46%"], ["Cost", "unavailable; no savings claim"]].map(([label, value]) => (
+                <div key={label} className="flex items-center justify-between gap-5 px-7 py-5 text-sm"><span className="text-muted">{label}</span><span className="text-right font-mono text-xs">{value}</span></div>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -289,7 +297,7 @@ export default function Home() {
                 <p className="mt-7 max-w-[520px] text-lg leading-8 text-white/55">diff0 separates regression, inconclusive movement, and behavioral drift. It shows uncertainty instead of painting every change red.</p>
               </div>
               <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10">
-                {[[`N=${showcase.runsPerRef}`, "runs per ref"], [showcase.comparisonCost, "showcase cost"], ["0", "baseline files"], ["1", "sticky PR comment"]].map(([value, label]) => (
+                {[[`N=${showcase.runsPerRef}`, "runs per ref"], ["59 / 60", "eval observations passed"], ["0", "baseline files"], ["1", "sticky PR comment"]].map(([value, label]) => (
                   <div key={label} className="bg-[#111] p-6 sm:p-8"><p className="font-mono text-2xl tracking-[-0.04em] sm:text-3xl">{value}</p><p className="mt-2 text-xs text-white/40">{label}</p></div>
                 ))}
               </div>
@@ -303,7 +311,7 @@ export default function Home() {
                 <div key={title} className="bg-[#111] p-7 sm:p-9"><div className="mb-10 h-8 w-8 rounded-full border border-white/15 bg-white/[0.03]" /><h3 className="font-medium">{title}</h3><p className="mt-2 text-sm leading-6 text-white/45">{copy}</p></div>
               ))}
             </div>
-            <p className="mt-7 max-w-[690px] text-sm leading-6 text-white/45">Drift is not automatically bad. Sometimes it is the change you wanted—like removing delegation and cutting median session cost by {showcase.costPerSession.delta.replace("-", "")}. diff0 makes the tradeoff legible; review makes the call.</p>
+            <p className="mt-7 max-w-[740px] text-sm leading-6 text-white/45">Drift is not automatically bad. In the showcase, removing delegation coincided with 41% fewer median output tokens and 46% lower median duration. Cost stayed unavailable because delegated base usage was not fully attributed, so diff0 makes no savings claim. The report makes the tradeoff legible; review makes the call.</p>
           </div>
         </section>
 
@@ -322,13 +330,13 @@ export default function Home() {
               <div className="cta-grid" aria-hidden="true" />
               <div className="relative grid gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
                 <div>
-                  <p className="mb-5 font-mono text-[11px] tracking-[0.16em] opacity-45 uppercase">Start with the mock</p>
-                  <h2 className="max-w-[530px] text-[clamp(2.6rem,5vw,4.6rem)] leading-[0.98] font-medium tracking-[-0.055em]">See the drift.<br />Spend $0.00.</h2>
-                  <p className="mt-6 max-w-[460px] leading-7 opacity-55">No Eve repo and no model key required. Clone the project and replay the entire comparison on the deterministic mock.</p>
+                  <p className="mb-5 font-mono text-[11px] tracking-[0.16em] opacity-45 uppercase">Run it on your agent</p>
+                  <h2 className="max-w-[530px] text-[clamp(2.6rem,5vw,4.6rem)] leading-[0.98] font-medium tracking-[-0.055em]">Compare two refs.<br />Review one report.</h2>
+                  <p className="mt-6 max-w-[480px] leading-7 opacity-55">From a repository with an Eve eval suite, compare the branch you plan to merge against its base. No diff0 install step required.</p>
                 </div>
-                <div className="min-w-0 space-y-3"><Command command={CLONE_CMD} inverse /><Command command={MOCK_DEMO_CMD} inverse /></div>
+                <div className="min-w-0"><Command command={RUN_CMD} inverse /></div>
               </div>
-              <div className="relative mt-12 border-t border-current/15 pt-8"><p className="mb-3 text-xs opacity-45">Already have an Eve eval suite?</p><Command command={RUN_CMD} inverse /></div>
+              <div className="relative mt-12 border-t border-current/15 pt-8"><p className="mb-3 text-xs opacity-45">Want to inspect or develop diff0 itself?</p><Command command={CLONE_CMD} inverse /></div>
             </div>
 
             <div className="mt-16 grid gap-10 border-t border-line pt-12 lg:grid-cols-[1fr_1.2fr]">
@@ -347,7 +355,7 @@ export default function Home() {
             <span className="mb-8"><Mark /></span>
             <h2 className="max-w-[760px] text-[clamp(2.7rem,5vw,5rem)] leading-[0.98] font-medium tracking-[-0.06em]">Code review for the part of your agent you cannot see.</h2>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <a href="#quickstart" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-fg px-5 text-sm font-medium text-bg">Run the demo <Arrow /></a>
+              <a href={SHOWCASE_PR} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-fg px-5 text-sm font-medium text-bg">Inspect the live PR <Arrow diagonal /></a>
               <a href={GITHUB} className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-line px-5 text-sm font-medium">Explore on GitHub <Arrow diagonal /></a>
             </div>
           </div>

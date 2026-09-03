@@ -21,6 +21,7 @@ import { pathToFileURL } from "node:url";
 import { Command, CommanderError, InvalidArgumentError, Option } from "commander";
 import { CommandInterruptedError, EvalFilterNoMatchError, NoEvalsError } from "./adapters/eve.js";
 import { type ComputeDeltaOptions, computeDelta } from "./analyze/delta.js";
+import { getDiff0Version } from "./collect/cache.js";
 import { applyPricing } from "./collect/pricing.js";
 import { type Estimate, type EstimateOptions, runEstimate } from "./harness/estimate.js";
 import { getDiffStat } from "./harness/gitdiff.js";
@@ -392,6 +393,7 @@ function buildProgram(io: CliIo, onExit: (code: number) => void, seams?: CliHarn
   const program = new Command();
   program
     .name("diff0")
+    .version(getDiff0Version())
     .description(
       "git diff tells you what changed in the code. " +
         "diff0 tells you what changed in the agent.",

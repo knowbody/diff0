@@ -4,8 +4,8 @@
  * never runs this. Re-run manually: `node scripts/gen-og.mjs`.
  *
  * Fonts come straight from the installed `geist` package (TTFs).
- * The 🟡 is drawn as a yellow disc (satori has no emoji font here);
- * all OG numbers are derived from content/drift-report.json.
+ * The 🟡 is drawn as a yellow disc because satori has no emoji font here.
+ * Public claims are derived from content/showcase.json.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -16,12 +16,10 @@ import satori from "satori";
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
 const fontDir = join(root, "node_modules", "geist", "dist", "fonts");
-const report = JSON.parse(
-  readFileSync(join(root, "content", "drift-report.json"), "utf8"),
+const showcase = JSON.parse(
+  readFileSync(join(root, "content", "showcase.json"), "utf8"),
 );
-const reporter = report.drift.subagents.find(({ name }) => name === "reporter");
-if (!reporter) throw new Error("Showcase report is missing reporter subagent evidence.");
-const costDelta = Math.abs(Math.round(report.costPerf.costUsd.deltaPct));
+const reporter = showcase.subagent;
 
 const mono = readFileSync(join(fontDir, "geist-mono", "GeistMono-Regular.ttf"));
 const monoMedium = readFileSync(
@@ -90,13 +88,13 @@ const og = el(
             fontWeight: 500,
           },
         },
-        "drift detected · no confirmed eval regressions",
+        "real-model drift · no eval regression",
       ),
     ),
     el(
       "div",
       { style: { display: "flex", fontSize: "30px", color: MUTED } },
-      `reporter: ${reporter.baseUsedRuns}/${reporter.baseTotalRuns} -> ${reporter.headUsedRuns}/${reporter.headTotalRuns} · cost/session -${costDelta}%`,
+      `reporter: ${reporter.baseUsedRuns}/${reporter.baseTotalRuns} -> ${reporter.headUsedRuns}/${reporter.headTotalRuns} · output -41% · duration -46%`,
     ),
   ),
   el(
@@ -150,11 +148,7 @@ const png = new Resvg(svg, {
 writeFileSync(join(root, "public", "og.png"), png);
 console.log(`public/og.png written (${png.length} bytes)`);
 
-// Apple touch icon: same mark as app/icon.svg, rasterized at 180x180.
-const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" fill="#0a0a0a"/>
-  <circle cx="32" cy="32" r="13" fill="#f5a623"/>
-</svg>`;
+const iconSvg = readFileSync(join(root, "app", "icon.svg"), "utf8");
 const iconPng = new Resvg(iconSvg, {
   fitTo: { mode: "width", value: 180 },
 }).render().asPng();

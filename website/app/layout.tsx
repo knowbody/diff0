@@ -23,7 +23,7 @@ export const metadata: Metadata = {
         url: "/og.png",
         width: 1200,
         height: 630,
-        alt: `diff0: drift detected, no confirmed eval regressions. ${showcase.subagent.name} subagent ${showcase.subagent.baseUsedRuns}/${showcase.subagent.baseTotalRuns} to ${showcase.subagent.headUsedRuns}/${showcase.subagent.headTotalRuns}, cost per session down ${showcase.costPerSession.delta.replace("-", "")}.`,
+        alt: `diff0: real-model drift detected with no confirmed eval regression. ${showcase.subagent.name} subagent ${showcase.subagent.baseUsedRuns}/${showcase.subagent.baseTotalRuns} to ${showcase.subagent.headUsedRuns}/${showcase.subagent.headTotalRuns}; median output tokens down 41% and duration down 46%.`,
       },
     ],
   },

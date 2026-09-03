@@ -5,4 +5,4 @@ vulnerability reporting for this repository and include affected versions, impac
 reproduction when possible.
 
 Security fixes are made on the current development line. Until the first stable release, older
-pre-release tags should not be treated as supported security versions.
+`0.x` versions should not be treated as supported security versions.
