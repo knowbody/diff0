@@ -15820,30 +15820,39 @@ function confidenceLabel(confidence) {
 }
 function renderDriftSummary(report, lines) {
   const { skills, toolSequences, subagents, toolInputs, finalOutputs } = report.drift;
-  const rows = [["Signal", "Base", "Head", "Scope"]];
+  const summaryRows = [];
+  const addRow = (cells, confidence) => {
+    summaryRows.push({ cells, inconclusive: confidence === "inconclusive" });
+  };
   for (const group of groupEvidence(
     skills,
     (item) => `${item.name}\0${item.baseLoadedRuns}/${item.baseTotalRuns}\0${item.headLoadedRuns}/${item.headTotalRuns}\0${item.confidence}`
   )) {
     const item = group.item;
-    rows.push([
-      `Skill ${inlineCode(item.name)}`,
-      `${item.baseLoadedRuns}/${item.baseTotalRuns} runs`,
-      `${item.headLoadedRuns}/${item.headTotalRuns} runs`,
-      `${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)}`
-    ]);
+    addRow(
+      [
+        `Skill ${inlineCode(item.name)}`,
+        `${item.baseLoadedRuns}/${item.baseTotalRuns} runs`,
+        `${item.headLoadedRuns}/${item.headTotalRuns} runs`,
+        `${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)}`
+      ],
+      item.confidence
+    );
   }
   for (const group of groupEvidence(
     subagents,
     (item) => `${item.name}\0${item.baseUsedRuns}/${item.baseTotalRuns}\0${item.headUsedRuns}/${item.headTotalRuns}\0${item.confidence}`
   )) {
     const item = group.item;
-    rows.push([
-      `Subagent ${inlineCode(item.name)}`,
-      `${item.baseUsedRuns}/${item.baseTotalRuns} runs`,
-      `${item.headUsedRuns}/${item.headTotalRuns} runs`,
-      `${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)}`
-    ]);
+    addRow(
+      [
+        `Subagent ${inlineCode(item.name)}`,
+        `${item.baseUsedRuns}/${item.baseTotalRuns} runs`,
+        `${item.headUsedRuns}/${item.headTotalRuns} runs`,
+        `${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)}`
+      ],
+      item.confidence
+    );
   }
   const divergentSequences = toolSequences.filter((item) => item.divergenceNote !== null);
   for (const group of groupEvidence(
@@ -15851,12 +15860,15 @@ function renderDriftSummary(report, lines) {
     (item) => `${item.baseMostCommon.join("\0")}${item.baseMostCommonRuns}/${item.baseTotalRuns}${item.headMostCommon.join("\0")}${item.headMostCommonRuns}/${item.headTotalRuns}${item.divergenceConfidence}`
   )) {
     const item = group.item;
-    rows.push([
-      "Tool path",
-      `${sequenceText(item.baseMostCommon)} (${item.baseMostCommonRuns}/${item.baseTotalRuns})`,
-      `${sequenceText(item.headMostCommon)} (${item.headMostCommonRuns}/${item.headTotalRuns})`,
-      `${evidenceScope(group)} \xB7 ${confidenceLabel(item.divergenceConfidence)}`
-    ]);
+    addRow(
+      [
+        "Tool path",
+        `${sequenceText(item.baseMostCommon)} (${item.baseMostCommonRuns}/${item.baseTotalRuns})`,
+        `${sequenceText(item.headMostCommon)} (${item.headMostCommonRuns}/${item.headTotalRuns})`,
+        `${evidenceScope(group)} \xB7 ${confidenceLabel(item.divergenceConfidence)}`
+      ],
+      item.divergenceConfidence
+    );
   }
   const toolCounts = toolSequences.flatMap((sequence) => sequence.callCountDeltas);
   for (const group of groupEvidence(
@@ -15864,38 +15876,60 @@ function renderDriftSummary(report, lines) {
     (item) => `${item.name}\0${item.baseMedianCalls}\0${item.headMedianCalls}\0${item.confidence}`
   )) {
     const item = group.item;
-    rows.push([
-      `${inlineCode(item.name)} calls`,
-      `${item.baseMedianCalls}/run`,
-      `${item.headMedianCalls}/run`,
-      `${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)}`
-    ]);
+    addRow(
+      [
+        `${inlineCode(item.name)} calls`,
+        `${item.baseMedianCalls}/run`,
+        `${item.headMedianCalls}/run`,
+        `${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)}`
+      ],
+      item.confidence
+    );
   }
   for (const group of groupEvidence(
     toolInputs,
     (item) => `${item.toolName}\0${item.occurrence}\0${item.baseHashRuns}\0${item.headHashRuns}\0${item.confidence}`
   )) {
     const item = group.item;
-    rows.push([
-      `${inlineCode(item.toolName)} input #${item.occurrence} changed`,
-      `${item.baseHashRuns} captured`,
-      `${item.headHashRuns} captured`,
-      `${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)}`
-    ]);
+    addRow(
+      [
+        `${inlineCode(item.toolName)} input #${item.occurrence} changed`,
+        `${item.baseHashRuns} captured`,
+        `${item.headHashRuns} captured`,
+        `${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)}`
+      ],
+      item.confidence
+    );
   }
   for (const group of groupEvidence(
     finalOutputs,
     (item) => `${item.baseCapturedRuns}/${item.baseTotalRuns}\0${item.headCapturedRuns}/${item.headTotalRuns}\0${item.confidence}`
   )) {
     const item = group.item;
-    rows.push([
-      "Final output changed",
-      `${item.baseCapturedRuns}/${item.baseTotalRuns} captured`,
-      `${item.headCapturedRuns}/${item.headTotalRuns} captured`,
-      `${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)}`
-    ]);
+    addRow(
+      [
+        "Final output changed",
+        `${item.baseCapturedRuns}/${item.baseTotalRuns} captured`,
+        `${item.headCapturedRuns}/${item.headTotalRuns} captured`,
+        `${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)}`
+      ],
+      item.confidence
+    );
   }
-  pushTable(lines, rows, ["l", "l", "l", "l"]);
+  const conclusiveRows = summaryRows.filter((row) => !row.inconclusive);
+  const visibleRows = conclusiveRows.length > 0 ? conclusiveRows : summaryRows;
+  pushTable(
+    lines,
+    [["Signal", "Base", "Head", "Scope"], ...visibleRows.map((row) => row.cells)],
+    ["l", "l", "l", "l"]
+  );
+  const hiddenCount = summaryRows.length - visibleRows.length;
+  if (hiddenCount > 0) {
+    lines.push(
+      `_${hiddenCount} additional inconclusive ${hiddenCount === 1 ? "signal is" : "signals are"} available in the full comparison details._`
+    );
+    lines.push("");
+  }
 }
 function validityLine(report) {
   const { meta } = report;
