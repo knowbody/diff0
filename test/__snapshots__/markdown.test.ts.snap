@@ -12,7 +12,7 @@ Comparing \`main (aaa1111)\` → \`feat/cleanup (bbb2222)\` · 3 runs per ref ·
 ### At a glance
 
 | Signal | Base | Head | Change |
-| :-- | --: | --: | :-- |
+| :- | -: | -: | :- |
 | Passing evals | 2/2 | 2/2 | unchanged |
 | Tool calls / run | 3 | 3 | +0% |
 | Cost / run | $0.0300 | $0.0310 | +3% |
@@ -22,7 +22,7 @@ Comparing \`main (aaa1111)\` → \`feat/cleanup (bbb2222)\` · 3 runs per ref ·
 ### Eval results
 
 | Eval | Base | Head | Result |
-| :-- | :--: | :--: | :-- |
+| :- | :-: | :-: | :- |
 | \`sql/join\` | 3/3 | 3/3 | ✅ pass |
 | \`weather/forecast\` | 3/3 | 3/3 | ✅ pass |
 
@@ -36,7 +36,7 @@ eve 0.29.5 · model \`mock-model\` · 3 runs per ref · sandbox docker (inferred
 #### Eval evidence
 
 | Eval | Base | Head | Statistical result |
-| :-- | :--: | :--: | :-- |
+| :- | :-: | :-: | :- |
 | \`sql/join\` | 3/3 | 3/3 | ✅ pass |
 | \`weather/forecast\` | 3/3 | 3/3 | ✅ pass |
 
@@ -47,7 +47,7 @@ No behavioral drift detected across 3 runs per ref.
 #### Cost & performance
 
 | Metric | Base (median) | Head (median) | Δ |
-| :-- | --: | --: | :-- |
+| :- | -: | -: | :- |
 | Cost / session | $0.0300 | $0.0310 | +3% |
 | Tokens in | 1,000 | 1,000 | +0% |
 | Tokens out | 200 | 200 | +0% |
@@ -66,7 +66,7 @@ _1 file changed, 5 insertions(+), 1 deletion(-). File attribution is correlation
 **base — \`main\` @ \`aaa1111\`**
 
 | Run | Evals passed | Tool calls | Skills loaded | Cost | Duration |
-| :-- | :-- | --: | :-- | --: | --: |
+| :- | :- | -: | :- | -: | -: |
 | 1 | 2/2 | 3 | \`unit-conversion\` | $0.0300 | 12.0s |
 | 2 | 2/2 | 3 | \`unit-conversion\` | $0.0300 | 12.0s |
 | 3 | 2/2 | 3 | \`unit-conversion\` | $0.0300 | 12.0s |
@@ -74,7 +74,7 @@ _1 file changed, 5 insertions(+), 1 deletion(-). File attribution is correlation
 **head — \`feat/cleanup\` @ \`bbb2222\`**
 
 | Run | Evals passed | Tool calls | Skills loaded | Cost | Duration |
-| :-- | :-- | --: | :-- | --: | --: |
+| :- | :- | -: | :- | -: | -: |
 | 1 | 2/2 | 3 | \`unit-conversion\` | $0.0310 | 12.0s |
 | 2 | 2/2 | 3 | \`unit-conversion\` | $0.0310 | 12.0s |
 | 3 | 2/2 | 3 | \`unit-conversion\` | $0.0310 | 12.0s |
@@ -103,7 +103,7 @@ Comparing \`main (aaa1111)\` → \`feat/tighter-prompt (bbb2222)\` · 3 runs per
 ### At a glance
 
 | Signal | Base | Head | Change |
-| :-- | --: | --: | :-- |
+| :- | -: | -: | :- |
 | Passing evals | 2/2 | 2/2 | unchanged |
 | Tool calls / run | 3 | 2 (2–3) | -33% |
 | Cost / run | $0.0300 ($0.0290–$0.0310) | $0.0414 ($0.0400–$0.0430) | +38% |
@@ -113,7 +113,7 @@ Comparing \`main (aaa1111)\` → \`feat/tighter-prompt (bbb2222)\` · 3 runs per
 ### Behavioral changes
 
 | Signal | Base | Head | Scope |
-| :-- | :-- | :-- | :-- |
+| :- | :- | :- | :- |
 | Skill \`unit-conversion\` | 3/3 runs | 1/3 runs | overall · inconclusive |
 | Tool path | \`get_weather → convert_units → done\` (3/3) | \`get_weather → done\` (2/3) | overall · inconclusive |
 | \`convert_units\` calls | 1/run | 0/run | overall · inconclusive |
@@ -122,7 +122,7 @@ Comparing \`main (aaa1111)\` → \`feat/tighter-prompt (bbb2222)\` · 3 runs per
 ### Eval results
 
 | Eval | Base | Head | Result |
-| :-- | :--: | :--: | :-- |
+| :- | :-: | :-: | :- |
 | \`weather/brooklyn\` | 3/3 | 3/3 | ✅ pass |
 | \`weather/forecast\` | 3/3 | 3/3 | ✅ pass |
 
@@ -136,7 +136,7 @@ eve 0.29.5 · model \`mock-model\` · 3 runs per ref · sandbox docker (inferred
 #### Eval evidence
 
 | Eval | Base | Head | Statistical result |
-| :-- | :--: | :--: | :-- |
+| :- | :-: | :-: | :- |
 | \`weather/brooklyn\` | 3/3 | 3/3 | ✅ pass |
 | \`weather/forecast\` | 3/3 | 3/3 | ✅ pass |
 
@@ -160,7 +160,7 @@ eve 0.29.5 · model \`mock-model\` · 3 runs per ref · sandbox docker (inferred
 #### Cost & performance
 
 | Metric | Base (median) | Head (median) | Δ |
-| :-- | --: | --: | :-- |
+| :- | -: | -: | :- |
 | Cost / session | $0.0300 ($0.0290–$0.0310) | $0.0414 ($0.0400–$0.0430) | +38% |
 | Tokens in | 1,000 | 1,150 | +15% |
 | Tokens out | 200 | 210 | +5% |
@@ -180,7 +180,7 @@ _2 files changed, 15 insertions(+), 5 deletions(-). File attribution is correlat
 **base — \`main\` @ \`aaa1111\`**
 
 | Run | Evals passed | Tool calls | Skills loaded | Cost | Duration |
-| :-- | :-- | --: | :-- | --: | --: |
+| :- | :- | -: | :- | -: | -: |
 | 1 | 2/2 | 3 | \`unit-conversion\` | $0.0290 | 12.0s |
 | 2 | 2/2 | 3 | \`unit-conversion\` | $0.0300 | 12.0s |
 | 3 | 2/2 | 3 | \`unit-conversion\` | $0.0310 | 12.0s |
@@ -188,7 +188,7 @@ _2 files changed, 15 insertions(+), 5 deletions(-). File attribution is correlat
 **head — \`feat/tighter-prompt\` @ \`bbb2222\`**
 
 | Run | Evals passed | Tool calls | Skills loaded | Cost | Duration |
-| :-- | :-- | --: | :-- | --: | --: |
+| :- | :- | -: | :- | -: | -: |
 | 1 | 2/2 | 2 | none | $0.0400 | 13.1s |
 | 2 | 2/2 | 2 | none | $0.0414 | 13.1s |
 | 3 | 2/2 | 3 | \`unit-conversion\` | $0.0430 | 13.1s |
@@ -217,7 +217,7 @@ Comparing \`main (aaa1111)\` → \`feat/model-swap (bbb2222)\` · 3 runs per ref
 ### At a glance
 
 | Signal | Base | Head | Change |
-| :-- | --: | --: | :-- |
+| :- | -: | -: | :- |
 | Passing evals | 2/5 | 2/5 | unchanged |
 | Tool calls / run | 0 | 0 | n/a |
 | Output tokens / run | 200 | 200 | +0% |
@@ -226,7 +226,7 @@ Comparing \`main (aaa1111)\` → \`feat/model-swap (bbb2222)\` · 3 runs per ref
 ### Eval results
 
 | Eval | Base | Head | Result |
-| :-- | :--: | :--: | :-- |
+| :- | :-: | :-: | :- |
 | \`old/eval\` | 3/3 | — | ➖ removed |
 | \`flaky/head\` | 3/3 | 1/3 | 🟡 lower pass rate (inconclusive) |
 | \`flaky/both\` | 2/3 | 2/3 | 🟠 flaky (base + head) |
@@ -247,7 +247,7 @@ eve 0.29.5 · model base \`gpt-5\` / head \`claude-opus-4\` · 3 runs per ref ·
 #### Eval evidence
 
 | Eval | Base | Head | Statistical result |
-| :-- | :--: | :--: | :-- |
+| :- | :-: | :-: | :- |
 | \`old/eval\` | 3/3 | — | ➖ removed |
 | \`flaky/head\` | 3/3 | 1/3 | 🟡 lower pass rate (inconclusive) · Fisher raw p=0.2 · Holm p=0.4 |
 | \`flaky/both\` | 2/3 | 2/3 | 🟠 flaky (base + head) |
@@ -261,7 +261,7 @@ No behavioral drift detected across 3 runs per ref.
 #### Cost & performance
 
 | Metric | Base (median) | Head (median) | Δ |
-| :-- | --: | --: | :-- |
+| :- | -: | -: | :- |
 | Cost / session | — | — | unavailable (no cost data) |
 | Tokens in | 1,000 | 1,000 | +0% |
 | Tokens out | 200 | 200 | +0% |
@@ -274,7 +274,7 @@ No behavioral drift detected across 3 runs per ref.
 **base — \`main\` @ \`aaa1111\`**
 
 | Run | Evals passed | Tool calls | Skills loaded | Cost | Duration |
-| :-- | :-- | --: | :-- | --: | --: |
+| :- | :- | -: | :- | -: | -: |
 | 1 | 3/4 | 0 | none | — | 12.0s |
 | 2 | 2/4 | 0 | none | — | 12.0s |
 | 3 | 3/4 | 0 | none | — | 12.0s |
@@ -282,7 +282,7 @@ No behavioral drift detected across 3 runs per ref.
 **head — \`feat/model-swap\` @ \`bbb2222\`**
 
 | Run | Evals passed | Tool calls | Skills loaded | Cost | Duration |
-| :-- | :-- | --: | :-- | --: | --: |
+| :- | :- | -: | :- | -: | -: |
 | 1 | 3/4 | 0 | none | — | 12.0s |
 | 2 | 3/4 | 0 | none | — | 12.0s |
 | 3 | 3/4 | 0 | none | — | 12.0s |
@@ -312,7 +312,7 @@ Comparing \`main (aaa1111)\` → \`feat/new-planner (bbb2222)\` · 4 runs per re
 ### At a glance
 
 | Signal | Base | Head | Change |
-| :-- | --: | --: | :-- |
+| :- | -: | -: | :- |
 | Passing evals | 2/2 | 1/2 | -1 |
 | Tool calls / run | 2 | 3 | +50% |
 | Cost / run | $0.0500 | $0.0520 | +4% |
@@ -322,7 +322,7 @@ Comparing \`main (aaa1111)\` → \`feat/new-planner (bbb2222)\` · 4 runs per re
 ### Behavioral changes
 
 | Signal | Base | Head | Scope |
-| :-- | :-- | :-- | :-- |
+| :- | :- | :- | :- |
 | Tool path | \`run_sql → done\` (4/4) | \`run_sql → run_sql → done\` (4/4) | overall · stable |
 | \`run_sql\` calls | 1/run | 2/run | overall · stable |
 | \`done\` input #1 changed | 4 captured | 4 captured | overall · stable |
@@ -330,7 +330,7 @@ Comparing \`main (aaa1111)\` → \`feat/new-planner (bbb2222)\` · 4 runs per re
 ### Eval results
 
 | Eval | Base | Head | Result |
-| :-- | :--: | :--: | :-- |
+| :- | :-: | :-: | :- |
 | \`sql/join\` | 4/4 | 0/4 | 🔴 **REGRESSED** |
 | \`weather/forecast\` | 4/4 | 4/4 | ✅ pass |
 
@@ -344,7 +344,7 @@ eve 0.29.5 · model \`mock-model\` · 4 runs per ref · sandbox docker (inferred
 #### Eval evidence
 
 | Eval | Base | Head | Statistical result |
-| :-- | :--: | :--: | :-- |
+| :- | :-: | :-: | :- |
 | \`sql/join\` | 4/4 | 0/4 | 🔴 **REGRESSED** · _hint: two-proportion z = 2.83 (4/4 base vs 0/4 head) — a directional hint only, not statistical significance at this sample size_ · Fisher raw p=0.0143 · Holm p=0.0286 |
 | \`weather/forecast\` | 4/4 | 4/4 | ✅ pass |
 
@@ -364,7 +364,7 @@ eve 0.29.5 · model \`mock-model\` · 4 runs per ref · sandbox docker (inferred
 #### Cost & performance
 
 | Metric | Base (median) | Head (median) | Δ |
-| :-- | --: | --: | :-- |
+| :- | -: | -: | :- |
 | Cost / session | $0.0500 | $0.0520 | +4% |
 | Tokens in | 1,000 | 1,000 | +0% |
 | Tokens out | 200 | 200 | +0% |
@@ -383,7 +383,7 @@ _1 file changed, 40 insertions(+), 12 deletions(-). File attribution is correlat
 **base — \`main\` @ \`aaa1111\`**
 
 | Run | Evals passed | Tool calls | Skills loaded | Cost | Duration |
-| :-- | :-- | --: | :-- | --: | --: |
+| :- | :- | -: | :- | -: | -: |
 | 1 | 2/2 | 2 | none | $0.0500 | 12.0s |
 | 2 | 2/2 | 2 | none | $0.0500 | 12.0s |
 | 3 | 2/2 | 2 | none | $0.0500 | 12.0s |
@@ -392,7 +392,7 @@ _1 file changed, 40 insertions(+), 12 deletions(-). File attribution is correlat
 **head — \`feat/new-planner\` @ \`bbb2222\`**
 
 | Run | Evals passed | Tool calls | Skills loaded | Cost | Duration |
-| :-- | :-- | --: | :-- | --: | --: |
+| :- | :- | -: | :- | -: | -: |
 | 1 | 1/2 | 3 | none | $0.0520 | 12.0s |
 | 2 | 1/2 | 3 | none | $0.0520 | 12.0s |
 | 3 | 1/2 | 3 | none | $0.0520 | 12.0s |

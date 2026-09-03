@@ -15407,6 +15407,147 @@ function renderJson(report) {
 `;
 }
 
+// node_modules/.pnpm/markdown-table@3.0.4/node_modules/markdown-table/index.js
+function defaultStringLength(value) {
+  return value.length;
+}
+function markdownTable(table, options) {
+  const settings = options || {};
+  const align = (settings.align || []).concat();
+  const stringLength = settings.stringLength || defaultStringLength;
+  const alignments = [];
+  const cellMatrix = [];
+  const sizeMatrix = [];
+  const longestCellByColumn = [];
+  let mostCellsPerRow = 0;
+  let rowIndex = -1;
+  while (++rowIndex < table.length) {
+    const row2 = [];
+    const sizes2 = [];
+    let columnIndex2 = -1;
+    if (table[rowIndex].length > mostCellsPerRow) {
+      mostCellsPerRow = table[rowIndex].length;
+    }
+    while (++columnIndex2 < table[rowIndex].length) {
+      const cell = serialize(table[rowIndex][columnIndex2]);
+      if (settings.alignDelimiters !== false) {
+        const size = stringLength(cell);
+        sizes2[columnIndex2] = size;
+        if (longestCellByColumn[columnIndex2] === void 0 || size > longestCellByColumn[columnIndex2]) {
+          longestCellByColumn[columnIndex2] = size;
+        }
+      }
+      row2.push(cell);
+    }
+    cellMatrix[rowIndex] = row2;
+    sizeMatrix[rowIndex] = sizes2;
+  }
+  let columnIndex = -1;
+  if (typeof align === "object" && "length" in align) {
+    while (++columnIndex < mostCellsPerRow) {
+      alignments[columnIndex] = toAlignment(align[columnIndex]);
+    }
+  } else {
+    const code = toAlignment(align);
+    while (++columnIndex < mostCellsPerRow) {
+      alignments[columnIndex] = code;
+    }
+  }
+  columnIndex = -1;
+  const row = [];
+  const sizes = [];
+  while (++columnIndex < mostCellsPerRow) {
+    const code = alignments[columnIndex];
+    let before = "";
+    let after = "";
+    if (code === 99) {
+      before = ":";
+      after = ":";
+    } else if (code === 108) {
+      before = ":";
+    } else if (code === 114) {
+      after = ":";
+    }
+    let size = settings.alignDelimiters === false ? 1 : Math.max(
+      1,
+      longestCellByColumn[columnIndex] - before.length - after.length
+    );
+    const cell = before + "-".repeat(size) + after;
+    if (settings.alignDelimiters !== false) {
+      size = before.length + size + after.length;
+      if (size > longestCellByColumn[columnIndex]) {
+        longestCellByColumn[columnIndex] = size;
+      }
+      sizes[columnIndex] = size;
+    }
+    row[columnIndex] = cell;
+  }
+  cellMatrix.splice(1, 0, row);
+  sizeMatrix.splice(1, 0, sizes);
+  rowIndex = -1;
+  const lines = [];
+  while (++rowIndex < cellMatrix.length) {
+    const row2 = cellMatrix[rowIndex];
+    const sizes2 = sizeMatrix[rowIndex];
+    columnIndex = -1;
+    const line = [];
+    while (++columnIndex < mostCellsPerRow) {
+      const cell = row2[columnIndex] || "";
+      let before = "";
+      let after = "";
+      if (settings.alignDelimiters !== false) {
+        const size = longestCellByColumn[columnIndex] - (sizes2[columnIndex] || 0);
+        const code = alignments[columnIndex];
+        if (code === 114) {
+          before = " ".repeat(size);
+        } else if (code === 99) {
+          if (size % 2) {
+            before = " ".repeat(size / 2 + 0.5);
+            after = " ".repeat(size / 2 - 0.5);
+          } else {
+            before = " ".repeat(size / 2);
+            after = before;
+          }
+        } else {
+          after = " ".repeat(size);
+        }
+      }
+      if (settings.delimiterStart !== false && !columnIndex) {
+        line.push("|");
+      }
+      if (settings.padding !== false && // Don’t add the opening space if we’re not aligning and the cell is
+      // empty: there will be a closing space.
+      !(settings.alignDelimiters === false && cell === "") && (settings.delimiterStart !== false || columnIndex)) {
+        line.push(" ");
+      }
+      if (settings.alignDelimiters !== false) {
+        line.push(before);
+      }
+      line.push(cell);
+      if (settings.alignDelimiters !== false) {
+        line.push(after);
+      }
+      if (settings.padding !== false) {
+        line.push(" ");
+      }
+      if (settings.delimiterEnd !== false || columnIndex !== mostCellsPerRow - 1) {
+        line.push("|");
+      }
+    }
+    lines.push(
+      settings.delimiterEnd === false ? line.join("").replace(/ +$/, "") : line.join("")
+    );
+  }
+  return lines.join("\n");
+}
+function serialize(value) {
+  return value === null || value === void 0 ? "" : String(value);
+}
+function toAlignment(value) {
+  const code = typeof value === "string" ? value.codePointAt(0) : 0;
+  return code === 67 || code === 99 ? 99 : code === 76 || code === 108 ? 108 : code === 82 || code === 114 ? 114 : 0;
+}
+
 // src/report/markdown.ts
 var REPORT_MARKER = "<!-- diff0-report -->";
 function safeText(value) {
@@ -15471,14 +15612,19 @@ function renderMarkdown(report) {
   }
   lines.push("### Eval results");
   lines.push("");
-  lines.push("| Eval | Base | Head | Result |");
-  lines.push("| :-- | :--: | :--: | :-- |");
-  for (const e of report.evals) {
-    lines.push(
-      `| ${inlineCode(e.name)} | ${passCell(e.basePassed, e.baseTotal)} | ${passCell(e.headPassed, e.headTotal)} | ${compactStatusCell(e)} |`
-    );
-  }
-  lines.push("");
+  pushTable(
+    lines,
+    [
+      ["Eval", "Base", "Head", "Result"],
+      ...report.evals.map((e) => [
+        inlineCode(e.name),
+        passCell(e.basePassed, e.baseTotal),
+        passCell(e.headPassed, e.headTotal),
+        compactStatusCell(e)
+      ])
+    ],
+    ["l", "c", "c", "l"]
+  );
   lines.push("<details>");
   lines.push("<summary><strong>Full comparison details</strong></summary>");
   lines.push("");
@@ -15496,14 +15642,19 @@ function renderMarkdown(report) {
   }
   lines.push("#### Eval evidence");
   lines.push("");
-  lines.push("| Eval | Base | Head | Statistical result |");
-  lines.push("| :-- | :--: | :--: | :-- |");
-  for (const e of report.evals) {
-    lines.push(
-      `| ${inlineCode(e.name)} | ${passCell(e.basePassed, e.baseTotal)} | ${passCell(e.headPassed, e.headTotal)} | ${statusCell(e)} |`
-    );
-  }
-  lines.push("");
+  pushTable(
+    lines,
+    [
+      ["Eval", "Base", "Head", "Statistical result"],
+      ...report.evals.map((e) => [
+        inlineCode(e.name),
+        passCell(e.basePassed, e.baseTotal),
+        passCell(e.headPassed, e.headTotal),
+        statusCell(e)
+      ])
+    ],
+    ["l", "c", "c", "l"]
+  );
   lines.push("#### Behavioral evidence");
   lines.push("");
   if (!report.drift.hasDrift && !report.drift.hasInconclusive) {
@@ -15514,19 +15665,24 @@ function renderMarkdown(report) {
   }
   lines.push("#### Cost & performance");
   lines.push("");
-  lines.push("| Metric | Base (median) | Head (median) | \u0394 |");
-  lines.push("| :-- | --: | --: | :-- |");
-  lines.push(metricRow("Cost / session", report.costPerf.costUsd, formatUsd, "no cost data"));
-  lines.push(metricRow("Tokens in", report.costPerf.tokensIn, formatInt, "no token data"));
-  lines.push(metricRow("Tokens out", report.costPerf.tokensOut, formatInt, "no token data"));
-  lines.push(
-    metricRow("Cache-read tokens", report.costPerf.cacheReadTokens, formatInt, "no token data")
+  pushTable(
+    lines,
+    [
+      ["Metric", "Base (median)", "Head (median)", "\u0394"],
+      metricCells("Cost / session", report.costPerf.costUsd, formatUsd, "no cost data"),
+      metricCells("Tokens in", report.costPerf.tokensIn, formatInt, "no token data"),
+      metricCells("Tokens out", report.costPerf.tokensOut, formatInt, "no token data"),
+      metricCells("Cache-read tokens", report.costPerf.cacheReadTokens, formatInt, "no token data"),
+      metricCells(
+        "Cache-write tokens",
+        report.costPerf.cacheWriteTokens,
+        formatInt,
+        "no token data"
+      ),
+      metricCells("Duration", report.costPerf.durationMs, formatDuration, "no timing data")
+    ],
+    ["l", "r", "r", "l"]
   );
-  lines.push(
-    metricRow("Cache-write tokens", report.costPerf.cacheWriteTokens, formatInt, "no token data")
-  );
-  lines.push(metricRow("Duration", report.costPerf.durationMs, formatDuration, "no timing data"));
-  lines.push("");
   if (meta.gitDiffStat !== null) {
     lines.push("#### Changed files");
     lines.push("");
@@ -15585,22 +15741,26 @@ function renderOverview(report, lines) {
   ).length;
   const evalDelta = headPassing - basePassing;
   const toolCalls = metricFromRuns(report.runSummaries.base, report.runSummaries.head);
-  lines.push("| Signal | Base | Head | Change |");
-  lines.push("| :-- | --: | --: | :-- |");
-  lines.push(
-    `| Passing evals | ${basePassing}/${report.evals.length} | ${headPassing}/${report.evals.length} | ${evalDelta === 0 ? "unchanged" : `${evalDelta > 0 ? "+" : ""}${evalDelta}`} |`
-  );
-  lines.push(metricRow("Tool calls / run", toolCalls, formatInt, "no run data"));
+  const rows = [
+    ["Signal", "Base", "Head", "Change"],
+    [
+      "Passing evals",
+      `${basePassing}/${report.evals.length}`,
+      `${headPassing}/${report.evals.length}`,
+      evalDelta === 0 ? "unchanged" : `${evalDelta > 0 ? "+" : ""}${evalDelta}`
+    ],
+    metricCells("Tool calls / run", toolCalls, formatInt, "no run data")
+  ];
   if (report.costPerf.costUsd.base !== null && report.costPerf.costUsd.head !== null) {
-    lines.push(metricRow("Cost / run", report.costPerf.costUsd, formatUsd, "no cost data"));
+    rows.push(metricCells("Cost / run", report.costPerf.costUsd, formatUsd, "no cost data"));
   }
-  lines.push(
-    metricRow("Output tokens / run", report.costPerf.tokensOut, formatInt, "no token data")
+  rows.push(
+    metricCells("Output tokens / run", report.costPerf.tokensOut, formatInt, "no token data")
   );
-  lines.push(
-    metricRow("Duration / run", report.costPerf.durationMs, formatDuration, "no timing data")
+  rows.push(
+    metricCells("Duration / run", report.costPerf.durationMs, formatDuration, "no timing data")
   );
-  lines.push("");
+  pushTable(lines, rows, ["l", "r", "r", "l"]);
 }
 function metricFromRuns(base, head) {
   const baseStats = stats(base.map((run) => run.toolCallCount));
@@ -15651,16 +15811,18 @@ function confidenceLabel(confidence) {
 }
 function renderDriftSummary(report, lines) {
   const { skills, toolSequences, subagents, toolInputs, finalOutputs } = report.drift;
-  lines.push("| Signal | Base | Head | Scope |");
-  lines.push("| :-- | :-- | :-- | :-- |");
+  const rows = [["Signal", "Base", "Head", "Scope"]];
   for (const group of groupEvidence(
     skills,
     (item) => `${item.name}\0${item.baseLoadedRuns}/${item.baseTotalRuns}\0${item.headLoadedRuns}/${item.headTotalRuns}\0${item.confidence}`
   )) {
     const item = group.item;
-    lines.push(
-      `| Skill ${inlineCode(item.name)} | ${item.baseLoadedRuns}/${item.baseTotalRuns} runs | ${item.headLoadedRuns}/${item.headTotalRuns} runs | ${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)} |`
-    );
+    rows.push([
+      `Skill ${inlineCode(item.name)}`,
+      `${item.baseLoadedRuns}/${item.baseTotalRuns} runs`,
+      `${item.headLoadedRuns}/${item.headTotalRuns} runs`,
+      `${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)}`
+    ]);
   }
   const divergentSequences = toolSequences.filter((item) => item.divergenceNote !== null);
   for (const group of groupEvidence(
@@ -15668,9 +15830,12 @@ function renderDriftSummary(report, lines) {
     (item) => `${item.baseMostCommon.join("\0")}${item.baseMostCommonRuns}/${item.baseTotalRuns}${item.headMostCommon.join("\0")}${item.headMostCommonRuns}/${item.headTotalRuns}${item.divergenceConfidence}`
   )) {
     const item = group.item;
-    lines.push(
-      `| Tool path | ${sequenceText(item.baseMostCommon)} (${item.baseMostCommonRuns}/${item.baseTotalRuns}) | ${sequenceText(item.headMostCommon)} (${item.headMostCommonRuns}/${item.headTotalRuns}) | ${evidenceScope(group)} \xB7 ${confidenceLabel(item.divergenceConfidence)} |`
-    );
+    rows.push([
+      "Tool path",
+      `${sequenceText(item.baseMostCommon)} (${item.baseMostCommonRuns}/${item.baseTotalRuns})`,
+      `${sequenceText(item.headMostCommon)} (${item.headMostCommonRuns}/${item.headTotalRuns})`,
+      `${evidenceScope(group)} \xB7 ${confidenceLabel(item.divergenceConfidence)}`
+    ]);
   }
   const toolCounts = toolSequences.flatMap((sequence) => sequence.callCountDeltas);
   for (const group of groupEvidence(
@@ -15678,38 +15843,50 @@ function renderDriftSummary(report, lines) {
     (item) => `${item.name}\0${item.baseMedianCalls}\0${item.headMedianCalls}\0${item.confidence}`
   )) {
     const item = group.item;
-    lines.push(
-      `| ${inlineCode(item.name)} calls | ${item.baseMedianCalls}/run | ${item.headMedianCalls}/run | ${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)} |`
-    );
+    rows.push([
+      `${inlineCode(item.name)} calls`,
+      `${item.baseMedianCalls}/run`,
+      `${item.headMedianCalls}/run`,
+      `${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)}`
+    ]);
   }
   for (const group of groupEvidence(
     subagents,
     (item) => `${item.name}\0${item.baseUsedRuns}/${item.baseTotalRuns}\0${item.headUsedRuns}/${item.headTotalRuns}\0${item.confidence}`
   )) {
     const item = group.item;
-    lines.push(
-      `| Subagent ${inlineCode(item.name)} | ${item.baseUsedRuns}/${item.baseTotalRuns} runs | ${item.headUsedRuns}/${item.headTotalRuns} runs | ${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)} |`
-    );
+    rows.push([
+      `Subagent ${inlineCode(item.name)}`,
+      `${item.baseUsedRuns}/${item.baseTotalRuns} runs`,
+      `${item.headUsedRuns}/${item.headTotalRuns} runs`,
+      `${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)}`
+    ]);
   }
   for (const group of groupEvidence(
     toolInputs,
     (item) => `${item.toolName}\0${item.occurrence}\0${item.baseHashRuns}\0${item.headHashRuns}\0${item.confidence}`
   )) {
     const item = group.item;
-    lines.push(
-      `| ${inlineCode(item.toolName)} input #${item.occurrence} changed | ${item.baseHashRuns} captured | ${item.headHashRuns} captured | ${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)} |`
-    );
+    rows.push([
+      `${inlineCode(item.toolName)} input #${item.occurrence} changed`,
+      `${item.baseHashRuns} captured`,
+      `${item.headHashRuns} captured`,
+      `${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)}`
+    ]);
   }
   for (const group of groupEvidence(
     finalOutputs,
     (item) => `${item.baseCapturedRuns}/${item.baseTotalRuns}\0${item.headCapturedRuns}/${item.headTotalRuns}\0${item.confidence}`
   )) {
     const item = group.item;
-    lines.push(
-      `| Final output changed | ${item.baseCapturedRuns}/${item.baseTotalRuns} captured | ${item.headCapturedRuns}/${item.headTotalRuns} captured | ${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)} |`
-    );
+    rows.push([
+      "Final output changed",
+      `${item.baseCapturedRuns}/${item.baseTotalRuns} captured`,
+      `${item.headCapturedRuns}/${item.headTotalRuns} captured`,
+      `${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)}`
+    ]);
   }
-  lines.push("");
+  pushTable(lines, rows, ["l", "l", "l", "l"]);
 }
 function validityLine(report) {
   const { meta } = report;
@@ -15852,25 +16029,34 @@ function renderDrift(report, lines) {
 function sequenceText(sequence) {
   return sequence.length === 0 ? "(no tool calls)" : inlineCode(sequence.join(" \u2192 "));
 }
-function metricRow(label, metric, fmt, unavailableNote) {
+function metricCells(label, metric, fmt, unavailableNote) {
   const baseCell = metric.base ? medianWithRange(metric.base, fmt) : "\u2014";
   const headCell = metric.head ? medianWithRange(metric.head, fmt) : "\u2014";
   const deltaCell = metric.deltaPct !== null ? formatSignedPct(metric.deltaPct) : metric.base === null || metric.head === null ? `unavailable (${unavailableNote})` : "n/a";
-  return `| ${label} | ${baseCell} | ${headCell} | ${deltaCell} |`;
+  return [label, baseCell, headCell, deltaCell];
+}
+function pushTable(lines, rows, align) {
+  lines.push(markdownTable(rows, { align, alignDelimiters: false }));
+  lines.push("");
 }
 function renderRunTable(lines, side, ref, commitSha, summaries) {
   lines.push(`**${side} \u2014 ${inlineCode(ref)} @ ${inlineCode(shortSha2(commitSha))}**`);
   lines.push("");
-  lines.push("| Run | Evals passed | Tool calls | Skills loaded | Cost | Duration |");
-  lines.push("| :-- | :-- | --: | :-- | --: | --: |");
-  for (const run of summaries) {
-    const skills = run.skillsLoaded.length > 0 ? run.skillsLoaded.map(inlineCode).join(", ") : "none";
-    const cost = run.costUsd !== null && run.costUsd > 0 ? formatUsd(run.costUsd) : "\u2014";
-    lines.push(
-      `| ${run.runIndex + 1} | ${run.evalsPassed}/${run.evalsTotal} | ${run.toolCallCount} | ${skills} | ${cost} | ${formatDuration(run.durationMs)} |`
-    );
-  }
-  lines.push("");
+  pushTable(
+    lines,
+    [
+      ["Run", "Evals passed", "Tool calls", "Skills loaded", "Cost", "Duration"],
+      ...summaries.map((run) => [
+        String(run.runIndex + 1),
+        `${run.evalsPassed}/${run.evalsTotal}`,
+        String(run.toolCallCount),
+        run.skillsLoaded.length > 0 ? run.skillsLoaded.map(inlineCode).join(", ") : "none",
+        run.costUsd !== null && run.costUsd > 0 ? formatUsd(run.costUsd) : "\u2014",
+        formatDuration(run.durationMs)
+      ])
+    ],
+    ["l", "l", "r", "l", "r", "r"]
+  );
 }
 
 // src/report/teach.ts
@@ -16072,12 +16258,12 @@ function renderTerminal(report, opts = {}) {
   lines.push("");
   lines.push(pc.bold("COST & PERFORMANCE"));
   const rows = [
-    metricRow2("cost/session", report.costPerf.costUsd, formatUsd),
-    metricRow2("tokens in", report.costPerf.tokensIn, formatInt),
-    metricRow2("tokens out", report.costPerf.tokensOut, formatInt),
-    metricRow2("cache-read tokens", report.costPerf.cacheReadTokens, formatInt),
-    metricRow2("cache-write tokens", report.costPerf.cacheWriteTokens, formatInt),
-    metricRow2("duration", report.costPerf.durationMs, formatDuration)
+    metricRow("cost/session", report.costPerf.costUsd, formatUsd),
+    metricRow("tokens in", report.costPerf.tokensIn, formatInt),
+    metricRow("tokens out", report.costPerf.tokensOut, formatInt),
+    metricRow("cache-read tokens", report.costPerf.cacheReadTokens, formatInt),
+    metricRow("cache-write tokens", report.costPerf.cacheWriteTokens, formatInt),
+    metricRow("duration", report.costPerf.durationMs, formatDuration)
   ];
   const labelWidth = Math.max(...rows.map((r) => r[0].length));
   const baseColWidth = Math.max(...rows.map((r) => r[1].length));
@@ -16282,7 +16468,7 @@ function sequenceLines(label, sequence) {
   });
   return [...wrapText(safeLabel, "    ", "      "), ...wrapTokens(tokens, "      ", "      ")];
 }
-function metricRow2(label, metric, fmt) {
+function metricRow(label, metric, fmt) {
   const baseCell = metric.base ? medianWithRange(metric.base, fmt) : "unavailable";
   const headCell = metric.head ? medianWithRange(metric.head, fmt) : "unavailable";
   const deltaCell = metric.deltaPct !== null ? formatSignedPct(metric.deltaPct) : "n/a";
