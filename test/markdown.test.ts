@@ -278,8 +278,14 @@ describe("renderMarkdown structure", () => {
     );
     const report = computeDelta(base, head, { now: FIXED_NOW });
     const md = renderMarkdown(report);
+    const defaultView = md.split("<details>")[0];
     expect(md).toContain("Confirmed behavioral drift requires review.");
     expect(report.verdictSummary).toContain("additional behavioral differences inconclusive");
+    expect(defaultView).toContain("Subagent `reporter`");
+    expect(defaultView).not.toContain("Final output changed");
+    expect(defaultView).toContain(
+      "_1 additional inconclusive signal is available in the full comparison details._",
+    );
   });
 
   it("changed-files section carries the correlational note", () => {
