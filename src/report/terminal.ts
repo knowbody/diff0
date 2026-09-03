@@ -240,7 +240,7 @@ export function renderTerminal(report: DeltaReport, opts: TerminalOptions = {}):
   lines.push(pc.bold("COST & PERFORMANCE"));
   const rows: Array<[string, string, string, string]> = [
     metricRow("cost/session", report.costPerf.costUsd, formatUsd),
-    metricRow("tokens in", report.costPerf.tokensIn, formatInt),
+    metricRow("uncached input tokens", report.costPerf.tokensIn, formatInt),
     metricRow("tokens out", report.costPerf.tokensOut, formatInt),
     metricRow("cache-read tokens", report.costPerf.cacheReadTokens, formatInt),
     metricRow("cache-write tokens", report.costPerf.cacheWriteTokens, formatInt),
@@ -525,7 +525,7 @@ function renderRuns(
     lines.push(
       ...wrapText(
         `run ${run.runIndex + 1}: ${run.evalsPassed}/${run.evalsTotal} evals passed, ` +
-          `${run.toolCallCount} tool calls, skills: ${skills}, ${cost}, ` +
+          `${run.toolCallCount} tool calls (agents excluded), skills: ${skills}, ${cost}, ` +
           `${formatDuration(run.durationMs)}`,
         "    ",
         "      ",

@@ -1504,7 +1504,13 @@ function computeVerdict(
       );
     }
     if (drift.hasDrift) summaryParts.push("behavioral drift detected");
-    if (drift.hasInconclusive) summaryParts.push("behavioral changes inconclusive");
+    if (drift.hasInconclusive) {
+      summaryParts.push(
+        drift.hasDrift
+          ? "additional behavioral differences inconclusive"
+          : "behavioral differences inconclusive",
+      );
+    }
     if (costDrift) summaryParts.push("cost drift detected");
     if (costAvailabilityMismatch) summaryParts.push("cost comparability unavailable");
     if (mismatches.length > 0) summaryParts.push("comparison validity warnings");

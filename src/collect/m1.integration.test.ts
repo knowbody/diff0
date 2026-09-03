@@ -56,7 +56,7 @@ beforeAll(async () => {
   // Pin the instructions this test asserts against, regardless of what the
   // committed fixture currently says — dogfood PRs edit the fixture's
   // instructions on purpose (that IS the drift demo), and this test must not
-  // inherit that drift. The MUST-load sentence is what the mock model keys on.
+  // inherit that drift.
   writeFileSync(
     join(agentRepo, "agent", "instructions.md"),
     [
@@ -69,6 +69,8 @@ beforeAll(async () => {
       "- You MUST load the `revenue-definitions` skill before answering any revenue",
       "  question, so your figures use the canonical definitions.",
       "- Use the `run_sql` tool to compute figures; never estimate from memory.",
+      "- After computing a figure, delegate a one-line executive summary to the",
+      "  `reporter` subagent before replying.",
       "- Report totals using the canonical `TOTAL_REVENUE=<n>` format.",
       "",
     ].join("\n"),
@@ -99,15 +101,14 @@ function assertDemoAgentRunRecord(record: RunRecord, ref: string, commitSha: str
   expect(record.commitSha).toBe(commitSha);
   expect(record.runIndex).toBe(0);
 
-  // All 4 evals pass on both refs.
-  expect(record.evalResults).toHaveLength(4);
+  // All 3 evals pass on both refs.
+  expect(record.evalResults).toHaveLength(3);
   for (const evalResult of record.evalResults) {
     expect(evalResult.passed).toBe(true);
     expect(evalResult.checks.length).toBeGreaterThan(0);
   }
   expect(record.evalResults.map((e) => e.name).sort()).toEqual([
     "revenue/no-failed-actions",
-    "revenue/reply-format",
     "revenue/total-revenue",
     "revenue/uses-sql-tool",
   ]);
@@ -154,7 +155,7 @@ describe("demo-agent through worktree and Eve adapter", () => {
       ] as const) {
         const probed = await adapter.probe(worktree.path);
         expect(probed.eveVersion).toBe("0.47.5");
-        expect(probed.evalIds).toHaveLength(4);
+        expect(probed.evalIds).toHaveLength(3);
         expect(probed.evalIds).toContain("revenue/total-revenue");
 
         records.push(

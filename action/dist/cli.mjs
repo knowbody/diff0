@@ -12416,7 +12416,11 @@ function computeVerdict(evals, drift, costPerf, baseN, headN, mismatches) {
       );
     }
     if (drift.hasDrift) summaryParts.push("behavioral drift detected");
-    if (drift.hasInconclusive) summaryParts.push("behavioral changes inconclusive");
+    if (drift.hasInconclusive) {
+      summaryParts.push(
+        drift.hasDrift ? "additional behavioral differences inconclusive" : "behavioral differences inconclusive"
+      );
+    }
     if (costDrift) summaryParts.push("cost drift detected");
     if (costAvailabilityMismatch) summaryParts.push("cost comparability unavailable");
     if (mismatches.length > 0) summaryParts.push("comparison validity warnings");
@@ -15606,7 +15610,7 @@ function renderMarkdown(report) {
   lines.push("");
   renderOverview(report, lines);
   if (report.drift.hasDrift || report.drift.hasInconclusive) {
-    lines.push("### Behavioral changes");
+    lines.push("### Observed behavioral differences");
     lines.push("");
     renderDriftSummary(report, lines);
   }
@@ -15670,7 +15674,7 @@ function renderMarkdown(report) {
     [
       ["Metric", "Base (median)", "Head (median)", "\u0394"],
       metricCells("Cost / session", report.costPerf.costUsd, formatUsd, "no cost data"),
-      metricCells("Tokens in", report.costPerf.tokensIn, formatInt, "no token data"),
+      metricCells("Uncached input tokens", report.costPerf.tokensIn, formatInt, "no token data"),
       metricCells("Tokens out", report.costPerf.tokensOut, formatInt, "no token data"),
       metricCells("Cache-read tokens", report.costPerf.cacheReadTokens, formatInt, "no token data"),
       metricCells(
@@ -15719,7 +15723,12 @@ function renderMarkdown(report) {
 }
 function calloutSummary(report) {
   if (report.verdict !== "yellow") return `${safeText(report.verdictSummary)}.`;
-  return `No confirmed eval regressions across ${runsPhrase2(report.meta)}. Review the highlighted changes below.`;
+  const prefix = `No confirmed eval regressions across ${runsPhrase2(report.meta)}.`;
+  if (report.drift.hasDrift) return `${prefix} Confirmed behavioral drift requires review.`;
+  if (report.drift.hasInconclusive) {
+    return `${prefix} Observed behavioral differences require review.`;
+  }
+  return `${prefix} Review the highlighted changes below.`;
 }
 function comparisonLine(report) {
   const { meta } = report;
@@ -15744,12 +15753,12 @@ function renderOverview(report, lines) {
   const rows = [
     ["Signal", "Base", "Head", "Change"],
     [
-      "Passing evals",
+      "Evals passing every run",
       `${basePassing}/${report.evals.length}`,
       `${headPassing}/${report.evals.length}`,
       evalDelta === 0 ? "unchanged" : `${evalDelta > 0 ? "+" : ""}${evalDelta}`
     ],
-    metricCells("Tool calls / run", toolCalls, formatInt, "no run data")
+    metricCells("Tool calls / run (agents excluded)", toolCalls, formatInt, "no run data")
   ];
   if (report.costPerf.costUsd.base !== null && report.costPerf.costUsd.head !== null) {
     rows.push(metricCells("Cost / run", report.costPerf.costUsd, formatUsd, "no cost data"));
@@ -15824,6 +15833,18 @@ function renderDriftSummary(report, lines) {
       `${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)}`
     ]);
   }
+  for (const group of groupEvidence(
+    subagents,
+    (item) => `${item.name}\0${item.baseUsedRuns}/${item.baseTotalRuns}\0${item.headUsedRuns}/${item.headTotalRuns}\0${item.confidence}`
+  )) {
+    const item = group.item;
+    rows.push([
+      `Subagent ${inlineCode(item.name)}`,
+      `${item.baseUsedRuns}/${item.baseTotalRuns} runs`,
+      `${item.headUsedRuns}/${item.headTotalRuns} runs`,
+      `${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)}`
+    ]);
+  }
   const divergentSequences = toolSequences.filter((item) => item.divergenceNote !== null);
   for (const group of groupEvidence(
     divergentSequences,
@@ -15847,18 +15868,6 @@ function renderDriftSummary(report, lines) {
       `${inlineCode(item.name)} calls`,
       `${item.baseMedianCalls}/run`,
       `${item.headMedianCalls}/run`,
-      `${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)}`
-    ]);
-  }
-  for (const group of groupEvidence(
-    subagents,
-    (item) => `${item.name}\0${item.baseUsedRuns}/${item.baseTotalRuns}\0${item.headUsedRuns}/${item.headTotalRuns}\0${item.confidence}`
-  )) {
-    const item = group.item;
-    rows.push([
-      `Subagent ${inlineCode(item.name)}`,
-      `${item.baseUsedRuns}/${item.baseTotalRuns} runs`,
-      `${item.headUsedRuns}/${item.headTotalRuns} runs`,
       `${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)}`
     ]);
   }
@@ -16045,7 +16054,7 @@ function renderRunTable(lines, side, ref, commitSha, summaries) {
   pushTable(
     lines,
     [
-      ["Run", "Evals passed", "Tool calls", "Skills loaded", "Cost", "Duration"],
+      ["Run", "Evals passed", "Tool calls (agents excluded)", "Skills loaded", "Cost", "Duration"],
       ...summaries.map((run) => [
         String(run.runIndex + 1),
         `${run.evalsPassed}/${run.evalsTotal}`,
@@ -16259,7 +16268,7 @@ function renderTerminal(report, opts = {}) {
   lines.push(pc.bold("COST & PERFORMANCE"));
   const rows = [
     metricRow("cost/session", report.costPerf.costUsd, formatUsd),
-    metricRow("tokens in", report.costPerf.tokensIn, formatInt),
+    metricRow("uncached input tokens", report.costPerf.tokensIn, formatInt),
     metricRow("tokens out", report.costPerf.tokensOut, formatInt),
     metricRow("cache-read tokens", report.costPerf.cacheReadTokens, formatInt),
     metricRow("cache-write tokens", report.costPerf.cacheWriteTokens, formatInt),
@@ -16487,7 +16496,7 @@ function renderRuns(lines, side, ref, commitSha, summaries, pc) {
     const cost = run.costUsd !== null && run.costUsd > 0 ? formatUsd(run.costUsd) : "cost n/a";
     lines.push(
       ...wrapText(
-        `run ${run.runIndex + 1}: ${run.evalsPassed}/${run.evalsTotal} evals passed, ${run.toolCallCount} tool calls, skills: ${skills}, ${cost}, ${formatDuration(run.durationMs)}`,
+        `run ${run.runIndex + 1}: ${run.evalsPassed}/${run.evalsTotal} evals passed, ${run.toolCallCount} tool calls (agents excluded), skills: ${skills}, ${cost}, ${formatDuration(run.durationMs)}`,
         "    ",
         "      "
       )

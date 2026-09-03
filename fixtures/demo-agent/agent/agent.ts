@@ -8,16 +8,15 @@ import { resolveDemoModel } from "./lib/demo-model";
  * credential-free CI mode of this fixture (see agent/lib/demo-model.ts for
  * when it is active vs a real gateway model).
  *
- * When the instructions (system prompt) mention the `revenue-definitions`
- * skill, the model loads it first; otherwise it goes straight to `run_sql`.
- * This is the foundation of the diff0 drift demo: removing the
- * skill-load rule from instructions.md changes observable behavior
- * (no `load_skill` call) while every eval still passes.
+ * The mock follows the two process rules used by the public drift demo:
+ * loading `revenue-definitions` and delegating the final summary. Removing
+ * either rule from instructions.md therefore changes observable behavior
+ * while the answer-focused evals still pass.
  *
  * Response sequence per turn:
  *   1. load_skill(revenue-definitions)  — only when instructed to
  *   2. run_sql(...)                     — always
- *   3. reporter subagent                — when the tool surface offers it
+ *   3. reporter subagent                — only when instructed to delegate
  *   4. final text containing TOTAL_REVENUE=42
  */
 function buildMockModel(): LanguageModel {
@@ -34,6 +33,9 @@ function buildMockModel(): LanguageModel {
       // skill in the system prompt regardless of instructions.md, so the
       // skill name alone is always present.
       const mustLoadSkill = systemText.includes("MUST load the `revenue-definitions` skill");
+      const mustDelegateSummary = systemText.includes(
+        "delegate a one-line executive summary to the",
+      );
       const skillLoaded = request.toolResults.some((result) => result.name === "load_skill");
       const sqlRan = request.toolResults.some((result) => result.name === "run_sql");
       const reporterRan = request.toolResults.some((result) => result.name === "reporter");
@@ -57,7 +59,7 @@ function buildMockModel(): LanguageModel {
           ],
         };
       }
-      if (reporterAvailable && !reporterRan) {
+      if (mustDelegateSummary && reporterAvailable && !reporterRan) {
         return {
           toolCalls: [
             {
