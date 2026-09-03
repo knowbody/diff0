@@ -242,6 +242,46 @@ describe("renderMarkdown structure", () => {
     expect(defaultView?.match(/Skill `unit-conversion`/g)).toHaveLength(1);
   });
 
+  it("uses precise summary labels and puts agent changes before lower-level drift", () => {
+    const md = renderMarkdown(driftOnlyYellowReport());
+    const defaultView = md.split("<details>")[0];
+
+    expect(defaultView).toContain("Evals passing every run");
+    expect(defaultView).toContain("Tool calls / run (agents excluded)");
+    expect(md).toContain("Uncached input tokens");
+    expect(md).toContain("Tool calls (agents excluded)");
+    expect(defaultView).toContain("### Observed behavioral differences");
+
+    const skillIndex = defaultView.indexOf("Skill `unit-conversion`");
+    const toolPathIndex = defaultView.indexOf("Tool path");
+    expect(skillIndex).toBeGreaterThan(-1);
+    expect(toolPathIndex).toBeGreaterThan(skillIndex);
+  });
+
+  it("states confirmed behavioral drift directly in the warning", () => {
+    const base = buildRuns(
+      "main",
+      "aaa1111",
+      Array.from({ length: 5 }, (_, index) => ({
+        evals: { revenue: true },
+        subagentCalls: [{ name: "reporter", evalName: "revenue" }],
+        finalOutputs: { revenue: { hash: `base-${index % 2}` } },
+      })),
+    );
+    const head = buildRuns(
+      "feat",
+      "bbb2222",
+      Array.from({ length: 5 }, (_, index) => ({
+        evals: { revenue: true },
+        finalOutputs: { revenue: { hash: `head-${index % 2}` } },
+      })),
+    );
+    const report = computeDelta(base, head, { now: FIXED_NOW });
+    const md = renderMarkdown(report);
+    expect(md).toContain("Confirmed behavioral drift requires review.");
+    expect(report.verdictSummary).toContain("additional behavioral differences inconclusive");
+  });
+
   it("changed-files section carries the correlational note", () => {
     const md = renderMarkdown(driftOnlyYellowReport());
     expect(md).toContain("File attribution is correlational, not causal.");

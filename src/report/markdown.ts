@@ -106,7 +106,7 @@ export function renderMarkdown(report: DeltaReport): string {
   renderOverview(report, lines);
 
   if (report.drift.hasDrift || report.drift.hasInconclusive) {
-    lines.push("### Behavioral changes");
+    lines.push("### Observed behavioral differences");
     lines.push("");
     renderDriftSummary(report, lines);
   }
@@ -176,7 +176,7 @@ export function renderMarkdown(report: DeltaReport): string {
     [
       ["Metric", "Base (median)", "Head (median)", "Δ"],
       metricCells("Cost / session", report.costPerf.costUsd, formatUsd, "no cost data"),
-      metricCells("Tokens in", report.costPerf.tokensIn, formatInt, "no token data"),
+      metricCells("Uncached input tokens", report.costPerf.tokensIn, formatInt, "no token data"),
       metricCells("Tokens out", report.costPerf.tokensOut, formatInt, "no token data"),
       metricCells("Cache-read tokens", report.costPerf.cacheReadTokens, formatInt, "no token data"),
       metricCells(
@@ -231,10 +231,12 @@ export function renderMarkdown(report: DeltaReport): string {
 
 function calloutSummary(report: DeltaReport): string {
   if (report.verdict !== "yellow") return `${safeText(report.verdictSummary)}.`;
-  return (
-    `No confirmed eval regressions across ${runsPhrase(report.meta)}. ` +
-    "Review the highlighted changes below."
-  );
+  const prefix = `No confirmed eval regressions across ${runsPhrase(report.meta)}.`;
+  if (report.drift.hasDrift) return `${prefix} Confirmed behavioral drift requires review.`;
+  if (report.drift.hasInconclusive) {
+    return `${prefix} Observed behavioral differences require review.`;
+  }
+  return `${prefix} Review the highlighted changes below.`;
 }
 
 function comparisonLine(report: DeltaReport): string {
@@ -268,12 +270,12 @@ function renderOverview(report: DeltaReport, lines: string[]): void {
   const rows = [
     ["Signal", "Base", "Head", "Change"],
     [
-      "Passing evals",
+      "Evals passing every run",
       `${basePassing}/${report.evals.length}`,
       `${headPassing}/${report.evals.length}`,
       evalDelta === 0 ? "unchanged" : `${evalDelta > 0 ? "+" : ""}${evalDelta}`,
     ],
-    metricCells("Tool calls / run", toolCalls, formatInt, "no run data"),
+    metricCells("Tool calls / run (agents excluded)", toolCalls, formatInt, "no run data"),
   ];
   if (report.costPerf.costUsd.base !== null && report.costPerf.costUsd.head !== null) {
     rows.push(metricCells("Cost / run", report.costPerf.costUsd, formatUsd, "no cost data"));
@@ -369,6 +371,20 @@ function renderDriftSummary(report: DeltaReport, lines: string[]): void {
     ]);
   }
 
+  for (const group of groupEvidence(
+    subagents,
+    (item) =>
+      `${item.name}\0${item.baseUsedRuns}/${item.baseTotalRuns}\0${item.headUsedRuns}/${item.headTotalRuns}\0${item.confidence}`,
+  )) {
+    const item = group.item;
+    rows.push([
+      `Subagent ${inlineCode(item.name)}`,
+      `${item.baseUsedRuns}/${item.baseTotalRuns} runs`,
+      `${item.headUsedRuns}/${item.headTotalRuns} runs`,
+      `${evidenceScope(group)} · ${confidenceLabel(item.confidence)}`,
+    ]);
+  }
+
   const divergentSequences = toolSequences.filter((item) => item.divergenceNote !== null);
   for (const group of groupEvidence(
     divergentSequences,
@@ -395,20 +411,6 @@ function renderDriftSummary(report: DeltaReport, lines: string[]): void {
       `${inlineCode(item.name)} calls`,
       `${item.baseMedianCalls}/run`,
       `${item.headMedianCalls}/run`,
-      `${evidenceScope(group)} · ${confidenceLabel(item.confidence)}`,
-    ]);
-  }
-
-  for (const group of groupEvidence(
-    subagents,
-    (item) =>
-      `${item.name}\0${item.baseUsedRuns}/${item.baseTotalRuns}\0${item.headUsedRuns}/${item.headTotalRuns}\0${item.confidence}`,
-  )) {
-    const item = group.item;
-    rows.push([
-      `Subagent ${inlineCode(item.name)}`,
-      `${item.baseUsedRuns}/${item.baseTotalRuns} runs`,
-      `${item.headUsedRuns}/${item.headTotalRuns} runs`,
       `${evidenceScope(group)} · ${confidenceLabel(item.confidence)}`,
     ]);
   }
@@ -658,7 +660,7 @@ function renderRunTable(
   pushTable(
     lines,
     [
-      ["Run", "Evals passed", "Tool calls", "Skills loaded", "Cost", "Duration"],
+      ["Run", "Evals passed", "Tool calls (agents excluded)", "Skills loaded", "Cost", "Duration"],
       ...summaries.map((run) => [
         String(run.runIndex + 1),
         `${run.evalsPassed}/${run.evalsTotal}`,

@@ -38,5 +38,7 @@ jobs:
       - uses: ./action
         with:
           working-directory: fixtures/demo-agent
-          runs: "3"
+          # Five runs can statistically confirm a deterministic 5/5 -> 0/5
+          # process change after the report's multiple-comparison correction.
+          runs: "5"
           fail-on: regression
