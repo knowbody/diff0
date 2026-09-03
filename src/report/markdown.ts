@@ -3,6 +3,7 @@
  * verdict, status, and caveat is precomputed in the DeltaReport; this file
  * only formats. Honest framing shows up as "X of N runs" everywhere.
  */
+import { markdownTable } from "markdown-table";
 import type {
   DeltaReport,
   EvalDelta,
@@ -112,15 +113,19 @@ export function renderMarkdown(report: DeltaReport): string {
 
   lines.push("### Eval results");
   lines.push("");
-  lines.push("| Eval | Base | Head | Result |");
-  lines.push("| :-- | :--: | :--: | :-- |");
-  for (const e of report.evals) {
-    lines.push(
-      `| ${inlineCode(e.name)} | ${passCell(e.basePassed, e.baseTotal)} | ` +
-        `${passCell(e.headPassed, e.headTotal)} | ${compactStatusCell(e)} |`,
-    );
-  }
-  lines.push("");
+  pushTable(
+    lines,
+    [
+      ["Eval", "Base", "Head", "Result"],
+      ...report.evals.map((e) => [
+        inlineCode(e.name),
+        passCell(e.basePassed, e.baseTotal),
+        passCell(e.headPassed, e.headTotal),
+        compactStatusCell(e),
+      ]),
+    ],
+    ["l", "c", "c", "l"],
+  );
 
   lines.push("<details>");
   lines.push("<summary><strong>Full comparison details</strong></summary>");
@@ -141,15 +146,19 @@ export function renderMarkdown(report: DeltaReport): string {
 
   lines.push("#### Eval evidence");
   lines.push("");
-  lines.push("| Eval | Base | Head | Statistical result |");
-  lines.push("| :-- | :--: | :--: | :-- |");
-  for (const e of report.evals) {
-    lines.push(
-      `| ${inlineCode(e.name)} | ${passCell(e.basePassed, e.baseTotal)} | ` +
-        `${passCell(e.headPassed, e.headTotal)} | ${statusCell(e)} |`,
-    );
-  }
-  lines.push("");
+  pushTable(
+    lines,
+    [
+      ["Eval", "Base", "Head", "Statistical result"],
+      ...report.evals.map((e) => [
+        inlineCode(e.name),
+        passCell(e.basePassed, e.baseTotal),
+        passCell(e.headPassed, e.headTotal),
+        statusCell(e),
+      ]),
+    ],
+    ["l", "c", "c", "l"],
+  );
 
   lines.push("#### Behavioral evidence");
   lines.push("");
@@ -162,19 +171,24 @@ export function renderMarkdown(report: DeltaReport): string {
 
   lines.push("#### Cost & performance");
   lines.push("");
-  lines.push("| Metric | Base (median) | Head (median) | Δ |");
-  lines.push("| :-- | --: | --: | :-- |");
-  lines.push(metricRow("Cost / session", report.costPerf.costUsd, formatUsd, "no cost data"));
-  lines.push(metricRow("Tokens in", report.costPerf.tokensIn, formatInt, "no token data"));
-  lines.push(metricRow("Tokens out", report.costPerf.tokensOut, formatInt, "no token data"));
-  lines.push(
-    metricRow("Cache-read tokens", report.costPerf.cacheReadTokens, formatInt, "no token data"),
+  pushTable(
+    lines,
+    [
+      ["Metric", "Base (median)", "Head (median)", "Δ"],
+      metricCells("Cost / session", report.costPerf.costUsd, formatUsd, "no cost data"),
+      metricCells("Tokens in", report.costPerf.tokensIn, formatInt, "no token data"),
+      metricCells("Tokens out", report.costPerf.tokensOut, formatInt, "no token data"),
+      metricCells("Cache-read tokens", report.costPerf.cacheReadTokens, formatInt, "no token data"),
+      metricCells(
+        "Cache-write tokens",
+        report.costPerf.cacheWriteTokens,
+        formatInt,
+        "no token data",
+      ),
+      metricCells("Duration", report.costPerf.durationMs, formatDuration, "no timing data"),
+    ],
+    ["l", "r", "r", "l"],
   );
-  lines.push(
-    metricRow("Cache-write tokens", report.costPerf.cacheWriteTokens, formatInt, "no token data"),
-  );
-  lines.push(metricRow("Duration", report.costPerf.durationMs, formatDuration, "no timing data"));
-  lines.push("");
 
   if (meta.gitDiffStat !== null) {
     lines.push("#### Changed files");
@@ -251,24 +265,26 @@ function renderOverview(report: DeltaReport, lines: string[]): void {
   ).length;
   const evalDelta = headPassing - basePassing;
   const toolCalls = metricFromRuns(report.runSummaries.base, report.runSummaries.head);
-
-  lines.push("| Signal | Base | Head | Change |");
-  lines.push("| :-- | --: | --: | :-- |");
-  lines.push(
-    `| Passing evals | ${basePassing}/${report.evals.length} | ${headPassing}/${report.evals.length} | ` +
-      `${evalDelta === 0 ? "unchanged" : `${evalDelta > 0 ? "+" : ""}${evalDelta}`} |`,
-  );
-  lines.push(metricRow("Tool calls / run", toolCalls, formatInt, "no run data"));
+  const rows = [
+    ["Signal", "Base", "Head", "Change"],
+    [
+      "Passing evals",
+      `${basePassing}/${report.evals.length}`,
+      `${headPassing}/${report.evals.length}`,
+      evalDelta === 0 ? "unchanged" : `${evalDelta > 0 ? "+" : ""}${evalDelta}`,
+    ],
+    metricCells("Tool calls / run", toolCalls, formatInt, "no run data"),
+  ];
   if (report.costPerf.costUsd.base !== null && report.costPerf.costUsd.head !== null) {
-    lines.push(metricRow("Cost / run", report.costPerf.costUsd, formatUsd, "no cost data"));
+    rows.push(metricCells("Cost / run", report.costPerf.costUsd, formatUsd, "no cost data"));
   }
-  lines.push(
-    metricRow("Output tokens / run", report.costPerf.tokensOut, formatInt, "no token data"),
+  rows.push(
+    metricCells("Output tokens / run", report.costPerf.tokensOut, formatInt, "no token data"),
   );
-  lines.push(
-    metricRow("Duration / run", report.costPerf.durationMs, formatDuration, "no timing data"),
+  rows.push(
+    metricCells("Duration / run", report.costPerf.durationMs, formatDuration, "no timing data"),
   );
-  lines.push("");
+  pushTable(lines, rows, ["l", "r", "r", "l"]);
 }
 
 function metricFromRuns(base: RunSummary[], head: RunSummary[]): MetricDelta {
@@ -337,8 +353,7 @@ function confidenceLabel(confidence: string | null): string {
 
 function renderDriftSummary(report: DeltaReport, lines: string[]): void {
   const { skills, toolSequences, subagents, toolInputs, finalOutputs } = report.drift;
-  lines.push("| Signal | Base | Head | Scope |");
-  lines.push("| :-- | :-- | :-- | :-- |");
+  const rows = [["Signal", "Base", "Head", "Scope"]];
 
   for (const group of groupEvidence(
     skills,
@@ -346,10 +361,12 @@ function renderDriftSummary(report: DeltaReport, lines: string[]): void {
       `${item.name}\0${item.baseLoadedRuns}/${item.baseTotalRuns}\0${item.headLoadedRuns}/${item.headTotalRuns}\0${item.confidence}`,
   )) {
     const item = group.item;
-    lines.push(
-      `| Skill ${inlineCode(item.name)} | ${item.baseLoadedRuns}/${item.baseTotalRuns} runs | ` +
-        `${item.headLoadedRuns}/${item.headTotalRuns} runs | ${evidenceScope(group)} · ${confidenceLabel(item.confidence)} |`,
-    );
+    rows.push([
+      `Skill ${inlineCode(item.name)}`,
+      `${item.baseLoadedRuns}/${item.baseTotalRuns} runs`,
+      `${item.headLoadedRuns}/${item.headTotalRuns} runs`,
+      `${evidenceScope(group)} · ${confidenceLabel(item.confidence)}`,
+    ]);
   }
 
   const divergentSequences = toolSequences.filter((item) => item.divergenceNote !== null);
@@ -360,11 +377,12 @@ function renderDriftSummary(report: DeltaReport, lines: string[]): void {
       `${item.headMostCommon.join("\0")}\u0001${item.headMostCommonRuns}/${item.headTotalRuns}\u0001${item.divergenceConfidence}`,
   )) {
     const item = group.item;
-    lines.push(
-      `| Tool path | ${sequenceText(item.baseMostCommon)} (${item.baseMostCommonRuns}/${item.baseTotalRuns}) | ` +
-        `${sequenceText(item.headMostCommon)} (${item.headMostCommonRuns}/${item.headTotalRuns}) | ` +
-        `${evidenceScope(group)} · ${confidenceLabel(item.divergenceConfidence)} |`,
-    );
+    rows.push([
+      "Tool path",
+      `${sequenceText(item.baseMostCommon)} (${item.baseMostCommonRuns}/${item.baseTotalRuns})`,
+      `${sequenceText(item.headMostCommon)} (${item.headMostCommonRuns}/${item.headTotalRuns})`,
+      `${evidenceScope(group)} · ${confidenceLabel(item.divergenceConfidence)}`,
+    ]);
   }
 
   const toolCounts = toolSequences.flatMap((sequence) => sequence.callCountDeltas);
@@ -373,10 +391,12 @@ function renderDriftSummary(report: DeltaReport, lines: string[]): void {
     (item) => `${item.name}\0${item.baseMedianCalls}\0${item.headMedianCalls}\0${item.confidence}`,
   )) {
     const item = group.item;
-    lines.push(
-      `| ${inlineCode(item.name)} calls | ${item.baseMedianCalls}/run | ${item.headMedianCalls}/run | ` +
-        `${evidenceScope(group)} · ${confidenceLabel(item.confidence)} |`,
-    );
+    rows.push([
+      `${inlineCode(item.name)} calls`,
+      `${item.baseMedianCalls}/run`,
+      `${item.headMedianCalls}/run`,
+      `${evidenceScope(group)} · ${confidenceLabel(item.confidence)}`,
+    ]);
   }
 
   for (const group of groupEvidence(
@@ -385,10 +405,12 @@ function renderDriftSummary(report: DeltaReport, lines: string[]): void {
       `${item.name}\0${item.baseUsedRuns}/${item.baseTotalRuns}\0${item.headUsedRuns}/${item.headTotalRuns}\0${item.confidence}`,
   )) {
     const item = group.item;
-    lines.push(
-      `| Subagent ${inlineCode(item.name)} | ${item.baseUsedRuns}/${item.baseTotalRuns} runs | ` +
-        `${item.headUsedRuns}/${item.headTotalRuns} runs | ${evidenceScope(group)} · ${confidenceLabel(item.confidence)} |`,
-    );
+    rows.push([
+      `Subagent ${inlineCode(item.name)}`,
+      `${item.baseUsedRuns}/${item.baseTotalRuns} runs`,
+      `${item.headUsedRuns}/${item.headTotalRuns} runs`,
+      `${evidenceScope(group)} · ${confidenceLabel(item.confidence)}`,
+    ]);
   }
 
   for (const group of groupEvidence(
@@ -397,10 +419,12 @@ function renderDriftSummary(report: DeltaReport, lines: string[]): void {
       `${item.toolName}\0${item.occurrence}\0${item.baseHashRuns}\0${item.headHashRuns}\0${item.confidence}`,
   )) {
     const item = group.item;
-    lines.push(
-      `| ${inlineCode(item.toolName)} input #${item.occurrence} changed | ${item.baseHashRuns} captured | ` +
-        `${item.headHashRuns} captured | ${evidenceScope(group)} · ${confidenceLabel(item.confidence)} |`,
-    );
+    rows.push([
+      `${inlineCode(item.toolName)} input #${item.occurrence} changed`,
+      `${item.baseHashRuns} captured`,
+      `${item.headHashRuns} captured`,
+      `${evidenceScope(group)} · ${confidenceLabel(item.confidence)}`,
+    ]);
   }
 
   for (const group of groupEvidence(
@@ -409,12 +433,14 @@ function renderDriftSummary(report: DeltaReport, lines: string[]): void {
       `${item.baseCapturedRuns}/${item.baseTotalRuns}\0${item.headCapturedRuns}/${item.headTotalRuns}\0${item.confidence}`,
   )) {
     const item = group.item;
-    lines.push(
-      `| Final output changed | ${item.baseCapturedRuns}/${item.baseTotalRuns} captured | ` +
-        `${item.headCapturedRuns}/${item.headTotalRuns} captured | ${evidenceScope(group)} · ${confidenceLabel(item.confidence)} |`,
-    );
+    rows.push([
+      "Final output changed",
+      `${item.baseCapturedRuns}/${item.baseTotalRuns} captured`,
+      `${item.headCapturedRuns}/${item.headTotalRuns} captured`,
+      `${evidenceScope(group)} · ${confidenceLabel(item.confidence)}`,
+    ]);
   }
-  lines.push("");
+  pushTable(lines, rows, ["l", "l", "l", "l"]);
 }
 
 function validityLine(report: DeltaReport): string {
@@ -598,12 +624,12 @@ function sequenceText(sequence: string[]): string {
   return sequence.length === 0 ? "(no tool calls)" : inlineCode(sequence.join(" → "));
 }
 
-function metricRow(
+function metricCells(
   label: string,
   metric: MetricDelta,
   fmt: (v: number) => string,
   unavailableNote: string,
-): string {
+): string[] {
   const baseCell = metric.base ? medianWithRange(metric.base, fmt) : "—";
   const headCell = metric.head ? medianWithRange(metric.head, fmt) : "—";
   const deltaCell =
@@ -612,7 +638,12 @@ function metricRow(
       : metric.base === null || metric.head === null
         ? `unavailable (${unavailableNote})`
         : "n/a";
-  return `| ${label} | ${baseCell} | ${headCell} | ${deltaCell} |`;
+  return [label, baseCell, headCell, deltaCell];
+}
+
+function pushTable(lines: string[], rows: string[][], align: string[]): void {
+  lines.push(markdownTable(rows, { align, alignDelimiters: false }));
+  lines.push("");
 }
 
 function renderRunTable(
@@ -624,16 +655,19 @@ function renderRunTable(
 ): void {
   lines.push(`**${side} — ${inlineCode(ref)} @ ${inlineCode(shortSha(commitSha))}**`);
   lines.push("");
-  lines.push("| Run | Evals passed | Tool calls | Skills loaded | Cost | Duration |");
-  lines.push("| :-- | :-- | --: | :-- | --: | --: |");
-  for (const run of summaries) {
-    const skills =
-      run.skillsLoaded.length > 0 ? run.skillsLoaded.map(inlineCode).join(", ") : "none";
-    const cost = run.costUsd !== null && run.costUsd > 0 ? formatUsd(run.costUsd) : "—";
-    lines.push(
-      `| ${run.runIndex + 1} | ${run.evalsPassed}/${run.evalsTotal} | ${run.toolCallCount} | ` +
-        `${skills} | ${cost} | ${formatDuration(run.durationMs)} |`,
-    );
-  }
-  lines.push("");
+  pushTable(
+    lines,
+    [
+      ["Run", "Evals passed", "Tool calls", "Skills loaded", "Cost", "Duration"],
+      ...summaries.map((run) => [
+        String(run.runIndex + 1),
+        `${run.evalsPassed}/${run.evalsTotal}`,
+        String(run.toolCallCount),
+        run.skillsLoaded.length > 0 ? run.skillsLoaded.map(inlineCode).join(", ") : "none",
+        run.costUsd !== null && run.costUsd > 0 ? formatUsd(run.costUsd) : "—",
+        formatDuration(run.durationMs),
+      ]),
+    ],
+    ["l", "l", "r", "l", "r", "r"],
+  );
 }
