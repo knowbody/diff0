@@ -15120,10 +15120,10 @@ function runsPhrase2(meta) {
   const noun = (n) => n === 1 ? "run" : "runs";
   return b === h ? `${b} ${noun(b)} per ref` : `${b} base ${noun(b)} / ${h} head ${noun(h)}`;
 }
-function medianWithRange(stats, fmt) {
-  const base = fmt(stats.median);
-  if (stats.min === stats.max) return base;
-  return `${base} (${fmt(stats.min)}\u2013${fmt(stats.max)})`;
+function medianWithRange(stats2, fmt) {
+  const base = fmt(stats2.median);
+  if (stats2.min === stats2.max) return base;
+  return `${base} (${fmt(stats2.min)}\u2013${fmt(stats2.max)})`;
 }
 
 // src/harness/runner.ts
@@ -15443,29 +15443,60 @@ var STATUS_TEXT = {
   "missing-base": "\u2795 added",
   "missing-head": "\u2796 removed"
 };
+var VERDICT_CALLOUT = {
+  green: { kind: "TIP", label: "No review blockers found." },
+  yellow: { kind: "WARNING", label: "Review recommended." },
+  red: { kind: "CAUTION", label: "Regression detected." }
+};
 function renderMarkdown(report) {
   const lines = [];
   const { meta } = report;
   const phrase = runsPhrase2(meta);
   lines.push(REPORT_MARKER);
-  lines.push(
-    `## diff0: ${safeText(meta.base.ref)}...${safeText(meta.head.ref)} ${VERDICT_EMOJI[report.verdict]}`
-  );
+  lines.push(`## diff0 report ${VERDICT_EMOJI[report.verdict]}`);
   lines.push("");
-  lines.push(`**${safeText(report.verdictSummary)}.**`);
+  const callout = VERDICT_CALLOUT[report.verdict];
+  lines.push(`> [!${callout.kind}]`);
+  lines.push(`> **${callout.label}** ${calloutSummary(report)}`);
+  lines.push("");
+  lines.push(comparisonLine(report));
+  lines.push("");
+  lines.push("### At a glance");
+  lines.push("");
+  renderOverview(report, lines);
+  if (report.drift.hasDrift || report.drift.hasInconclusive) {
+    lines.push("### Behavioral changes");
+    lines.push("");
+    renderDriftSummary(report, lines);
+  }
+  lines.push("### Eval results");
+  lines.push("");
+  lines.push("| Eval | Base | Head | Result |");
+  lines.push("| :-- | :--: | :--: | :-- |");
+  for (const e of report.evals) {
+    lines.push(
+      `| ${inlineCode(e.name)} | ${passCell(e.basePassed, e.baseTotal)} | ${passCell(e.headPassed, e.headTotal)} | ${compactStatusCell(e)} |`
+    );
+  }
+  lines.push("");
+  lines.push("<details>");
+  lines.push("<summary><strong>Full comparison details</strong></summary>");
+  lines.push("");
+  lines.push("#### Run configuration");
   lines.push("");
   lines.push(validityLine(report));
   lines.push("");
   if (meta.mismatches.length > 0) {
-    lines.push("> **\u26A0\uFE0F Comparison validity warnings**");
+    lines.push("**\u26A0\uFE0F Comparison validity warnings**");
+    lines.push("");
     for (const mismatch of meta.mismatches) {
-      lines.push(`> - ${safeText(mismatch)}`);
+      lines.push(`- ${safeText(mismatch)}`);
     }
     lines.push("");
   }
-  lines.push("### Evals");
+  lines.push("#### Eval evidence");
   lines.push("");
-  lines.push("| Eval | Base | Head | Status |");
+  lines.push("| Eval | Base | Head | Statistical result |");
   lines.push("| :-- | :--: | :--: | :-- |");
   for (const e of report.evals) {
     lines.push(
@@ -15473,7 +15504,7 @@ function renderMarkdown(report) {
     );
   }
   lines.push("");
-  lines.push("### Behavioral drift");
+  lines.push("#### Behavioral evidence");
   lines.push("");
   if (!report.drift.hasDrift && !report.drift.hasInconclusive) {
     lines.push(`No behavioral drift detected across ${phrase}.`);
@@ -15481,7 +15512,7 @@ function renderMarkdown(report) {
   } else {
     renderDrift(report, lines);
   }
-  lines.push("### Cost & performance");
+  lines.push("#### Cost & performance");
   lines.push("");
   lines.push("| Metric | Base (median) | Head (median) | \u0394 |");
   lines.push("| :-- | --: | --: | :-- |");
@@ -15497,7 +15528,7 @@ function renderMarkdown(report) {
   lines.push(metricRow("Duration", report.costPerf.durationMs, formatDuration, "no timing data"));
   lines.push("");
   if (meta.gitDiffStat !== null) {
-    lines.push("### Changed files");
+    lines.push("#### Changed files");
     lines.push("");
     for (const file of meta.gitDiffStat.files) {
       lines.push(`- ${inlineCode(file.path)} (+${file.insertions} \u2212${file.deletions})`);
@@ -15508,17 +15539,20 @@ function renderMarkdown(report) {
     );
     lines.push("");
   }
-  lines.push("<details>");
-  lines.push("<summary>Per-run raw summaries</summary>");
+  lines.push("#### Per-run summaries");
   lines.push("");
   renderRunTable(lines, "base", meta.base.ref, meta.base.commitSha, report.runSummaries.base);
   renderRunTable(lines, "head", meta.head.ref, meta.head.commitSha, report.runSummaries.head);
-  lines.push("</details>");
-  lines.push("");
-  for (const caveat of report.caveats) {
-    lines.push(`> \u26A0\uFE0F ${safeText(caveat)}`);
+  if (report.caveats.length > 0) {
+    lines.push("#### Caveats");
+    lines.push("");
+    for (const caveat of report.caveats) {
+      lines.push(`- \u26A0\uFE0F ${safeText(caveat)}`);
+    }
     lines.push("");
   }
+  lines.push("</details>");
+  lines.push("");
   lines.push("---");
   lines.push("");
   lines.push(
@@ -15526,6 +15560,156 @@ function renderMarkdown(report) {
   );
   return `${lines.join("\n")}
 `;
+}
+function calloutSummary(report) {
+  if (report.verdict !== "yellow") return `${safeText(report.verdictSummary)}.`;
+  return `No confirmed eval regressions across ${runsPhrase2(report.meta)}. Review the highlighted changes below.`;
+}
+function comparisonLine(report) {
+  const { meta } = report;
+  return `Comparing ${refLabel(meta.base.ref, meta.base.commitSha)} \u2192 ${refLabel(meta.head.ref, meta.head.commitSha)} \xB7 ${runsPhrase2(meta)} \xB7 model ${inlineCode(
+    meta.base.model === meta.head.model ? meta.base.model : `${meta.base.model} \u2192 ${meta.head.model}`
+  )}`;
+}
+function refLabel(ref, commitSha) {
+  const display = /^[0-9a-f]{40}$/i.test(ref) ? shortSha2(ref) : ref;
+  const suffix = display === shortSha2(commitSha) ? "" : ` (${shortSha2(commitSha)})`;
+  return inlineCode(`${display}${suffix}`);
+}
+function renderOverview(report, lines) {
+  const basePassing = report.evals.filter(
+    (evalDelta2) => evalDelta2.baseTotal > 0 && evalDelta2.basePassed === evalDelta2.baseTotal
+  ).length;
+  const headPassing = report.evals.filter(
+    (evalDelta2) => evalDelta2.headTotal > 0 && evalDelta2.headPassed === evalDelta2.headTotal
+  ).length;
+  const evalDelta = headPassing - basePassing;
+  const toolCalls = metricFromRuns(report.runSummaries.base, report.runSummaries.head);
+  lines.push("| Signal | Base | Head | Change |");
+  lines.push("| :-- | --: | --: | :-- |");
+  lines.push(
+    `| Passing evals | ${basePassing}/${report.evals.length} | ${headPassing}/${report.evals.length} | ${evalDelta === 0 ? "unchanged" : `${evalDelta > 0 ? "+" : ""}${evalDelta}`} |`
+  );
+  lines.push(metricRow("Tool calls / run", toolCalls, formatInt, "no run data"));
+  if (report.costPerf.costUsd.base !== null && report.costPerf.costUsd.head !== null) {
+    lines.push(metricRow("Cost / run", report.costPerf.costUsd, formatUsd, "no cost data"));
+  }
+  lines.push(
+    metricRow("Output tokens / run", report.costPerf.tokensOut, formatInt, "no token data")
+  );
+  lines.push(
+    metricRow("Duration / run", report.costPerf.durationMs, formatDuration, "no timing data")
+  );
+  lines.push("");
+}
+function metricFromRuns(base, head) {
+  const baseStats = stats(base.map((run) => run.toolCallCount));
+  const headStats = stats(head.map((run) => run.toolCallCount));
+  return {
+    base: baseStats,
+    head: headStats,
+    deltaPct: baseStats !== null && headStats !== null && baseStats.median !== 0 ? (headStats.median - baseStats.median) / baseStats.median * 100 : null
+  };
+}
+function stats(values) {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const first = sorted[0];
+  if (first === void 0) return null;
+  const middle = Math.floor(sorted.length / 2);
+  const upper = sorted[middle] ?? first;
+  const median3 = sorted.length % 2 === 0 ? ((sorted[middle - 1] ?? upper) + upper) / 2 : upper;
+  return { median: median3, min: first, max: sorted[sorted.length - 1] ?? first };
+}
+function groupEvidence(items, key) {
+  const groups = /* @__PURE__ */ new Map();
+  for (const item of items) {
+    const id = key(item);
+    const existing = groups.get(id);
+    if (existing) {
+      if (item.evalName === null) existing.unattributed = true;
+      else existing.evalNames.add(item.evalName);
+      continue;
+    }
+    groups.set(id, {
+      item,
+      evalNames: new Set(item.evalName === null ? [] : [item.evalName]),
+      unattributed: item.evalName === null
+    });
+  }
+  return [...groups.values()];
+}
+function evidenceScope(group) {
+  if (group.unattributed && group.evalNames.size === 0) return "overall";
+  if (group.unattributed) return `${group.evalNames.size} evals + overall`;
+  const onlyEval = group.evalNames.values().next().value;
+  if (group.evalNames.size === 1 && onlyEval !== void 0) return inlineCode(onlyEval);
+  return `${group.evalNames.size} evals`;
+}
+function confidenceLabel(confidence) {
+  return confidence === "statistically-confirmed" ? "confirmed" : String(confidence);
+}
+function renderDriftSummary(report, lines) {
+  const { skills, toolSequences, subagents, toolInputs, finalOutputs } = report.drift;
+  lines.push("| Signal | Base | Head | Scope |");
+  lines.push("| :-- | :-- | :-- | :-- |");
+  for (const group of groupEvidence(
+    skills,
+    (item) => `${item.name}\0${item.baseLoadedRuns}/${item.baseTotalRuns}\0${item.headLoadedRuns}/${item.headTotalRuns}\0${item.confidence}`
+  )) {
+    const item = group.item;
+    lines.push(
+      `| Skill ${inlineCode(item.name)} | ${item.baseLoadedRuns}/${item.baseTotalRuns} runs | ${item.headLoadedRuns}/${item.headTotalRuns} runs | ${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)} |`
+    );
+  }
+  const divergentSequences = toolSequences.filter((item) => item.divergenceNote !== null);
+  for (const group of groupEvidence(
+    divergentSequences,
+    (item) => `${item.baseMostCommon.join("\0")}${item.baseMostCommonRuns}/${item.baseTotalRuns}${item.headMostCommon.join("\0")}${item.headMostCommonRuns}/${item.headTotalRuns}${item.divergenceConfidence}`
+  )) {
+    const item = group.item;
+    lines.push(
+      `| Tool path | ${sequenceText(item.baseMostCommon)} (${item.baseMostCommonRuns}/${item.baseTotalRuns}) | ${sequenceText(item.headMostCommon)} (${item.headMostCommonRuns}/${item.headTotalRuns}) | ${evidenceScope(group)} \xB7 ${confidenceLabel(item.divergenceConfidence)} |`
+    );
+  }
+  const toolCounts = toolSequences.flatMap((sequence) => sequence.callCountDeltas);
+  for (const group of groupEvidence(
+    toolCounts,
+    (item) => `${item.name}\0${item.baseMedianCalls}\0${item.headMedianCalls}\0${item.confidence}`
+  )) {
+    const item = group.item;
+    lines.push(
+      `| ${inlineCode(item.name)} calls | ${item.baseMedianCalls}/run | ${item.headMedianCalls}/run | ${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)} |`
+    );
+  }
+  for (const group of groupEvidence(
+    subagents,
+    (item) => `${item.name}\0${item.baseUsedRuns}/${item.baseTotalRuns}\0${item.headUsedRuns}/${item.headTotalRuns}\0${item.confidence}`
+  )) {
+    const item = group.item;
+    lines.push(
+      `| Subagent ${inlineCode(item.name)} | ${item.baseUsedRuns}/${item.baseTotalRuns} runs | ${item.headUsedRuns}/${item.headTotalRuns} runs | ${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)} |`
+    );
+  }
+  for (const group of groupEvidence(
+    toolInputs,
+    (item) => `${item.toolName}\0${item.occurrence}\0${item.baseHashRuns}\0${item.headHashRuns}\0${item.confidence}`
+  )) {
+    const item = group.item;
+    lines.push(
+      `| ${inlineCode(item.toolName)} input #${item.occurrence} changed | ${item.baseHashRuns} captured | ${item.headHashRuns} captured | ${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)} |`
+    );
+  }
+  for (const group of groupEvidence(
+    finalOutputs,
+    (item) => `${item.baseCapturedRuns}/${item.baseTotalRuns}\0${item.headCapturedRuns}/${item.headTotalRuns}\0${item.confidence}`
+  )) {
+    const item = group.item;
+    lines.push(
+      `| Final output changed | ${item.baseCapturedRuns}/${item.baseTotalRuns} captured | ${item.headCapturedRuns}/${item.headTotalRuns} captured | ${evidenceScope(group)} \xB7 ${confidenceLabel(item.confidence)} |`
+    );
+  }
+  lines.push("");
 }
 function validityLine(report) {
   const { meta } = report;
@@ -15545,6 +15729,24 @@ function validityLine(report) {
     meta.totalComparisonCostUsd !== null ? `comparison cost ${formatUsd(meta.totalComparisonCostUsd)} (${meta.costSource})` : "comparison cost unavailable"
   );
   return parts.join(" \xB7 ");
+}
+function compactStatusCell(e) {
+  let cell = STATUS_TEXT[e.status];
+  if (e.softScores && e.softScores.delta !== 0) {
+    const sign = e.softScores.delta >= 0 ? "+" : "";
+    cell += ` \xB7 score ${e.softScores.baseMedian} \u2192 ${e.softScores.headMedian} (${sign}${e.softScores.delta})`;
+  }
+  if (e.status === "partial-base" || e.status === "partial-head" || e.status === "partial-both") {
+    const coverage = [];
+    if (e.baseTotal < e.baseExpectedRuns) {
+      coverage.push(`base ${e.baseTotal}/${e.baseExpectedRuns} runs`);
+    }
+    if (e.headTotal < e.headExpectedRuns) {
+      coverage.push(`head ${e.headTotal}/${e.headExpectedRuns} runs`);
+    }
+    cell += ` \xB7 coverage ${coverage.join(", ")}`;
+  }
+  return cell;
 }
 function statusCell(e) {
   let cell = STATUS_TEXT[e.status];

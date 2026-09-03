@@ -146,11 +146,12 @@ describe("renderMarkdown structure", () => {
     }
   });
 
-  it("always includes the collapsible per-run details block", () => {
+  it("always includes the collapsible full-details block", () => {
     for (const [, build] of SCENARIOS) {
       const md = renderMarkdown(build());
       expect(md).toContain("<details>");
-      expect(md).toContain("<summary>Per-run raw summaries</summary>");
+      expect(md).toContain("<summary><strong>Full comparison details</strong></summary>");
+      expect(md).toContain("#### Per-run summaries");
       expect(md).toContain("</details>");
     }
   });
@@ -223,6 +224,22 @@ describe("renderMarkdown structure", () => {
     const md = renderMarkdown(driftOnlyYellowReport());
     expect(md).toContain("loaded in 3 of 3 base runs → 1 of 3 head runs");
     expect(md).toContain("+38%");
+  });
+
+  it("deduplicates repeated evidence in the default view", () => {
+    const report = driftOnlyYellowReport();
+    const skill = report.drift.skills[0];
+    if (skill === undefined) throw new Error("expected skill drift fixture");
+    report.drift.skills = [
+      { ...skill, evalName: "weather/forecast" },
+      { ...skill, evalName: "weather/brooklyn" },
+    ];
+
+    const defaultView = renderMarkdown(report).split("<details>")[0];
+    expect(defaultView).toContain(
+      "| Skill `unit-conversion` | 3/3 runs | 1/3 runs | 2 evals · inconclusive |",
+    );
+    expect(defaultView?.match(/Skill `unit-conversion`/g)).toHaveLength(1);
   });
 
   it("changed-files section carries the correlational note", () => {
