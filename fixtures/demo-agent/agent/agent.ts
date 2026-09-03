@@ -5,7 +5,7 @@ import { resolveDemoModel } from "./lib/demo-model";
 
 /**
  * Deterministic mock model, context-sensitive on the system prompt — the
- * credential-free CI mode of this fixture (see agent/lib/demo-model.ts for
+ * deterministic test mode of this fixture (see agent/lib/demo-model.ts for
  * when it is active vs a real gateway model).
  *
  * The mock follows the two process rules used by the public drift demo:

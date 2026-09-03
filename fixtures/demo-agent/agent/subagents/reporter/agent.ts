@@ -3,7 +3,7 @@ import { mockModel } from "eve/evals";
 import { resolveDemoModel } from "../../lib/demo-model";
 
 /**
- * Declared subagent. In credential-free CI mode it uses its own deterministic
+ * Declared subagent. In deterministic test mode it uses its own scripted
  * mock model — a fixed one-line summary, so parent delegation is fully
  * reproducible. With gateway credentials (or an explicit DIFF0_DEMO_MODEL
  * model id) it runs the same real model as the root analyst, keeping keyed

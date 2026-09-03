@@ -126,12 +126,13 @@ then runs classifier, analyst, implementer, and independent reviewer stations an
 `eve/*` draft pull request. The factory cannot merge, and marking a pull request ready remains a
 human decision.
 
-Every same-repository pull request runs the credential-free diff0 engine dogfood check against
-`fixtures/demo-agent`; fork pull requests run ordinary CI and require maintainer review before the
-behavioral comparison. Agent source changes are compiled, unit tested, and inspected by ordinary
-CI. Real-model comparisons remain an explicit local maintainer operation: running ref-selected
-agent code with reusable model or storage credentials in GitHub Actions would expose those
-credentials to the code being evaluated.
+Relevant pull requests authored and triggered by the repository owner run the diff0 dogfood check
+against `fixtures/demo-agent` with the real `anthropic/claude-haiku-4.5` model and ten runs per ref.
+Superseded runs are cancelled, diff0 applies a per-comparison spend limit, and the gateway key has
+an independent provider-side lifetime cap. Fork and collaborator-authored pull requests run
+ordinary CI without receiving the model credential. This restriction matters because diff0
+executes agent and eval code from both refs; copy the trust policy only if it matches who may push
+branches inside your repository.
 
 The Action supports named sticky-report keys so multiple behavioral reports can coexist on one PR.
 This is the intended loop: Eve improves diff0, conventional CI checks the CLI, and diff0 checks
@@ -309,24 +310,21 @@ Running an eval suite 2×N times costs real money on real models. The levers:
   values. If usage spans multiple models, step attribution is incomplete, or delegated usage has
   no model identity, the internal `pricingModel` is null and diff0 refuses to guess a token price.
 
-## Credential-free CI mode
+## Deterministic test mode
 
-diff0's demo agent ([fixtures/demo-agent](https://github.com/knowbody/diff0/tree/main/fixtures/demo-agent)) — and therefore diff0's own test
-suite and dogfood workflow — runs with **zero credentials and zero model spend** when no API key
-is present. This is not a stub of the pipeline: every run uses the real eve runtime — a real dev
-server, real tool calls (`run_sql`), real skill loading (`revenue-definitions`), real subagent
-delegation (`reporter`). Only the LLM is scripted: eve's own deterministic `mockModel()`, made
-context-sensitive to the system prompt so that editing `agent/instructions.md` produces genuine,
-measurable behavior drift. That is what lets CI (and you) exercise the entire
-worktree → install → eval → report pipeline deterministically, without secrets in any workflow —
-diff0's own CI and its dogfood PR run exactly this way.
+diff0's demo agent ([fixtures/demo-agent](https://github.com/knowbody/diff0/tree/main/fixtures/demo-agent)) can run with **zero credentials and zero model spend** when no API key is present. This
+is not a stub of the pipeline: every run uses the real eve runtime — a real dev server, real tool
+calls (`run_sql`), real skill loading (`revenue-definitions`), and real subagent delegation
+(`reporter`). Only the LLM is scripted with eve's deterministic `mockModel()`. The test suite pins
+this mode to stay hermetic; the public dogfood PR workflow deliberately supplies a guarded gateway
+credential and runs the real model instead.
 
 The moment a gateway credential is present, the same fixture switches to a real model by default.
 Selection is controlled by one env var:
 
 | `DIFF0_DEMO_MODEL` | Behavior |
 | :-- | :-- |
-| unset (auto) | Real `anthropic/claude-haiku-4.5` when `AI_GATEWAY_API_KEY` or `VERCEL_OIDC_TOKEN` is set; otherwise the deterministic mock (credential-free CI mode). |
+| unset (auto) | Real `anthropic/claude-haiku-4.5` when `AI_GATEWAY_API_KEY` or `VERCEL_OIDC_TOKEN` is set; otherwise the deterministic mock. |
 | `mock` | Always the deterministic mock, even when credentials are present. diff0's own integration tests pin this so they never spend. |
 | any other non-empty value | Used verbatim as an AI Gateway model id (e.g. `anthropic/claude-sonnet-4.5`). Requires gateway credentials at run time. |
 

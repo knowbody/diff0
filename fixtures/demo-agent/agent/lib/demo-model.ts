@@ -1,7 +1,7 @@
 import type { LanguageModel } from "ai";
 
 /**
- * Demo model selection — the switch behind diff0's credential-free CI mode.
+ * Demo model selection for real comparisons and deterministic tests.
  *
  * Three modes, resolved in priority order:
  *
@@ -13,8 +13,8 @@ import type { LanguageModel } from "ai";
  *    AI_GATEWAY_API_KEY or VERCEL_OIDC_TOKEN at run time.
  * 3. Unset (auto) — the real default model when gateway credentials are
  *    detected in the environment; otherwise the mock. This makes real-model
- *    runs the default the moment a key exists, while CI and tests keep
- *    running credential-free with eve's scripted-LLM mock.
+ *    runs the default the moment a key exists, while hermetic tests use
+ *    eve's scripted-LLM mock.
  *
  * Both the root analyst agent and the reporter subagent resolve through this
  * helper: a keyed run is real end to end, a credential-free run is
@@ -27,7 +27,7 @@ export const DEMO_REAL_MODEL = "anthropic/claude-haiku-4.5";
 export interface DemoModelSelection {
   /** Value for defineAgent's `model`: a gateway id string or a mock instance. */
   readonly model: string | LanguageModel;
-  /** True when the deterministic mock is active (credential-free CI mode). */
+  /** True when the deterministic mock is active. */
   readonly isMock: boolean;
 }
 
