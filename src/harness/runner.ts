@@ -1,11 +1,11 @@
 /**
  * N-run comparison orchestration: worktrees for both refs, probe, one
  * sandbox inference for the whole comparison, base-ref cache consultation,
- * and INTERLEAVED execution (base run 1, head run 1, base run 2, ...) so
- * time-of-day provider drift lands on both refs evenly.
+ * and COUNTERBALANCED execution (AB, then BA) so provider/time-order drift
+ * does not consistently advantage one ref.
  *
  * Collaborators are injectable (adapter, worktree factory, sandbox probe,
- * agent-info probe) so the interleaving/cache/cleanup logic is unit-testable
+ * agent-info probe) so the run-order/cache/cleanup logic is unit-testable
  * without eve or real worktrees.
  */
 
@@ -27,6 +27,7 @@ import type {
   RunRecord,
   SandboxBackend,
 } from "../types.js";
+import { getEvalHarnessChanges } from "./gitdiff.js";
 import { type InferredSandboxBackend, inferSandboxBackend } from "./sandbox.js";
 import {
   type CreateWorktreeOptions,
@@ -135,6 +136,7 @@ export interface RunComparisonOptions {
   resolveRef?: typeof resolveRef;
   readCache?: typeof readCache;
   writeCache?: typeof writeCache;
+  getEvalHarnessChanges?: typeof getEvalHarnessChanges;
 }
 
 export interface ComparisonRunMeta {
@@ -147,6 +149,8 @@ export interface ComparisonRunMeta {
   sandboxInferred: true;
   baseCacheHit: boolean;
   runsPerRef: number;
+  /** Preflight findings that cap an apparent regression at yellow. */
+  validityMismatches: string[];
 }
 
 export interface ComparisonResult {
@@ -193,10 +197,23 @@ export async function runComparison(opts: RunComparisonOptions): Promise<Compari
   const resolveGitRef = opts.resolveRef ?? resolveRef;
   const loadCache = opts.readCache ?? readCache;
   const saveCache = opts.writeCache ?? writeCache;
+  const inspectEvalHarness = opts.getEvalHarnessChanges ?? getEvalHarnessChanges;
 
   // Fail fast on unknown refs BEFORE paying for any worktree install.
   const baseSha = await resolveGitRef(opts.repoPath, opts.baseRef);
   const headSha = await resolveGitRef(opts.repoPath, opts.headRef);
+  const evalHarnessChanges = await inspectEvalHarness(opts.repoPath, baseSha, headSha, appDir);
+  const displayedEvalChanges = evalHarnessChanges?.slice(0, 5) ?? [];
+  const omittedEvalChanges = (evalHarnessChanges?.length ?? 0) - displayedEvalChanges.length;
+  const validityMismatches =
+    evalHarnessChanges !== null && evalHarnessChanges.length > 0
+      ? [
+          `eval harness differs between refs (${evalHarnessChanges.length} file${evalHarnessChanges.length === 1 ? "" : "s"}): ` +
+            `${displayedEvalChanges.join(", ")}${omittedEvalChanges > 0 ? `, and ${omittedEvalChanges} more` : ""}. ` +
+            "Outcome changes may come from evaluator changes rather than agent behavior.",
+        ]
+      : [];
+  for (const mismatch of validityMismatches) progress(`warning: ${mismatch}`);
 
   const worktrees: WorktreeHandle[] = [];
   try {
@@ -284,7 +301,8 @@ export async function runComparison(opts: RunComparisonOptions): Promise<Compari
       return runOptions;
     };
 
-    // Interleaved execution: base i, head i, base i+1, head i+1, ...
+    // Counterbalanced execution: base/head on even runs, head/base on odd
+    // runs. This spreads provider warm-up and time-order effects across refs.
     const headRuns: RunRecord[] = [];
     const totalRuns = baseCacheHit ? opts.runs : opts.runs * 2;
     let completed = 0;
@@ -313,37 +331,38 @@ export async function runComparison(opts: RunComparisonOptions): Promise<Compari
       }
     };
 
-    for (let i = 0; i < opts.runs; i++) {
-      if (!baseCacheHit) {
-        let record: RunRecord;
-        try {
-          record = await adapter.runEvalSuite(opts.baseRef, baseSha, runOptionsFor(baseCwd, i));
-        } catch (error) {
-          if (error instanceof EvalFilterNoMatchError || error instanceof CommandInterruptedError) {
-            throw error;
-          }
-          throw new EvalRunError("base", opts.baseRef, i, error);
-        }
-        baseRuns.push(record);
-        executedRecords.push(record);
-        completed += 1;
-        progress(`[${completed}/${totalRuns}] base run ${i + 1}: ${runSummaryPhrase(record)}`);
-        checkSpend();
-      }
+    const runSide = async (side: "base" | "head", runIndex: number): Promise<void> => {
+      const isBase = side === "base";
+      const ref = isBase ? opts.baseRef : opts.headRef;
+      const commitSha = isBase ? baseSha : headSha;
+      const cwd = isBase ? baseCwd : headCwd;
       let record: RunRecord;
       try {
-        record = await adapter.runEvalSuite(opts.headRef, headSha, runOptionsFor(headCwd, i));
+        record = await adapter.runEvalSuite(ref, commitSha, runOptionsFor(cwd, runIndex));
       } catch (error) {
         if (error instanceof EvalFilterNoMatchError || error instanceof CommandInterruptedError) {
           throw error;
         }
-        throw new EvalRunError("head", opts.headRef, i, error);
+        throw new EvalRunError(side, ref, runIndex, error);
       }
-      headRuns.push(record);
+      (isBase ? baseRuns : headRuns).push(record);
       executedRecords.push(record);
       completed += 1;
-      progress(`[${completed}/${totalRuns}] head run ${i + 1}: ${runSummaryPhrase(record)}`);
+      progress(
+        `[${completed}/${totalRuns}] ${side} run ${runIndex + 1}: ${runSummaryPhrase(record)}`,
+      );
       checkSpend();
+    };
+
+    for (let i = 0; i < opts.runs; i++) {
+      if (baseCacheHit) {
+        await runSide("head", i);
+        continue;
+      }
+      const order: Array<"base" | "head"> = i % 2 === 0 ? ["base", "head"] : ["head", "base"];
+      for (const side of order) {
+        await runSide(side, i);
+      }
     }
 
     // Persist fresh base runs for the next comparison against this base.
@@ -370,6 +389,7 @@ export async function runComparison(opts: RunComparisonOptions): Promise<Compari
         sandboxInferred: true,
         baseCacheHit,
         runsPerRef: opts.runs,
+        validityMismatches,
       },
     };
   } finally {

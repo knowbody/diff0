@@ -6,10 +6,42 @@
  */
 
 import { execFile } from "node:child_process";
+import { posix } from "node:path";
 import { promisify } from "node:util";
 import type { GitDiffFileStat, GitDiffStat } from "../analyze/types.js";
 
 const execFileAsync = promisify(execFile);
+
+/**
+ * Return evaluator files changed between the compared commits. These files
+ * define what "pass" means, so changing them confounds an agent comparison.
+ * null is reserved for an unexpected git failure.
+ */
+export async function getEvalHarnessChanges(
+  repoPath: string,
+  baseSha: string,
+  headSha: string,
+  appDir: string,
+): Promise<string[] | null> {
+  let stdout: string;
+  try {
+    ({ stdout } = await execFileAsync(
+      "git",
+      ["-C", repoPath, "diff", "--name-only", "--no-renames", "-z", baseSha, headSha],
+      { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
+    ));
+  } catch {
+    return null;
+  }
+
+  const normalizedAppDir =
+    appDir === "." ? "" : `${appDir.split("\\").join("/").replace(/\/$/, "")}/`;
+  const evalPrefix = `${posix.join(normalizedAppDir, "evals")}/`;
+  return stdout
+    .split("\0")
+    .filter((path) => path.startsWith(evalPrefix))
+    .sort();
+}
 
 /**
  * Line stats per changed file between baseSha and headSha. Binary files

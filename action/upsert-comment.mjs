@@ -56,12 +56,41 @@ export function prepareReportBody(body, commentKey = "") {
 export const MAX_BODY_LENGTH = 65000;
 
 const TRUNCATION_NOTICE =
-  "\n\n> ⚠️ Report truncated: it exceeded GitHub's 65,536-character comment limit.";
+  "\n\n> ⚠️ Report truncated at a line boundary because it exceeded GitHub's comment limit. " +
+  "The complete Markdown remains at the Action's `report-md` output; upload that path as a workflow artifact to retain it.";
 
 /** Truncate a comment body to fit GitHub's limit, appending a notice when cut. */
 export function truncateBody(body) {
   if (body.length <= MAX_BODY_LENGTH) return body;
-  return body.slice(0, MAX_BODY_LENGTH) + TRUNCATION_NOTICE;
+  const budget = MAX_BODY_LENGTH - TRUNCATION_NOTICE.length;
+  const candidate = body.slice(0, budget);
+  const lastNewline = candidate.lastIndexOf("\n");
+  const safeEnd = lastNewline > 0 ? lastNewline : budget;
+  return body.slice(0, safeEnd) + TRUNCATION_NOTICE;
+}
+
+function markdownText(value) {
+  return String(value || "unknown")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll("|", "&#124;");
+}
+
+/** Sticky failure body used when the CLI exits before it can write a report. */
+export function failureReportBody({ cliExit, baseRef, headRef, headSha }) {
+  return `${REPORT_MARKER}
+
+## diff0 could not produce a report
+
+> ❌ The comparison stopped with CLI exit code **${markdownText(cliExit)}**. See the failed workflow step for the exact error.
+
+| Input | Value |
+| --- | --- |
+| Base | ${markdownText(baseRef)} |
+| Head | ${markdownText(headRef)} |
+| Workflow commit | ${markdownText(headSha)} |
+
+This comment replaced the previous diff0 result so it cannot be mistaken for the current run.`;
 }
 
 /** Extract the rel="next" URL from an RFC 5988 Link header, or null. */
@@ -229,7 +258,17 @@ async function main() {
   try {
     body = readFileSync(reportPath, "utf8");
   } catch (error) {
-    throw new Error(`Could not read the markdown report at ${reportPath}: ${errorMessage(error)}`);
+    if (!process.env.CLI_EXIT) {
+      throw new Error(
+        `Could not read the markdown report at ${reportPath}: ${errorMessage(error)}`,
+      );
+    }
+    body = failureReportBody({
+      cliExit: process.env.CLI_EXIT,
+      baseRef: process.env.BASE_REF,
+      headRef: process.env.HEAD_REF,
+      headSha: process.env.HEAD_SHA,
+    });
   }
   if (!body.includes(REPORT_MARKER)) {
     throw new Error(

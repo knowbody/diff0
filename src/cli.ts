@@ -159,6 +159,7 @@ function exitCodeForError(error: unknown): 2 | 3 | 4 {
     /is not a git repository/i.test(message) ||
     /was not found in/i.test(message) ||
     /eve is not installed/i.test(message) ||
+    /working tree has uncommitted changes/i.test(message) ||
     /runs must be a positive integer/i.test(message)
   ) {
     return 2;
@@ -249,6 +250,7 @@ async function executeRun(flags: RunFlags, io: CliIo, seams?: CliHarnessSeams): 
       sandboxInferred: meta.sandboxInferred,
       gitDiffStat,
       baseCacheHit: meta.baseCacheHit,
+      validityMismatches: meta.validityMismatches,
     };
     if (priced.costSource !== "unavailable") deltaOptions.costSource = priced.costSource;
 

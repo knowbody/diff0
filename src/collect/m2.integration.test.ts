@@ -2,7 +2,7 @@
  * The full `diff0 run` pipeline against fixtures/demo-agent.
  *
  * Scratch git repo with base/head refs (head = cosmetic instructions tweak),
- * then the REAL CLI (runCli in-process for coverage): N-run interleaved
+ * then the REAL CLI (runCli in-process for coverage): N-run counterbalanced
  * comparison, pricing, delta, terminal render, report files, and — on the
  * second invocation — the base-ref cache hit.
  */
@@ -132,11 +132,11 @@ describe("diff0 run end to end", () => {
     expect(result.stdout).toContain("CHANGED FILES");
     expect(result.stdout).toContain("agent/instructions.md");
 
-    // Progress went to stderr, interleaved, with run counters.
+    // Progress went to stderr in counterbalanced order, with run counters.
     expect(result.stderr).toContain("base cache miss");
     expect(result.stderr).toContain("[1/4] base run 1");
     expect(result.stderr).toContain("[2/4] head run 1");
-    expect(result.stderr).toContain("[4/4] head run 2");
+    expect(result.stderr).toContain("[4/4] base run 2");
     expect(result.stderr).toContain("wrote base cache");
 
     // Markdown report: marker first for the Action's comment upsert.

@@ -23,7 +23,7 @@ diff0 run --base <ref> [--head <ref>] [options]
 | `--timeout <ms>` | eve default | Per-eval timeout (passed to `eve eval --timeout`) |
 | `--max-concurrency <n>` | eve default | Passed to `eve eval --max-concurrency` |
 | `--install-mode <mode>` | `scripts-off` | `scripts-off` disables dependency lifecycle/build scripts; `scripts-on` enables them for reviewed refs |
-| `--max-spend <usd>` | none | Measured-cost cap; abort (exit 4) when cumulative attributable cost would exceed it |
+| `--max-spend <usd>` | none | Measured-cost stop threshold; checked after each atomic suite run, so it may overshoot by one run |
 | `--report-md <path>` | none | Write the markdown report here |
 | `--report-json <path>` | none | Write the JSON report here |
 | `--json` | off | Print the JSON report to stdout instead of the terminal render |
@@ -34,7 +34,9 @@ diff0 run --base <ref> [--head <ref>] [options]
 Compatibility: `safe` and `trusted` are deprecated aliases for `scripts-off` and `scripts-on`.
 
 Behavior:
-- Checks out `base` and `head` into isolated worktrees (never touches the working tree).
+- Checks out `base` and `head` into isolated worktrees (never touches the working tree). A literal
+  `HEAD` is rejected when the target checkout is dirty because uncommitted changes cannot enter a
+  detached worktree.
 - Installs only from exactly one committed lockfile per package root, using frozen/immutable mode.
   `--install-mode scripts-off` disables lifecycle/build scripts; `scripts-on` enables them for applications
   that require generated clients or native package setup. Installs never fall back to mutable resolution. Their
@@ -42,7 +44,8 @@ Behavior:
   and copied npm/Yarn registry config remain available for private dependencies. In `scripts-on`
   mode, repository-controlled install scripts can access that registry authentication. Install
   mode is part of the base-cache key because lifecycle scripts may change generated artifacts.
-- Interleaves runs: base run 0, head run 0, base run 1, head run 1, … (reduces time-of-day provider drift).
+- Counterbalances run order: base/head for even run indexes, head/base for odd indexes. This avoids
+  consistently assigning provider warm-up and time-order effects to one ref.
 - Before looking at outcomes, fixes a Holm correction family containing every eval with complete
   base and head coverage. Differing pass proportions receive a directional one-sided Fisher exact
   p-value; equal proportions remain in the family as p=1 hypotheses. At family-wise alpha 0.05, a
@@ -65,8 +68,9 @@ Behavior:
   plus repeated-name occurrence, not array position. A changed scorer set or scorer missing from
   any expected run is a comparison-validity warning; sparse coverage is not summarized as a soft
   score delta.
-- Any comparison-validity mismatch — model, Eve version, sandbox, run count, scored-check set, or
-  scored-check coverage — caps the top-level verdict at yellow. Eval rows retain their evidence
+- Any comparison-validity mismatch — changed files under the selected app's `evals/` directory,
+  model, Eve version, sandbox, run count, scored-check set, or scored-check coverage — caps the
+  top-level verdict at yellow. Eval rows retain their evidence
   and may say `regressed`, but the summary calls these apparent regressions confounded by validity;
   a mismatched comparison never produces a red gate.
 - Fisher-tested skill and subagent drift may be labeled `statistically-confirmed`. Their two-sided
@@ -86,7 +90,7 @@ Exit codes:
 - `0` — ran to completion; fail-on policy satisfied (note: drift alone is 0 under the default policy)
 - `1` — fail-on policy violated (a Holm-adjusted or operational eval regression; or drift when
   `--fail-on drift`)
-- `2` — usage/config error: not a git repo, unknown ref, eve not installed in target, **no eval suites**
+- `2` — usage/config error: not a git repo, unknown ref, dirty literal `HEAD`, eve not installed in target, **no eval suites**
   (prints the teaching message with a 5-line example eval), bad flag values
 - `3` — execution error: eval run crashed / eve exit code 2 / install failure
 - `4` — `--max-spend` exceeded (partial results discarded; message says how far it got)
@@ -144,7 +148,7 @@ src/report/markdown.ts). The Action upserts the PR comment containing that marke
 | `evals` | all | Eval filter |
 | `install-mode` | `scripts-off` | `scripts-off` disables install scripts; `scripts-on` enables them for reviewed refs |
 | `fail-on` | `regression` | `regression` \| `drift` \| `never` — when to fail the check |
-| `max-spend` | none | Measured-cost USD cap passed through; unavailable cost cannot be enforced |
+| `max-spend` | none | Measured-cost stop threshold; checked after each suite run and may overshoot by one run; unavailable cost cannot be enforced |
 | `working-directory` | `.` | Where the eve app lives (maps to CLI `--app-dir`; the repo root is always the workflow checkout) |
 | `github-token` | `${{ github.token }}` | For the sticky comment (needs `pull-requests: write`) |
 | `comment-key` | empty | Stable key for an independent sticky report when one PR runs multiple comparisons |
@@ -155,7 +159,8 @@ upserts the sticky PR comment for its `comment-key` (find by marker, edit; else 
 step outcome from the exit code + `fail-on` (drift under default policy = neutral, comment still
 posted). An empty key preserves the original `<!-- diff0-report -->` marker.
 The caller must use `actions/checkout` with `persist-credentials: false`; the Action refuses a
-checkout-persisted HTTP auth header because evaluated head code could recover that job token.
+checkout-persisted HTTP auth header or checkout v7 `includeIf` credential config because evaluated
+head code could recover that job token.
 Fork PRs and `pull_request_target` are refused by default because evals, tools, subagents, and
 application code execute on the runner; in `scripts-on` install mode, dependency lifecycle/build
 scripts execute too. Fork comments are skipped because the ordinary `pull_request` token cannot

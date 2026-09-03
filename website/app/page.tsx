@@ -55,7 +55,7 @@ function Command({ command, inverse = false }: { command: string; inverse?: bool
       }`}
     >
       <code className="min-w-0 flex-1 overflow-x-auto font-mono text-[12px] whitespace-nowrap">
-        <span className={inverse ? "text-white/40" : "text-muted"}>$ </span>
+        <span className={inverse ? "text-white/60" : "text-muted"}>$ </span>
         {command}
       </code>
       <CopyButton text={command} />
@@ -74,7 +74,7 @@ function ResultRow({ label, from, to, tone = "neutral" }: {
   return (
     <div className="grid grid-cols-[1fr_auto_auto] items-center gap-4 border-t border-white/10 py-3.5 font-mono text-[11px] sm:grid-cols-[1fr_88px_88px] sm:text-xs">
       <span className={toneClass}>{label}</span>
-      <span className="text-right text-white/45">{from}</span>
+      <span className="text-right text-white/60">{from}</span>
       <span className="text-right text-white">{to}</span>
     </div>
   );
@@ -101,13 +101,19 @@ export default function Home() {
             </a>
           </div>
         </nav>
+        <nav aria-label="Section navigation" className="flex gap-5 overflow-x-auto border-t border-line px-5 py-2.5 text-xs text-muted md:hidden">
+          <a className="shrink-0" href="#product">Product</a>
+          <a className="shrink-0" href="#workflow">How it works</a>
+          <a className="shrink-0" href="#evidence">Evidence</a>
+          <a className="shrink-0" href="#quickstart">Quickstart</a>
+        </nav>
       </header>
 
       <main id="top">
         <section className="hero-grid relative overflow-hidden border-b border-line">
           <div className="mx-auto max-w-[1240px] px-5 pt-20 pb-14 text-center sm:px-8 sm:pt-28 lg:pt-36">
             <a href={SHOWCASE_PR} className="group mx-auto mb-8 inline-flex items-center gap-2 rounded-full border border-line bg-card px-3 py-1.5 text-xs text-muted shadow-sm transition-colors hover:text-fg">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2 py-0.5 font-mono text-[10px] font-semibold tracking-wider text-accent uppercase">v0.1.1</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2 py-0.5 font-mono text-[10px] font-semibold tracking-wider text-accent uppercase">v{showcase.releaseVersion}</span>
               See the live real-model run
               <span className="transition-transform group-hover:translate-x-0.5"><Arrow /></span>
             </a>
@@ -118,7 +124,7 @@ export default function Home() {
               <span className="font-editorial font-normal tracking-[-0.045em] italic">not just the diff.</span>
             </h1>
             <p className="mx-auto mt-8 max-w-[660px] text-lg leading-8 text-muted text-balance sm:text-xl">
-              diff0 compares how your agent behaves before and after a code change—so silent drift shows up before you merge it.
+              diff0 compares how your Eve agent behaves across two committed refs—so silent drift in your eval evidence shows up before you merge it.
             </p>
             <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <a href={SHOWCASE_PR} className="group inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-fg px-5 text-sm font-medium text-bg transition-transform hover:-translate-y-0.5 sm:w-auto">
@@ -139,40 +145,40 @@ export default function Home() {
                       <span className="h-2 w-2 rounded-full bg-white/15" />
                       <span className="h-2 w-2 rounded-full bg-white/15" />
                     </span>
-                    <span className="font-mono text-[11px] text-white/40">diff0 / {showcase.head.ref}</span>
+                    <span className="font-mono text-[11px] text-white/60">diff0 / {showcase.head.ref}</span>
                   </div>
-                  <span className="hidden items-center gap-2 font-mono text-[10px] tracking-wider text-white/35 uppercase sm:flex">
+                  <span className="hidden items-center gap-2 font-mono text-[10px] tracking-wider text-white/60 uppercase sm:flex">
                     <span className="h-1.5 w-1.5 rounded-full bg-[#61c978]" /> comparison complete
                   </span>
                 </div>
                 <div className="grid lg:grid-cols-[0.9fr_1.1fr]">
                   <div className="border-b border-white/10 p-5 sm:p-8 lg:border-r lg:border-b-0">
-                    <p className="mb-7 font-mono text-[10px] tracking-[0.16em] text-white/35 uppercase">source change</p>
+                    <p className="mb-7 font-mono text-[10px] tracking-[0.16em] text-white/60 uppercase">source change</p>
                     <div className="font-mono text-xs leading-7 text-white/60 sm:text-[13px]">
-                      <p className="text-white/35">agent/instructions.md</p>
+                      <p className="text-white/60">agent/instructions.md</p>
                       <p className="mt-3 rounded bg-[#ef5b5b]/10 px-2 text-[#ff8585]">− After computing a figure, delegate a one-line executive summary to the</p>
                       <p className="rounded bg-[#ef5b5b]/10 px-2 text-[#ff8585]">− `reporter` subagent before replying.</p>
                     </div>
                     <div className="mt-8 rounded-lg border border-white/10 bg-white/[0.035] p-4">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-white/45">Eval observations</span>
-                        <span className="inline-flex items-center gap-1.5 text-[#61c978]"><span className="h-1.5 w-1.5 rounded-full bg-current" />59 / 60 passed</span>
+                        <span className="text-white/60">Eval observations</span>
+                        <span className="inline-flex items-center gap-1.5 text-[#61c978]"><span className="h-1.5 w-1.5 rounded-full bg-current" />{showcase.evalObservationTotal.passed} / {showcase.evalObservationTotal.total} passed</span>
                       </div>
                     </div>
                   </div>
                   <div className="p-5 sm:p-8">
                     <div className="mb-5 flex items-start justify-between gap-4">
                       <div>
-                        <p className="font-mono text-[10px] tracking-[0.16em] text-white/35 uppercase">behavioral comparison</p>
+                        <p className="font-mono text-[10px] tracking-[0.16em] text-white/60 uppercase">behavioral comparison</p>
                         <p className="mt-2 text-lg font-medium text-white">Drift detected</p>
                       </div>
                       <span className="rounded-full border border-[#f5ae2d]/30 bg-[#f5ae2d]/10 px-2.5 py-1 font-mono text-[10px] text-[#f5ae2d]">review</span>
                     </div>
                     <ResultRow label={`${showcase.subagent.name} subagent`} from={showcase.subagent.base} to={showcase.subagent.head} tone="warning" />
                     <ResultRow label="eval observations" from={showcase.evalPasses.base} to={showcase.evalPasses.head} />
-                    <ResultRow label="output tokens / run" from="1,067" to="630" tone="good" />
-                    <ResultRow label="duration / run" from="21.0s" to="11.4s" tone="good" />
-                    <div className="mt-5 flex items-center gap-3 text-[11px] text-white/35">
+                    <ResultRow label="output tokens / run" from={showcase.featuredMetrics.outputTokens.baseShort} to={showcase.featuredMetrics.outputTokens.headShort} tone="good" />
+                    <ResultRow label="duration / run" from={showcase.featuredMetrics.duration.baseShort} to={showcase.featuredMetrics.duration.headShort} tone="good" />
+                    <div className="mt-5 flex items-center gap-3 text-[11px] text-white/60">
                       <span>Fisher exact + Holm adjustment</span><span>·</span><span>N={showcase.runsPerRef} per ref</span>
                     </div>
                   </div>
@@ -186,7 +192,7 @@ export default function Home() {
         <section className="border-b border-line" aria-label="Product principles">
           <div className="mx-auto grid max-w-[1240px] grid-cols-2 divide-x divide-line px-5 sm:px-8 md:grid-cols-4">
             {[
-              ["No SDK", "Wraps the eval suite you have"],
+              ["Eve-native", "Reads Eve eval and trace artifacts"],
               ["Two refs", "Base behavior vs. head behavior"],
               ["N runs", "Evidence, not anecdotes"],
               ["One comment", "The result lives in your PR"],
@@ -249,13 +255,13 @@ export default function Home() {
               <div className="lg:sticky lg:top-28">
                 <Eyebrow>How it works</Eyebrow>
                 <h2 className="max-w-[470px] text-[clamp(2.6rem,5vw,4.5rem)] leading-[1] font-medium tracking-[-0.055em]">Same repo.<br />Both realities.</h2>
-                <p className="mt-6 max-w-[430px] leading-7 text-muted">diff0 checks out both git refs, runs the same eval suite on each, and compares what the agent actually did.</p>
+                <p className="mt-6 max-w-[430px] leading-7 text-muted">diff0 checks out both committed refs, runs each ref&apos;s Eve eval suite, and flags evaluator changes that would make the outcomes incomparable.</p>
               </div>
             </div>
             <ol className="divide-y divide-line">
               {[
-                ["01", "Checkout", "Base and head run in isolated git worktrees. Your working tree stays untouched."],
-                ["02", "Run", "Existing Eve evals run N times per ref, interleaved to reduce provider drift."],
+                ["01", "Checkout", "Base and head run in isolated git worktrees. A dirty local HEAD is rejected so edits are never silently omitted."],
+                ["02", "Run", "Existing Eve evals run N times per ref in counterbalanced AB/BA order."],
                 ["03", "Collect", "Tool calls, subagents, skills, tokens, available cost, and duration come from Eve's own artifacts."],
                 ["04", "Report", "Statistical changes and stable trace drift land in the terminal and one sticky PR comment."],
               ].map(([n, title, copy]) => (
@@ -281,7 +287,7 @@ export default function Home() {
               <a href={SHOWCASE_PR} className="mt-7 inline-flex h-11 items-center gap-2 rounded-full bg-fg px-5 text-sm font-medium text-bg">Open PR #8 <Arrow diagonal /></a>
             </div>
             <div className="divide-y divide-line">
-              {[["Model", showcase.model], ["Runs", `${showcase.runsPerRef} per ref`], ["Output tokens", "median −41%"], ["Duration", "median −46%"], ["Cost", "unavailable; no savings claim"]].map(([label, value]) => (
+              {[["Model", showcase.model], ["Runs", `${showcase.runsPerRef} per ref`], ["Output tokens", `median ${showcase.featuredMetrics.outputTokens.delta.replace("-", "−")}`], ["Duration", `median ${showcase.featuredMetrics.duration.delta.replace("-", "−")}`], ["Cost", "unavailable; no savings claim"]].map(([label, value]) => (
                 <div key={label} className="flex items-center justify-between gap-5 px-7 py-5 text-sm"><span className="text-muted">{label}</span><span className="text-right font-mono text-xs">{value}</span></div>
               ))}
             </div>
@@ -292,13 +298,13 @@ export default function Home() {
           <div className="mx-auto max-w-[1240px] px-5 py-24 sm:px-8 sm:py-32">
             <div className="grid gap-16 lg:grid-cols-2 lg:gap-24">
               <div>
-                <p className="mb-5 flex items-center gap-2 font-mono text-[11px] tracking-[0.16em] text-white/45 uppercase"><span className="h-1.5 w-1.5 rounded-full bg-[#f5ae2d]" />Evidence, with limits</p>
+                <p className="mb-5 flex items-center gap-2 font-mono text-[11px] tracking-[0.16em] text-white/60 uppercase"><span className="h-1.5 w-1.5 rounded-full bg-[#f5ae2d]" />Evidence, with limits</p>
                 <h2 className="text-[clamp(2.7rem,5vw,4.75rem)] leading-[0.98] font-medium tracking-[-0.055em]">Honest about what the runs can prove.</h2>
                 <p className="mt-7 max-w-[520px] text-lg leading-8 text-white/55">diff0 separates regression, inconclusive movement, and behavioral drift. It shows uncertainty instead of painting every change red.</p>
               </div>
               <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10">
-                {[[`N=${showcase.runsPerRef}`, "runs per ref"], ["59 / 60", "eval observations passed"], ["0", "baseline files"], ["1", "sticky PR comment"]].map(([value, label]) => (
-                  <div key={label} className="bg-[#111] p-6 sm:p-8"><p className="font-mono text-2xl tracking-[-0.04em] sm:text-3xl">{value}</p><p className="mt-2 text-xs text-white/40">{label}</p></div>
+                {[[`N=${showcase.runsPerRef}`, "runs per ref"], [`${showcase.evalObservationTotal.passed} / ${showcase.evalObservationTotal.total}`, "eval observations passed"], ["1", "source file changed"], ["1", "sticky PR comment"]].map(([value, label]) => (
+                  <div key={label} className="bg-[#111] p-6 sm:p-8"><p className="font-mono text-2xl tracking-[-0.04em] sm:text-3xl">{value}</p><p className="mt-2 text-xs text-white/60">{label}</p></div>
                 ))}
               </div>
             </div>
@@ -306,12 +312,12 @@ export default function Home() {
               {[
                 ["Pass-rate evidence", "One-sided Fisher exact tests compare differing proportions across runs."],
                 ["Multiple comparisons", "Holm adjustment keeps a suite full of evals from manufacturing confidence."],
-                ["Validity caps", "Changed model, sandbox, run count, or scorer validity caps the verdict at yellow."],
+                ["Validity caps", "Changed eval harness, model, sandbox, run count, or scorer validity caps the verdict at yellow."],
               ].map(([title, copy]) => (
-                <div key={title} className="bg-[#111] p-7 sm:p-9"><div className="mb-10 h-8 w-8 rounded-full border border-white/15 bg-white/[0.03]" /><h3 className="font-medium">{title}</h3><p className="mt-2 text-sm leading-6 text-white/45">{copy}</p></div>
+                <div key={title} className="bg-[#111] p-7 sm:p-9"><div className="mb-10 h-8 w-8 rounded-full border border-white/15 bg-white/[0.03]" /><h3 className="font-medium">{title}</h3><p className="mt-2 text-sm leading-6 text-white/60">{copy}</p></div>
               ))}
             </div>
-            <p className="mt-7 max-w-[740px] text-sm leading-6 text-white/45">Drift is not automatically bad. In the showcase, removing delegation coincided with 41% fewer median output tokens and 46% lower median duration. Cost stayed unavailable because delegated base usage was not fully attributed, so diff0 makes no savings claim. The report makes the tradeoff legible; review makes the call.</p>
+            <p className="mt-7 max-w-[780px] text-sm leading-6 text-white/60">Drift is not automatically bad. diff0 reports only what Eve captured; it does not prove semantic equivalence or decide whether a change is desirable. In the showcase, removing delegation coincided with {showcase.featuredMetrics.outputTokens.delta.replace("-", "")} fewer median output tokens and {showcase.featuredMetrics.duration.delta.replace("-", "")} lower median duration. Cost stayed unavailable because delegated base usage was not fully attributed, so diff0 makes no savings claim.</p>
           </div>
         </section>
 
@@ -330,19 +336,19 @@ export default function Home() {
               <div className="cta-grid" aria-hidden="true" />
               <div className="relative grid gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
                 <div>
-                  <p className="mb-5 font-mono text-[11px] tracking-[0.16em] opacity-45 uppercase">Run it on your agent</p>
+                  <p className="mb-5 font-mono text-[11px] tracking-[0.16em] opacity-60 uppercase">Run it on your agent</p>
                   <h2 className="max-w-[530px] text-[clamp(2.6rem,5vw,4.6rem)] leading-[0.98] font-medium tracking-[-0.055em]">Compare two refs.<br />Review one report.</h2>
                   <p className="mt-6 max-w-[480px] leading-7 opacity-55">From a repository with an Eve eval suite, compare the branch you plan to merge against its base. No diff0 install step required.</p>
                 </div>
                 <div className="min-w-0"><Command command={RUN_CMD} inverse /></div>
               </div>
-              <div className="relative mt-12 border-t border-current/15 pt-8"><p className="mb-3 text-xs opacity-45">Want to inspect or develop diff0 itself?</p><Command command={CLONE_CMD} inverse /></div>
+              <div className="relative mt-12 border-t border-current/15 pt-8"><p className="mb-3 text-xs opacity-60">Want to inspect or develop diff0 itself?</p><Command command={CLONE_CMD} inverse /></div>
             </div>
 
             <div className="mt-16 grid gap-10 border-t border-line pt-12 lg:grid-cols-[1fr_1.2fr]">
               <div>
                 <h3 className="text-xl font-medium tracking-[-0.025em]">Add it to CI</h3>
-                <p className="mt-3 max-w-[430px] text-sm leading-6 text-muted">Run the comparison on pull requests and post the result as one self-updating comment. Fork PRs stay refused by default.</p>
+                <p className="mt-3 max-w-[430px] text-sm leading-6 text-muted">Run the comparison on pull requests and post one self-updating comment. The default blocks red regressions but reports yellow drift without failing; use <code>fail-on: drift</code> to gate both. Fork PRs stay refused by default.</p>
                 <div className="mt-5 inline-flex"><CopyButton text={actionYaml} label="Copy workflow YAML" /></div>
               </div>
               <div className="overflow-x-auto rounded-xl border border-line bg-codebg"><pre className="min-w-max px-5 py-5 font-mono text-[12px] leading-6">{actionYaml}</pre></div>

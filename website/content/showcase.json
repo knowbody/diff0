@@ -2,6 +2,7 @@
   "sourceUrl": "https://github.com/knowbody/diff0/pull/8#issuecomment-5526051643",
   "pullRequestUrl": "https://github.com/knowbody/diff0/pull/8",
   "capturedAt": "2026-09-03",
+  "releaseVersion": "0.1.1",
   "base": {
     "ref": "main",
     "commitSha": "c47e019864ec02fa42cdf2d853d6bbd841642e70"

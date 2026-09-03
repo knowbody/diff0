@@ -1,9 +1,9 @@
 import { execFileSync } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { getDiffStat } from "./gitdiff.js";
+import { getDiffStat, getEvalHarnessChanges } from "./gitdiff.js";
 
 function gitIn(repo: string, args: string[]): string {
   return execFileSync(
@@ -25,6 +25,8 @@ beforeAll(async () => {
 
   await writeFile(join(repo, "a.txt"), "one\ntwo\nthree\n", "utf8");
   await writeFile(join(repo, "img.bin"), Buffer.from([0x00, 0x01, 0x02, 0xff, 0x00, 0x7f]));
+  await mkdir(join(repo, "apps", "agent", "evals"), { recursive: true });
+  await writeFile(join(repo, "apps", "agent", "evals", "quality.eval.ts"), "expect(42);\n");
   gitIn(repo, ["add", "-A"]);
   gitIn(repo, ["commit", "-q", "-m", "one"]);
   sha1 = gitIn(repo, ["rev-parse", "HEAD"]).trim();
@@ -32,6 +34,7 @@ beforeAll(async () => {
   // a.txt: replace line 2, add line 4 -> 2 insertions, 1 deletion.
   await writeFile(join(repo, "a.txt"), "one\n2\nthree\nfour\n", "utf8");
   await writeFile(join(repo, "img.bin"), Buffer.from([0x00, 0xaa, 0xbb, 0x00, 0xcc, 0x00]));
+  await writeFile(join(repo, "apps", "agent", "evals", "quality.eval.ts"), "expect(43);\n");
   gitIn(repo, ["add", "-A"]);
   gitIn(repo, ["commit", "-q", "-m", "two"]);
   sha2 = gitIn(repo, ["rev-parse", "HEAD"]).trim();
@@ -47,9 +50,10 @@ describe("getDiffStat", () => {
     expect(stat).not.toBeNull();
     expect(stat?.files).toEqual([
       { path: "a.txt", insertions: 2, deletions: 1 },
+      { path: "apps/agent/evals/quality.eval.ts", insertions: 1, deletions: 1 },
       { path: "img.bin", insertions: 0, deletions: 0 },
     ]);
-    expect(stat?.summary).toBe("2 files changed, 2 insertions(+), 1 deletion(-)");
+    expect(stat?.summary).toBe("3 files changed, 3 insertions(+), 2 deletions(-)");
   });
 
   it("returns an empty stat for identical shas", async () => {
@@ -63,5 +67,20 @@ describe("getDiffStat", () => {
 
   it("returns null outside a git repository", async () => {
     expect(await getDiffStat(scratch, sha1, sha2)).toBeNull();
+  });
+});
+
+describe("getEvalHarnessChanges", () => {
+  it("finds evaluator changes under the selected app directory only", async () => {
+    await expect(getEvalHarnessChanges(repo, sha1, sha2, "apps/agent")).resolves.toEqual([
+      "apps/agent/evals/quality.eval.ts",
+    ]);
+    await expect(getEvalHarnessChanges(repo, sha1, sha2, ".")).resolves.toEqual([]);
+  });
+
+  it("returns null when git cannot inspect the refs", async () => {
+    await expect(
+      getEvalHarnessChanges(repo, sha1, "0000000000000000000000000000000000000000", "."),
+    ).resolves.toBeNull();
   });
 });

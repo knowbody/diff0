@@ -63,6 +63,8 @@ export interface ComputeDeltaOptions {
   now?: string;
   /** True when base records came from the opt-in cache rather than this comparison window. */
   baseCacheHit?: boolean;
+  /** Preflight findings that make the two refs unsuitable for a red/green comparison. */
+  validityMismatches?: string[];
 }
 
 export function computeDelta(
@@ -83,7 +85,7 @@ export function computeDelta(
     );
   }
 
-  const mismatches: string[] = [];
+  const mismatches: string[] = [...(opts.validityMismatches ?? [])];
   const base = buildRefMeta("base", baseRuns, opts.sandboxInferred ?? true, mismatches);
   const head = buildRefMeta("head", headRuns, opts.sandboxInferred ?? true, mismatches);
   collectCrossRefMismatches(base, head, mismatches);

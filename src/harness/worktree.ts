@@ -170,9 +170,30 @@ async function assertGitRepo(repoPath: string): Promise<void> {
   }
 }
 
+/**
+ * A literal HEAD comparison can only see the committed snapshot. Reject a
+ * dirty checkout instead of silently presenting uncommitted work as tested.
+ */
+export async function assertCleanHead(repoPath: string): Promise<void> {
+  const { stdout } = await git(repoPath, [
+    "status",
+    "--porcelain=v1",
+    "--untracked-files=all",
+    "--ignore-submodules=none",
+  ]);
+  if (stdout.length === 0) return;
+  const changedCount = stdout.split("\n").filter(Boolean).length;
+  throw new Error(
+    `working tree has uncommitted changes (${changedCount} path${changedCount === 1 ? "" : "s"}). ` +
+      'The ref "HEAD" means the committed HEAD snapshot, so those changes would be excluded. ' +
+      "Commit or stash them, or pass an explicit committed --head ref.",
+  );
+}
+
 /** Resolve a ref (branch, tag, SHA, HEAD~n, ...) to a full commit SHA. */
 export async function resolveRef(repoPath: string, ref: string): Promise<string> {
   await assertGitRepo(repoPath);
+  if (ref === "HEAD") await assertCleanHead(repoPath);
   try {
     const { stdout } = await git(repoPath, ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]);
     return stdout.trim();

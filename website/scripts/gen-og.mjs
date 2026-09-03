@@ -20,6 +20,9 @@ const showcase = JSON.parse(
   readFileSync(join(root, "content", "showcase.json"), "utf8"),
 );
 const reporter = showcase.subagent;
+const outputTokens = showcase.metrics.find((entry) => entry.label === "Output tokens / run");
+const duration = showcase.metrics.find((entry) => entry.label === "Duration / run");
+if (!outputTokens || !duration) throw new Error("Showcase metrics are incomplete.");
 
 const mono = readFileSync(join(fontDir, "geist-mono", "GeistMono-Regular.ttf"));
 const monoMedium = readFileSync(
@@ -94,7 +97,7 @@ const og = el(
     el(
       "div",
       { style: { display: "flex", fontSize: "30px", color: MUTED } },
-      `reporter: ${reporter.baseUsedRuns}/${reporter.baseTotalRuns} -> ${reporter.headUsedRuns}/${reporter.headTotalRuns} · output -41% · duration -46%`,
+      `reporter: ${reporter.baseUsedRuns}/${reporter.baseTotalRuns} -> ${reporter.headUsedRuns}/${reporter.headTotalRuns} · output ${outputTokens.delta} · duration ${duration.delta}`,
     ),
   ),
   el(

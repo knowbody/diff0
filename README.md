@@ -2,9 +2,10 @@
 
 **git diff shows what changed in the code. diff0 shows what changed in the agent.**
 
-diff0 compares an [Eve](https://eve.dev) agent across two Git refs. It runs the same eval suite
-several times on each ref, then reports changes in eval results, tool calls, skills, subagents,
-outputs, tokens, cost, and duration.
+diff0 compares an [Eve](https://eve.dev) agent across two committed Git refs. It runs each ref's
+Eve eval suite several times, then reports changes in eval results, tool calls, skills, subagents,
+outputs, tokens, attributable cost, and duration. If evaluator files changed too, diff0 marks the
+comparison as confounded and will not produce a red verdict.
 
 Use it locally from any Git repository that contains an Eve app and evals:
 
@@ -12,8 +13,9 @@ Use it locally from any Git repository that contains an Eve app and evals:
 npx @knowbody/diff0 run --base main
 ```
 
-That compares `main` with your current checkout. Nothing is installed globally and your working
-tree is not modified.
+That compares `main` with your committed `HEAD`. Nothing is installed globally and your working
+tree is not modified. A dirty `HEAD` is rejected so uncommitted edits cannot be silently omitted
+from the result.
 
 ## Why use it?
 
@@ -104,7 +106,7 @@ jobs:
           working-directory: .
           runs: "3"
           install-mode: scripts-off
-          fail-on: regression
+          fail-on: regression # yellow drift reports but does not block; use drift to gate it
 ```
 
 The Action posts one report comment and updates it on each push. `paths` prevents README-only and
@@ -117,8 +119,8 @@ deciding which pull-request authors and branches you trust with that credential.
 
 ## What the report means
 
-diff0 checks both refs out into temporary worktrees and interleaves repeated runs to reduce
-time-of-day provider drift. It then separates three outcomes:
+diff0 checks both refs out into temporary worktrees and counterbalances repeated runs (AB, then BA)
+to reduce systematic run-order bias. It then separates three outcomes:
 
 - **Green:** no regression or review-worthy drift was found.
 - **Yellow:** behavior changed, results were flaky or incomplete, or the evidence is inconclusive.
@@ -135,6 +137,11 @@ The report includes:
 Tool inputs and final outputs are fingerprinted. Raw values and reusable hashes are not included in
 public reports.
 
+The comparison observes only what Eve writes to its eval and trace artifacts. It does not prove
+semantic equivalence, judge whether drift is desirable, or isolate the model/provider from external
+state. Changes under the selected app's `evals/` directory are called out as a validity mismatch
+because the two refs may then be measuring different standards.
+
 For the statistical rules, JSON schema, exit codes, and full option list, read the
 [CLI contract](https://github.com/knowbody/diff0/blob/main/docs/cli-contract.md).
 
@@ -146,7 +153,7 @@ diff0 run --base <ref> [--head <ref>] [options]
 --runs <n>              runs per ref (default: 3)
 --evals <filter>        run selected eval ids or prefixes
 --app-dir <path>        Eve app path inside a monorepo
---max-spend <usd>       stop when measured spend crosses the cap
+--max-spend <usd>       stop after measured spend crosses the threshold
 --cache                 reuse fresh base runs for 24 hours
 --fail-on <policy>      regression, drift, or never
 --report-md <path>      write a Markdown report
@@ -168,6 +175,14 @@ A comparison runs the eval suite on both refs, so model spend scales with the nu
 - Configure workflow `paths` so documentation-only changes do not run diff0.
 
 Unavailable cost is always shown as unavailable, never `$0`.
+`--max-spend` is checked after each atomic suite run, so the final measured spend can exceed the
+threshold by one suite run. If Eve reports no attributable cost and the model is not priced in
+diff0's table, the threshold cannot be enforced.
+
+## Eve compatibility
+
+The end-to-end suite targets Eve `0.47.5`; parsing fixtures also cover result identity from Eve
+`0.29.5`. Other Eve versions may work, but they are not part of the tested compatibility boundary.
 
 ## Security
 
