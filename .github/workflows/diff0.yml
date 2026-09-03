@@ -1,12 +1,22 @@
 # Dogfood workflow: run diff0 on its own fixture agent.
 #
-# Every pull request behaviorally diffs fixtures/demo-agent between the PR
-# base and head, and upserts the sticky report comment on the PR. The demo
-# agent runs on eve's deterministic mock model, so this costs no provider
-# spend — it exists to prove the action end-to-end on every change.
+# Relevant pull requests behaviorally diff fixtures/demo-agent between the PR
+# base and head, and upsert the sticky report comment on the PR. The demo agent
+# runs on eve's deterministic mock model, so this costs no provider spend.
 name: diff0
 
-on: pull_request
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/diff0.yml"
+      - "action/**"
+      - "fixtures/demo-agent/**"
+      - "scripts/build-action.mjs"
+      - "src/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "prices.json"
+      - "tsconfig*.json"
 
 permissions:
   contents: read
