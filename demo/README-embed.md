@@ -3,7 +3,7 @@
 ## Snippet
 
 ```markdown
-![diff0 demo — git diff shows two deleted instruction lines, eve eval passes on the head branch, diff0 flags a YELLOW verdict on claude-haiku-4.5: the reporter subagent ran in 5 of 5 base runs but 0 of 5 head runs, with session cost down about a third](https://raw.githubusercontent.com/knowbody/diff0/main/demo/demo.gif)
+![Recorded diff0 CLI demo showing a real-model behavioral comparison after two reporter-delegation instruction lines are deleted](https://raw.githubusercontent.com/knowbody/diff0/main/demo/demo.gif)
 ```
 
 (Absolute URL so the image renders on the npm package page too.)
@@ -17,8 +17,10 @@ Optionally add a caption line under it:
 ## Current artifact
 
 `demo/demo.gif` — 556,574 bytes (543 KB), 121.2 s, 3030 frames @ 24 fps, 1040×1400 px
-(~100 cols). Recorded on the REAL model (`anthropic/claude-haiku-4.5`, visible in-frame in the
-validity line); the three beats:
+(~100 cols). This is a historical real-model capture from 2026-08-03
+(`anthropic/claude-haiku-4.5`, Eve 0.29.5, N=5). The current public source of truth is
+[showcase PR #8](https://github.com/knowbody/diff0/pull/8), which ran the same model with Eve 0.47.5
+and N=10 in GitHub Actions. The animation's three beats are:
 
 1. `# git diff tells you what changed in the code.` → `git diff main -- agent/instructions.md`
    shows exactly the two removed reporter-delegation lines.

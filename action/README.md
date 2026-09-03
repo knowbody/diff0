@@ -12,6 +12,10 @@ The action ships a checked-in CLI bundle. Consumers do **not** install diff0: `u
 takes. There are zero third-party action dependencies (run steps only). Bundled library licenses
 are retained in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
+[Showcase PR #8](https://github.com/knowbody/diff0/pull/8) is a permanent real-model example of
+the Action in use: 10 runs per ref on `anthropic/claude-haiku-4.5`, an owner-gated credential,
+one bot-authored sticky report, and no mock evidence presented as production output.
+
 ## Usage
 
 ```yaml
@@ -39,7 +43,7 @@ jobs:
     steps:
       # fetch-depth: 0 is REQUIRED — diff0 checks the base ref out into a
       # worktree, and a shallow clone does not contain it.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           # diff0 executes code from both refs. Do not leave the job token in
@@ -47,11 +51,11 @@ jobs:
           persist-credentials: false
 
       # Node 24 runs both the diff0 CLI and current Eve releases.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
 
-      - uses: knowbody/diff0/action@v0.1.0
+      - uses: knowbody/diff0/action@v0.1.1
         with:
           working-directory: . # path of your eve app within the repo
           runs: "3"
@@ -80,7 +84,7 @@ always-running gate the required check and conditionally run the diff0 job behin
 | `evals` | all | Eval filter |
 | `install-mode` | `scripts-off` | Disable install scripts (scripts-off) or allow them for reviewed refs (scripts-on) |
 | `fail-on` | `regression` | `regression` \| `drift` \| `never` — when to fail the check |
-| `max-spend` | none | USD cap passed through |
+| `max-spend` | none | Measured-cost USD cap passed through; unavailable cost cannot be enforced |
 | `working-directory` | `.` | Where the eve app lives (maps to CLI `--app-dir`; the repo root is always the workflow checkout) |
 | `github-token` | `${{ github.token }}` | For the sticky comment (needs `pull-requests: write`) |
 | `comment-key` | empty | Stable key for a separate sticky report when one PR compares multiple Eve apps |
@@ -119,6 +123,8 @@ Then the action enforces the `fail-on` **input**:
 - `actions/setup-node` with Node 24 before this action when using current Eve releases. The
   diff0 CLI itself supports Node >= 20. The action enables Corepack for pnpm and Yarn targets.
 - A Linux or macOS runner. Install Bun before this action when the target app uses a Bun lockfile.
+- The model credentials required by the target eval suite, unless it deliberately uses a local or
+  deterministic model. Expose credentials only after applying the trust guidance below.
 - `permissions: pull-requests: write` for the comment (the comment step is skipped on
   non-`pull_request` events).
 
@@ -138,7 +144,10 @@ eval and runtime code can read credentials intentionally exposed to the eval job
   PR head.
 - For untrusted contributions, use a disposable network-restricted runner with no secrets and a
   deterministic mock. Only then, if you accept the risk, set `allow-untrusted-head: true`.
-- Run credentialed real-model comparisons from a protected/manual workflow after review.
+- Run credentialed real-model comparisons from a protected/manual workflow after review, or use a
+  narrow repository-owner gate with a separately capped provider key. The
+  [diff0 dogfood workflow](https://github.com/knowbody/diff0/blob/main/.github/workflows/diff0.yml)
+  is a concrete example; do not copy its trust decision unless only the owner can satisfy it.
 - The Action exports its `github-token` input only to the sticky-comment step. Checkout is a
   separate token path: without `persist-credentials: false`, it leaves the job token readable in
   Git config by evaluated head code. Fork comments are skipped because the ordinary

@@ -5,6 +5,7 @@ import type { NextConfig } from "next";
 const websiteRoot = dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
+  agentRules: false,
   output: "export",
   trailingSlash: false,
   images: { unoptimized: true },

@@ -25,7 +25,7 @@ diff0's regression suite runs against small deterministic agent repositories wit
 injected. [fixtures/demo-agent](fixtures/demo-agent) is a
 revenue-analyst eve agent whose mock model is context-sensitive to its instructions, so tests can
 delete a rule on a branch and assert that diff0 reports exactly the resulting behavioral delta
-(a skill load disappearing, a subagent delegation dropping from 5/5 runs to 0/5) while all evals
+(a skill load disappearing or subagent delegation dropping across every repeated run) while evals
 stay green. Tests copy a fixture into a scratch git repo, commit base and head refs, and run the
 real pipeline end to end — worktrees, installs, `eve eval`, report. New drift shapes (tool-order
 changes, cost regressions, flaky evals) should arrive as new fixtures or new branches of existing

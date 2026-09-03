@@ -9,6 +9,7 @@ await build({
   define: { DIFF0_ACTION_BUNDLE: "true" },
   format: "esm",
   legalComments: "eof",
+  minify: true,
   outfile: "action/dist/cli.mjs",
   platform: "node",
   target: "node20",

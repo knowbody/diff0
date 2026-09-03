@@ -8,7 +8,8 @@ on:
   pull_request:
     paths:
       - ".github/workflows/diff0.yml"
-      - "action/**"
+      - "action/action.yml"
+      - "action/dist/**"
       - "fixtures/demo-agent/**"
       - "scripts/build-action.mjs"
       - "src/**"
@@ -43,7 +44,7 @@ jobs:
     steps:
       # fetch-depth: 0 is REQUIRED — diff0 checks the PR base ref out into
       # an isolated worktree, and a shallow clone would not contain it.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           # Head-controlled eval code must not be able to recover the job token
@@ -52,7 +53,7 @@ jobs:
 
       # Node >= 24: the fixture demo-agent's engines field requires it
       # (the diff0 CLI itself only needs >= 20).
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
 

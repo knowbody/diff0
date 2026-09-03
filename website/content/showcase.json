@@ -1,0 +1,90 @@
+{
+  "sourceUrl": "https://github.com/knowbody/diff0/pull/8#issuecomment-5526051643",
+  "pullRequestUrl": "https://github.com/knowbody/diff0/pull/8",
+  "capturedAt": "2026-09-03",
+  "base": {
+    "ref": "main",
+    "commitSha": "c47e019864ec02fa42cdf2d853d6bbd841642e70"
+  },
+  "head": {
+    "ref": "demo/diff0-showcase-v2",
+    "commitSha": "9a36e865613b6e64f74160e3699367a29e4c1f71"
+  },
+  "eveVersion": "0.47.5",
+  "model": "anthropic/claude-haiku-4.5",
+  "runsPerRef": 10,
+  "sandbox": "docker (inferred)",
+  "verdictIcon": "🟡",
+  "verdictSummary": "Review recommended. No confirmed eval regressions across 10 runs per ref. Confirmed behavioral drift requires review",
+  "evalObservations": {
+    "basePassed": 29,
+    "baseTotal": 30,
+    "headPassed": 30,
+    "headTotal": 30
+  },
+  "evalsPassingEveryRun": {
+    "base": "2/3",
+    "head": "3/3"
+  },
+  "evals": [
+    {
+      "name": "revenue/total-revenue",
+      "base": "9/10",
+      "head": "10/10",
+      "result": "🟡 higher pass rate (inconclusive)",
+      "statisticalResult": "score 1 → 1 (+0) · Fisher raw p=0.5 · Holm p=1"
+    },
+    {
+      "name": "revenue/no-failed-actions",
+      "base": "10/10",
+      "head": "10/10",
+      "result": "✅ pass",
+      "statisticalResult": "score 1 → 1 (+0)"
+    },
+    {
+      "name": "revenue/uses-sql-tool",
+      "base": "10/10",
+      "head": "10/10",
+      "result": "✅ pass",
+      "statisticalResult": "score 1 → 1 (+0)"
+    }
+  ],
+  "subagent": {
+    "name": "reporter",
+    "baseUsedRuns": 10,
+    "baseTotalRuns": 10,
+    "headUsedRuns": 0,
+    "headTotalRuns": 10,
+    "scope": "3 evals",
+    "confidence": "confirmed",
+    "rawPValue": "<0.0001",
+    "holmPValue": "<0.0001"
+  },
+  "metrics": [
+    {
+      "label": "Tool calls / run (agents excluded)",
+      "base": "6",
+      "head": "6",
+      "delta": "+0%"
+    },
+    {
+      "label": "Output tokens / run",
+      "base": "1,067 (960–1,455)",
+      "head": "630 (613–678)",
+      "delta": "-41%"
+    },
+    {
+      "label": "Duration / run",
+      "base": "21.0s (18.8s–25.2s)",
+      "head": "11.4s (10.7s–13.0s)",
+      "delta": "-46%"
+    }
+  ],
+  "costNote": "Comparison cost unavailable because delegated base usage was not fully attributed.",
+  "changedFile": {
+    "path": "fixtures/demo-agent/agent/instructions.md",
+    "insertions": 0,
+    "deletions": 2
+  },
+  "diffSummary": "1 file changed, 2 deletions(-)"
+}

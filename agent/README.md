@@ -44,7 +44,9 @@ export ALLOW_MUTATING_EVALS=1
 pnpm agent:eval --tag mutating
 ```
 
-Do not include mutating or credentialed real-model evals in automatic pull-request comparisons.
+Do not include this maintenance agent's mutating or connector-backed evals in automatic
+pull-request comparisons. The repository's separate demo fixture has no external write tools and
+is used by the narrowly owner-gated real-model dogfood workflow described in the root README.
 
 ## Deployment
 

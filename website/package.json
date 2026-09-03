@@ -1,12 +1,11 @@
 {
   "name": "diff0-website",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "packageManager": "pnpm@10.15.1",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "gen:transcript": "node scripts/gen-transcript.mjs",
     "gen:og": "node scripts/gen-og.mjs"
   },
   "dependencies": {

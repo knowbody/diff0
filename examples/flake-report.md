@@ -2,6 +2,11 @@
      2026-08-03. The raw runs, counts, timing, and cost below are unchanged. Eval labels have been
      updated to the current Fisher + complete-family Holm contract. No eval was contrived for
      this. -->
+
+> [!NOTE]
+> Historical real-model capture from 2026-08-03 (Eve 0.29.5, N=5). For the current Eve 0.47.5,
+> N=10 public showcase, see [PR #8](https://github.com/knowbody/diff0/pull/8).
+
 <!-- diff0-report -->
 ## diff0: main...tighten-instructions 🟡
 

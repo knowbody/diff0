@@ -1,4 +1,4 @@
-# Credential-free CI
+# Deterministic test mode
 
 diff0 ships a deterministic Eve fixture under [`fixtures/demo-agent`](../fixtures/demo-agent).
 It exercises the real Eve runtime, tools, skill loading, subagent delegation, worktree setup, and
@@ -24,7 +24,7 @@ The fixture reads `DIFF0_DEMO_MODEL`:
 
 | Value | Behavior |
 | --- | --- |
-| `mock` | Always use Eve's deterministic mock model. CI and integration tests set this explicitly. |
+| `mock` | Always use Eve's deterministic mock model. Integration tests set this explicitly. |
 | Unset | Use the mock when no gateway credential exists; otherwise use the fixture's documented gateway model. |
 | Any other value | Use that value as an AI Gateway model id. |
 
@@ -49,6 +49,17 @@ node dist/cli.js run --repo . --app-dir fixtures/demo-agent --base main --head H
 
 The fixture is test infrastructure. Its automatic model selection is convenient for local
 experiments, but production repositories should configure their own Eve models and evals.
+
+## Public real-model example
+
+[Showcase PR #8](https://github.com/knowbody/diff0/pull/8) demonstrates the same fixture under the
+real `anthropic/claude-haiku-4.5` model for 10 runs per ref. The bot-authored report is the
+authoritative evidence: it records 59/60 passing eval observations, confirmed `reporter` drift,
+and unavailable comparison cost where delegated base usage could not be attributed.
+
+The repository's [dogfood workflow](../.github/workflows/diff0.yml) exposes its capped gateway
+credential only when both the PR author and triggering actor are the repository owner. That is a
+repository-specific trust policy, not a general assurance that same-repository branches are safe.
 
 ## Security boundary
 
