@@ -453,7 +453,7 @@ describe("action/action.yml", () => {
     expect(yml).toContain("scripts-on mode executes lifecycle/build scripts");
   });
 
-  it("ships token-safe checkout examples and skips dogfood comparisons for forks", () => {
+  it("ships token-safe examples and restricts paid dogfood runs to the repository owner", () => {
     const root = new URL("..", import.meta.url);
     for (const path of [
       "README.md",
@@ -468,7 +468,16 @@ describe("action/action.yml", () => {
 
     const dogfood = readFileSync(new URL(".github/workflows/diff0.yml", root), "utf8");
     expect(dogfood).toContain(
-      "if: github.event.pull_request.head.repo.full_name == github.repository",
+      "github.event.pull_request.head.repo.full_name == github.repository",
     );
+    expect(dogfood).toContain(
+      "github.event.pull_request.user.login == github.repository_owner",
+    );
+    expect(dogfood).toContain("github.actor == github.repository_owner");
+    expect(dogfood).toContain("AI_GATEWAY_API_KEY: ${{ secrets.DIFF0_AI_GATEWAY_API_KEY }}");
+    expect(dogfood).toContain("DIFF0_DEMO_MODEL: anthropic/claude-haiku-4.5");
+    expect(dogfood).toContain('runs: "10"');
+    expect(dogfood).toContain('max-spend: "0.30"');
+    expect(dogfood).toContain("cancel-in-progress: true");
   });
 });

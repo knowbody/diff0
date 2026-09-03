@@ -1,8 +1,7 @@
 # Dogfood workflow: run diff0 on its own fixture agent.
 #
 # Relevant pull requests behaviorally diff fixtures/demo-agent between the PR
-# base and head, and upsert the sticky report comment on the PR. The demo agent
-# runs on eve's deterministic mock model, so this costs no provider spend.
+# base and head with a real model, then upsert the sticky report comment.
 name: diff0
 
 on:
@@ -18,17 +17,29 @@ on:
       - "prices.json"
       - "tsconfig*.json"
 
+concurrency:
+  group: diff0-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   pull-requests: write
 
 jobs:
   diff0:
-    # The Action executes application and eval code from both refs. Fork PRs
-    # remain covered by ordinary CI, but require maintainer review before this
-    # behavioral comparison is run.
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    # The Action exposes a paid-model credential while executing application
+    # and eval code from both refs. Only owner-authored, owner-triggered branches
+    # inside this repository cross that trust boundary. Fork and collaborator
+    # PRs remain covered by ordinary CI without receiving the credential.
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login == github.repository_owner &&
+      github.actor == github.repository_owner
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      AI_GATEWAY_API_KEY: ${{ secrets.DIFF0_AI_GATEWAY_API_KEY }}
+      DIFF0_DEMO_MODEL: anthropic/claude-haiku-4.5
     steps:
       # fetch-depth: 0 is REQUIRED — diff0 checks the PR base ref out into
       # an isolated worktree, and a shallow clone would not contain it.
@@ -48,7 +59,7 @@ jobs:
       - uses: ./action
         with:
           working-directory: fixtures/demo-agent
-          # Five runs can statistically confirm a deterministic 5/5 -> 0/5
-          # process change after the report's multiple-comparison correction.
-          runs: "5"
+          # Ten runs per ref make the public evidence robust to model variance.
+          runs: "10"
+          max-spend: "0.30"
           fail-on: regression
