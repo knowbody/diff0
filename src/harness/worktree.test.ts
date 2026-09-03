@@ -57,6 +57,18 @@ describe("resolveRef", () => {
       await rm(notARepo, { recursive: true, force: true });
     }
   });
+
+  it("rejects a dirty literal HEAD so uncommitted work cannot be reported as tested", async () => {
+    await writeFile(join(repo, "README.md"), "uncommitted\n", "utf8");
+    try {
+      await expect(resolveRef(repo, "HEAD")).rejects.toThrow(
+        /working tree has uncommitted changes.*would be excluded/s,
+      );
+      await expect(resolveRef(repo, "main")).resolves.toMatch(/^[0-9a-f]{40}$/);
+    } finally {
+      await writeFile(join(repo, "README.md"), "hello\n", "utf8");
+    }
+  });
 });
 
 describe("normalizeAppDirectory", () => {

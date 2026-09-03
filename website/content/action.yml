@@ -31,4 +31,4 @@ jobs:
           working-directory: .
           runs: "3"
           install-mode: scripts-off
-          fail-on: regression
+          fail-on: regression # yellow drift reports but does not block; use drift to gate it

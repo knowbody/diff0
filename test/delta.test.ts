@@ -816,6 +816,22 @@ describe("computeDelta: meta, mismatches, caveats, edge cases", () => {
     expect(report.verdictSummary).toContain("confounded by comparison validity");
   });
 
+  it("caps an apparent regression at yellow when evaluator files changed", () => {
+    const base = repeatRuns("main", "aaa1111", 3, { evals: { e: true } });
+    const head = repeatRuns("feat", "bbb2222", 3, { evals: { e: false } });
+    const warning =
+      "eval harness differs between refs (1 file): evals/quality.eval.ts. " +
+      "Outcome changes may come from evaluator changes rather than agent behavior.";
+    const report = computeDelta(base, head, {
+      now: FIXED_NOW,
+      validityMismatches: [warning],
+    });
+
+    expect(report.verdict).toBe("yellow");
+    expect(report.meta.mismatches).toContain(warning);
+    expect(report.verdictSummary).toContain("confounded by comparison validity");
+  });
+
   it("caps an operational regression at yellow when comparison validity is mismatched", () => {
     const base = repeatRuns("main", "aaa1111", 3, {
       evals: { alpha: true, beta: true },

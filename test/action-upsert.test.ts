@@ -3,11 +3,15 @@
  * contract shape. The upsert script is plain zero-dependency Node (.mjs) with
  * an injectable fetch, so everything here runs against a stub.
  */
-import { readFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
 import {
   MAX_BODY_LENGTH,
+  failureReportBody,
   parseNextLink,
   prepareReportBody,
   REPORT_MARKER,
@@ -212,7 +216,8 @@ describe("upsertComment", () => {
     expect(posted.length).toBeLessThan(65_536);
     expect(posted).toContain(REPORT_MARKER);
     expect(posted).toContain("truncated");
-    expect(posted.startsWith(huge.slice(0, MAX_BODY_LENGTH))).toBe(true);
+    expect(posted.length).toBeLessThanOrEqual(MAX_BODY_LENGTH);
+    expect(posted).toContain("report-md");
   });
 
   it("retries a network error once, then succeeds", async () => {
@@ -308,10 +313,25 @@ describe("truncateBody", () => {
   });
 
   it("caps at MAX_BODY_LENGTH plus the notice", () => {
-    const out = truncateBody("y".repeat(MAX_BODY_LENGTH + 1));
-    expect(out.length).toBeLessThan(65_536);
-    expect(out.slice(0, MAX_BODY_LENGTH)).toBe("y".repeat(MAX_BODY_LENGTH));
+    const out = truncateBody(`${"y".repeat(MAX_BODY_LENGTH)}\nextra`);
+    expect(out.length).toBeLessThanOrEqual(MAX_BODY_LENGTH);
     expect(out).toContain("truncated");
+    expect(out).toContain("report-md");
+  });
+});
+
+describe("failureReportBody", () => {
+  it("replaces a stale successful report with current failure context", () => {
+    const body = failureReportBody({
+      cliExit: "3",
+      baseRef: "abc123",
+      headRef: "def456",
+      headSha: "def456",
+    });
+    expect(body).toContain(REPORT_MARKER);
+    expect(body).toContain("could not produce a report");
+    expect(body).toContain("exit code **3**");
+    expect(body).toContain("replaced the previous diff0 result");
   });
 });
 
@@ -438,6 +458,8 @@ describe("action/action.yml", () => {
     expect(yml).toContain("allow-untrusted-head");
     expect(yml).toContain("invalid comment-key");
     expect(yml).toContain("checkout credentials are persisted");
+    expect(yml).toContain("includeIf\\.gitdir");
+    expect(yml).toContain("git-credentials-");
     expect(yml).toContain("persist-credentials: false");
     expect(yml).toContain("corepack enable");
     expect(yml).not.toContain("pnpm install --frozen-lockfile");
@@ -451,6 +473,42 @@ describe("action/action.yml", () => {
     expect(yml).toContain("install-mode 'trusted' is deprecated");
     expect(yml).toContain('--install-mode "$INPUT_INSTALL_MODE"');
     expect(yml).toContain("scripts-on mode executes lifecycle/build scripts");
+    expect(yml).not.toContain("skipping the PR comment");
+    expect(yml).toContain("BASE_REF: ${{ inputs.base }}");
+  });
+
+  it("actually rejects checkout v7's includeIf credential config", () => {
+    const scratch = mkdtempSync(join(tmpdir(), "diff0-action-credentials-"));
+    const repo = join(scratch, "repo");
+    try {
+      execFileSync("git", ["init", "-q", repo]);
+      execFileSync("git", [
+        "-C",
+        repo,
+        "config",
+        "--local",
+        `includeIf.gitdir:${repo}/.git/worktrees/*.path`,
+        join(scratch, "git-credentials-deadbeef.config"),
+      ]);
+      const trustStep = action.runs.steps.find(
+        (step) => step.name === "Enforce the PR trust boundary",
+      );
+      const result = spawnSync("bash", ["-e", "-o", "pipefail", "-c", String(trustStep?.run)], {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          GITHUB_WORKSPACE: repo,
+          EVENT_NAME: "push",
+          IS_FORK_PR: "false",
+          ALLOW_UNTRUSTED_HEAD: "false",
+          COMMENT_KEY: "",
+        },
+      });
+      expect(result.status).toBe(2);
+      expect(result.stdout).toContain("persisted through a Git includeIf credential config");
+    } finally {
+      rmSync(scratch, { recursive: true, force: true });
+    }
   });
 
   it("ships token-safe examples and restricts paid dogfood runs to the repository owner", () => {

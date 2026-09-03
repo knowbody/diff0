@@ -5,8 +5,10 @@ git diff tells you what changed in the code. diff0 tells you what changed in the
 This composite action runs `diff0 run` between the PR base and head, then upserts one sticky PR
 comment for that invocation. The default report uses the `<!-- diff0-report -->` marker; an
 optional `comment-key` gives parallel comparisons independent markers. Each report is edited in
-place on every push, never spammed. The check outcome is decided by the `fail-on` input **after**
-the comment is posted, so you always get the report even when the check fails.
+place on every push, never spammed. Verdict enforcement happens **after** the comment is posted.
+If the CLI launches but cannot produce a report, the old comment is replaced with a current failure
+summary. Trust-boundary and input-validation failures happen earlier and intentionally stop before
+any comment API call.
 
 The action ships a checked-in CLI bundle. Consumers do **not** install diff0: `uses:` is all it
 takes. There are zero third-party action dependencies (run steps only). Bundled library licenses
@@ -60,7 +62,7 @@ jobs:
           working-directory: . # path of your eve app within the repo
           runs: "3"
           install-mode: scripts-off
-          fail-on: regression
+          fail-on: regression # yellow drift reports but does not block; use drift to gate it
 ```
 
 ### Choose when diff0 runs
@@ -84,7 +86,7 @@ always-running gate the required check and conditionally run the diff0 job behin
 | `evals` | all | Eval filter |
 | `install-mode` | `scripts-off` | Disable install scripts (scripts-off) or allow them for reviewed refs (scripts-on) |
 | `fail-on` | `regression` | `regression` \| `drift` \| `never` — when to fail the check |
-| `max-spend` | none | Measured-cost USD cap passed through; unavailable cost cannot be enforced |
+| `max-spend` | none | Measured-cost stop threshold; checked after each suite run and may overshoot by one run; unavailable cost cannot be enforced |
 | `working-directory` | `.` | Where the eve app lives (maps to CLI `--app-dir`; the repo root is always the workflow checkout) |
 | `github-token` | `${{ github.token }}` | For the sticky comment (needs `pull-requests: write`) |
 | `comment-key` | empty | Stable key for a separate sticky report when one PR compares multiple Eve apps |
@@ -105,6 +107,11 @@ sticky comment; reruns update only the matching report. Leaving it empty preserv
 | `exit-code` | Raw CLI exit code |
 | `report-md` / `report-json` | Paths to the generated reports on the runner |
 
+For reports that may exceed GitHub's comment limit, give the diff0 step an `id` and upload both
+`steps.<id>.outputs.report-md` and `steps.<id>.outputs.report-json` with your artifact step. The
+sticky comment truncates only at a line boundary and explains how to retain the full file; workflow
+runner files do not persist after the job by themselves.
+
 ## How the check outcome is decided
 
 The CLI itself always runs with `--fail-on never` so the report and PR comment land first.
@@ -119,7 +126,8 @@ Then the action enforces the `fail-on` **input**:
 ## Requirements
 
 - `actions/checkout` with `fetch-depth: 0` and `persist-credentials: false` before this action. The
-  Action fails closed when checkout's persisted HTTP auth header is present.
+  Action fails closed for both legacy persisted HTTP headers and checkout v7's `includeIf`
+  credential config.
 - `actions/setup-node` with Node 24 before this action when using current Eve releases. The
   diff0 CLI itself supports Node >= 20. The action enables Corepack for pnpm and Yarn targets.
 - A Linux or macOS runner. Install Bun before this action when the target app uses a Bun lockfile.

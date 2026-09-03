@@ -1,5 +1,5 @@
 /**
- * Runner orchestration tests with injected fakes: interleaving order, cache
+ * Runner orchestration tests with injected fakes: counterbalanced order, cache
  * hit/miss/skip semantics, worktree cleanup, and failure wrapping. Git,
  * filesystem caches, Eve, worktrees, sandbox probes, and agent-info probes
  * are fakes; their concrete implementations have dedicated tests.
@@ -133,7 +133,7 @@ function baseCacheKey(): string {
 }
 
 describe("runComparison", () => {
-  it("interleaves base and head runs and stamps run options", async () => {
+  it("counterbalances base and head runs and stamps run options", async () => {
     const adapter = new FakeAdapter();
     const worktrees = fakeWorktrees(sha);
     const progress: string[] = [];
@@ -156,10 +156,10 @@ describe("runComparison", () => {
       ...fakeGitAndCache,
     });
 
-    // Strict interleaving: base 0, head 0, base 1, head 1, base 2, head 2.
+    // AB/BA counterbalancing: neither side always gets the first slot.
     expect(
       adapter.calls.map((c) => `${c.opts.cwd.includes("/main") ? "base" : "head"}:${c.runIndex}`),
-    ).toEqual(["base:0", "head:0", "base:1", "head:1", "base:2", "head:2"]);
+    ).toEqual(["base:0", "head:0", "head:1", "base:1", "base:2", "head:2"]);
     for (const call of adapter.calls) {
       expect(call.opts.sandboxBackend).toBe("docker");
       expect(call.opts.evalFilter).toEqual(["revenue"]);
@@ -178,14 +178,40 @@ describe("runComparison", () => {
       sandboxInferred: true,
       baseCacheHit: false,
       runsPerRef: 3,
+      validityMismatches: [],
     });
 
     // Both worktrees cleaned up.
     expect(worktrees.cleanups.sort()).toEqual(["HEAD", "main"]);
 
-    // Progress counts every run out of the interleaved total.
+    // Progress counts every run out of the counterbalanced total.
     expect(progress.some((m) => m.includes("[1/6] base run 1"))).toBe(true);
     expect(progress.some((m) => m.includes("[6/6] head run 3"))).toBe(true);
+  });
+
+  it("surfaces evaluator changes as comparison-validity mismatches before running", async () => {
+    const progress: string[] = [];
+    const result = await runComparison({
+      repoPath: repo,
+      appDir: "apps/agent",
+      baseRef: "main",
+      headRef: "HEAD",
+      runs: 1,
+      evalFilter: [],
+      noCache: true,
+      onProgress: (message) => progress.push(message),
+      adapter: new FakeAdapter(),
+      createWorktree: fakeWorktrees(sha).factory,
+      inferSandbox: fakeSandbox,
+      getAgentInfo: fakeAgentInfo,
+      getEvalHarnessChanges: async () => ["apps/agent/evals/quality.eval.ts"],
+      ...fakeGitAndCache,
+    });
+
+    expect(result.meta.validityMismatches).toEqual([
+      expect.stringContaining("eval harness differs between refs"),
+    ]);
+    expect(progress[0]).toContain("warning: eval harness differs between refs");
   });
 
   it("passes scripts-on install mode to both worktrees", async () => {

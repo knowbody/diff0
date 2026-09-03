@@ -9,12 +9,38 @@ const titleCaseModel = showcaseJson.model
 
 if (!titleCaseModel) throw new Error("Showcase data is missing a model identity.");
 
+function metric(label: string) {
+  const found = showcaseJson.metrics.find((entry) => entry.label === label);
+  if (!found) throw new Error(`Showcase data is missing the ${label} metric.`);
+  return found;
+}
+
+const outputTokens = metric("Output tokens / run");
+const duration = metric("Duration / run");
+const concise = (value: string) => value.split(" ")[0] ?? value;
+
 export const showcase = {
   ...showcaseJson,
   modelDisplay: titleCaseModel,
   evalPasses: {
     base: `${showcaseJson.evalObservations.basePassed} / ${showcaseJson.evalObservations.baseTotal}`,
     head: `${showcaseJson.evalObservations.headPassed} / ${showcaseJson.evalObservations.headTotal}`,
+  },
+  evalObservationTotal: {
+    passed: showcaseJson.evalObservations.basePassed + showcaseJson.evalObservations.headPassed,
+    total: showcaseJson.evalObservations.baseTotal + showcaseJson.evalObservations.headTotal,
+  },
+  featuredMetrics: {
+    outputTokens: {
+      ...outputTokens,
+      baseShort: concise(outputTokens.base),
+      headShort: concise(outputTokens.head),
+    },
+    duration: {
+      ...duration,
+      baseShort: concise(duration.base),
+      headShort: concise(duration.head),
+    },
   },
   subagent: {
     ...showcaseJson.subagent,

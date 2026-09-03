@@ -29,7 +29,7 @@ inputs:
     description: "When to fail the check: regression | drift | never. Execution errors always fail."
     default: "regression"
   max-spend:
-    description: "USD hard cap passed through to the CLI (--max-spend). Empty means no cap."
+    description: "Measured-cost USD stop threshold. Checked after each atomic suite run, so it can overshoot by one run; unavailable cost cannot be enforced. Empty disables it."
     default: ""
   working-directory:
     description: "Path of the eve app within the repo (maps to CLI --app-dir; the repo root is always the workflow checkout)."
@@ -85,6 +85,12 @@ runs:
         fi
         if git -C "$GITHUB_WORKSPACE" config --local --get-regexp '^http\..*\.extraheader$' >/dev/null 2>&1; then
           echo "::error::diff0: checkout credentials are persisted in the repository Git config. Head eval code could read that token. Set 'persist-credentials: false' on actions/checkout before running diff0."
+          exit 2
+        fi
+        # checkout@v7 stores auth in a runner-temp credential config and adds
+        # local includeIf.*.path pointers instead of the older extraheader.
+        if git -C "$GITHUB_WORKSPACE" config --local --get-regexp '^includeIf\.gitdir:.*\.path$' 2>/dev/null | grep -Eq 'git-credentials-.*\.config'; then
+          echo "::error::diff0: checkout credentials are persisted through a Git includeIf credential config. Head eval code could read that token. Set 'persist-credentials: false' on actions/checkout before running diff0."
           exit 2
         fi
         if [ "$EVENT_NAME" = "pull_request_target" ] && [ "$ALLOW_UNTRUSTED_HEAD" != "true" ]; then
@@ -189,12 +195,10 @@ runs:
         REPORT_PATH: ${{ steps.run.outputs.report-md }}
         COMMENT_KEY: ${{ inputs.comment-key }}
         CLI_EXIT: ${{ steps.run.outputs.exit-code }}
-      run: |
-        if [ ! -f "$REPORT_PATH" ]; then
-          echo "::warning::diff0: no markdown report was produced (CLI exit $CLI_EXIT); skipping the PR comment."
-          exit 0
-        fi
-        node "$GITHUB_ACTION_PATH/upsert-comment.mjs"
+        BASE_REF: ${{ inputs.base }}
+        HEAD_REF: ${{ inputs.head }}
+        HEAD_SHA: ${{ github.sha }}
+      run: node "$GITHUB_ACTION_PATH/upsert-comment.mjs"
 
     - name: Enforce fail-on policy
       id: enforce

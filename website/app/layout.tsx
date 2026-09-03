@@ -5,15 +5,15 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 const description =
-  "Review the agent, not just the diff. diff0 compares agent behavior across two git refs and brings silent drift into your pull request.";
+  "Behavioral diffs for Eve agents. Compare eval evidence across two committed git refs and bring silent drift into your pull request.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://diff0.io"),
-  title: "diff0 · behavioral diffs for agents",
+  title: "diff0 · behavioral diffs for Eve agents",
   description,
   alternates: { canonical: "/" },
   openGraph: {
-    title: "diff0 · behavioral diffs for agents",
+    title: "diff0 · behavioral diffs for Eve agents",
     description,
     url: "/",
     siteName: "diff0",
@@ -23,13 +23,13 @@ export const metadata: Metadata = {
         url: "/og.png",
         width: 1200,
         height: 630,
-        alt: `diff0: real-model drift detected with no confirmed eval regression. ${showcase.subagent.name} subagent ${showcase.subagent.baseUsedRuns}/${showcase.subagent.baseTotalRuns} to ${showcase.subagent.headUsedRuns}/${showcase.subagent.headTotalRuns}; median output tokens down 41% and duration down 46%.`,
+        alt: `diff0: real-model drift detected with no confirmed eval regression. ${showcase.subagent.name} subagent ${showcase.subagent.baseUsedRuns}/${showcase.subagent.baseTotalRuns} to ${showcase.subagent.headUsedRuns}/${showcase.subagent.headTotalRuns}; median output tokens ${showcase.featuredMetrics.outputTokens.delta} and duration ${showcase.featuredMetrics.duration.delta}.`,
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "diff0 · behavioral diffs for agents",
+    title: "diff0 · behavioral diffs for Eve agents",
     description,
     images: ["/og.png"],
   },
