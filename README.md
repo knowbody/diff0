@@ -67,7 +67,17 @@ the trust boundary, and how the check outcome is decided.
 ```yaml
 name: diff0
 
-on: pull_request
+on:
+  pull_request:
+    # Only compare changes that can affect the agent or its evals.
+    # Edit these paths to match your repository.
+    paths:
+      - "agent/**"
+      - "evals/**"
+      - "src/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/diff0.yml"
 
 permissions:
   contents: read
@@ -98,6 +108,15 @@ jobs:
           install-mode: scripts-off
           fail-on: regression
 ```
+
+The `paths` list is ordinary GitHub Actions configuration, so teams decide exactly which changes
+deserve a behavioral comparison. Remove it to run diff0 on every pull request, or narrow it to the
+agent, tools, prompts, evals, model configuration, and lockfiles that can change observed behavior.
+Documentation-only changes can then skip the model runs entirely.
+
+If `diff0` is configured as a required status check, do not skip the whole workflow with `paths`:
+GitHub can leave a path-filtered required workflow pending. Either keep the workflow unconditional,
+or require a separate always-running gate check and conditionally run the expensive diff0 job.
 
 ## Built by Eve, checked by diff0
 

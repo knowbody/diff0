@@ -17,7 +17,17 @@ are retained in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 ```yaml
 name: diff0
 
-on: pull_request
+on:
+  pull_request:
+    # Only compare changes that can affect the agent or its evals.
+    # Edit these paths to match your repository.
+    paths:
+      - "agent/**"
+      - "evals/**"
+      - "src/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/diff0.yml"
 
 permissions:
   contents: read
@@ -48,6 +58,17 @@ jobs:
           install-mode: scripts-off
           fail-on: regression
 ```
+
+### Choose when diff0 runs
+
+The `paths` list above uses GitHub's native pull-request filtering. Add every prompt, tool, eval,
+model configuration, dependency manifest, or other file that can affect agent behavior. Remove the
+filter to compare every pull request. With the filter in place, a README-only change does not spend
+time or model budget on a behavioral comparison.
+
+GitHub warns that a required workflow skipped by a path filter can remain pending and block a pull
+request. If `diff0` is a required status check, keep this workflow unconditional or make a separate
+always-running gate the required check and conditionally run the diff0 job behind it.
 
 ## Inputs
 
