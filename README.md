@@ -101,7 +101,7 @@ jobs:
         with:
           node-version: 24
 
-      - uses: knowbody/diff0/action@v0.1.1
+      - uses: knowbody/diff0/action@v0.1.2
         with:
           working-directory: .
           runs: "3"

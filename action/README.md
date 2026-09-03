@@ -57,7 +57,7 @@ jobs:
         with:
           node-version: 24
 
-      - uses: knowbody/diff0/action@v0.1.1
+      - uses: knowbody/diff0/action@v0.1.2
         with:
           working-directory: . # path of your eve app within the repo
           runs: "3"
