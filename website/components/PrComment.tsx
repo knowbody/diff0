@@ -136,7 +136,7 @@ export default function PrComment() {
 
             <hr className="my-4" style={{ borderColor: gh.border }} />
             <p className="italic" style={{ color: gh.muted }}>
-              Statistical comparison across {showcase.runsPerRef} runs per ref — LLM runs are nondeterministic; treat proportions, not absolutes. <a className="not-italic underline" href={showcase.sourceUrl}>View the authoritative GitHub report.</a>
+              Statistical comparison across {showcase.runsPerRef} runs per ref — LLM runs are nondeterministic; treat proportions, not absolutes. <a className="not-italic underline" href={showcase.sourceUrl}>View the source GitHub report.</a>
             </p>
           </div>
         </div>

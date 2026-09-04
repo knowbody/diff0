@@ -54,7 +54,7 @@ experiments, but production repositories should configure their own Eve models a
 
 [Showcase PR #15](https://github.com/knowbody/diff0/pull/15) demonstrates the same fixture under the
 real `anthropic/claude-haiku-4.5` model for 10 runs per ref. The bot-authored report is the
-authoritative evidence: it records 60/60 passing eval observations, confirmed `reporter` drift,
+primary public evidence: it records 60/60 passing eval observations, confirmed `reporter` drift,
 and unavailable comparison cost where delegated base usage could not be attributed.
 
 The repository's [dogfood workflow](../.github/workflows/diff0.yml) exposes its capped gateway

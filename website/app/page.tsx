@@ -282,7 +282,7 @@ export default function Home() {
           </div>
           <div className="grid overflow-hidden rounded-[20px] border border-line bg-card shadow-[0_28px_90px_rgba(0,0,0,0.1)] lg:grid-cols-[1.1fr_0.9fr]">
             <div className="p-7 sm:p-10 lg:border-r lg:border-line">
-              <p className="font-mono text-[11px] tracking-[0.16em] text-muted uppercase">Authoritative evidence</p>
+              <p className="font-mono text-[11px] tracking-[0.16em] text-muted uppercase">Source-linked evidence</p>
               <h3 className="mt-5 max-w-[580px] text-3xl font-medium tracking-[-0.04em]">One public PR. Real model calls. Inspectable provenance.</h3>
               <p className="mt-5 max-w-[610px] leading-7 text-muted">The head passed all 30 eval observations while confirmed reporter delegation fell from 10/10 to 0/10 in each of three evals. The yellow verdict asks a human to review an intentional behavioral change.</p>
               <a href={SHOWCASE_PR} className="mt-7 inline-flex h-11 items-center gap-2 rounded-full bg-fg px-5 text-sm font-medium text-bg">Open PR #15 <Arrow diagonal /></a>
