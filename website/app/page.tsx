@@ -158,6 +158,7 @@ export default function Home() {
                       <p className="text-white/60">agent/instructions.md</p>
                       <p className="mt-3 rounded bg-[#ef5b5b]/10 px-2 text-[#ff8585]">− After computing a figure, delegate a one-line executive summary to the</p>
                       <p className="rounded bg-[#ef5b5b]/10 px-2 text-[#ff8585]">− `reporter` subagent before replying.</p>
+                      <p className="mt-1 rounded bg-[#61c978]/10 px-2 text-[#7bdd91]">+ After computing a figure, give a one-line executive summary before replying.</p>
                     </div>
                     <div className="mt-8 rounded-lg border border-white/10 bg-white/[0.035] p-4">
                       <div className="flex items-center justify-between text-xs">
@@ -184,7 +185,7 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-              <p className="mt-5 text-center font-mono text-[10px] tracking-[0.14em] text-muted uppercase">One two-line prompt edit · {showcase.runsPerRef * 2} real-model suites · automated in GitHub Actions</p>
+              <p className="mt-5 text-center font-mono text-[10px] tracking-[0.14em] text-muted uppercase">One instruction simplified · {showcase.runsPerRef * 2} real-model suites · automated in GitHub Actions</p>
             </div>
           </div>
         </section>
@@ -220,11 +221,11 @@ export default function Home() {
             <article className="bg-card p-7 sm:p-9">
               <span className="font-mono text-[11px] text-muted">01</span>
               <h3 className="mt-12 text-xl font-medium tracking-[-0.025em]">A tiny edit</h3>
-              <p className="mt-2 max-w-[18rem] text-sm leading-6 text-muted">Two prompt lines disappear. The source diff looks harmless.</p>
+              <p className="mt-2 max-w-[18rem] text-sm leading-6 text-muted">A process requirement becomes a direct-output requirement.</p>
               <div className="mt-8 rounded-xl border border-line bg-codebg p-4 font-mono text-[11px] leading-6">
                 <p className="text-muted">instructions.md</p>
-                <p className="mt-2 -mx-1 rounded bg-red-500/10 px-1 text-red-500">− Delegate to reporter</p>
-                <p className="-mx-1 rounded bg-red-500/10 px-1 text-red-500">− Use its final answer</p>
+                <p className="mt-2 -mx-1 rounded bg-red-500/10 px-1 text-red-500">− Delegate summary to reporter</p>
+                <p className="-mx-1 rounded bg-green-500/10 px-1 text-green-600">+ Give a one-line summary</p>
               </div>
             </article>
             <article className="bg-card p-7 sm:p-9">
@@ -277,14 +278,14 @@ export default function Home() {
         <section id="demo" className="mx-auto max-w-[1240px] px-5 py-24 sm:px-8 sm:py-32">
           <div className="mb-12 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
             <div><Eyebrow>Live proof, not a mock</Eyebrow><h2 className="max-w-[720px] text-[clamp(2.6rem,5vw,4.5rem)] leading-[1] font-medium tracking-[-0.055em]">Inspect the run, the checks, and the source diff.</h2></div>
-            <p className="max-w-[430px] text-sm leading-6 text-muted">GitHub Actions called {showcase.modelDisplay} for {showcase.runsPerRef} runs per ref. The PR stays open so every claim can be checked against the workflow and bot-authored report.</p>
+            <p className="max-w-[430px] text-sm leading-6 text-muted">GitHub Actions called {showcase.modelDisplay} for {showcase.runsPerRef} runs per ref. The open PR ties each headline result to the workflow, source diff, and bot-authored report.</p>
           </div>
           <div className="grid overflow-hidden rounded-[20px] border border-line bg-card shadow-[0_28px_90px_rgba(0,0,0,0.1)] lg:grid-cols-[1.1fr_0.9fr]">
             <div className="p-7 sm:p-10 lg:border-r lg:border-line">
               <p className="font-mono text-[11px] tracking-[0.16em] text-muted uppercase">Authoritative evidence</p>
-              <h3 className="mt-5 max-w-[580px] text-3xl font-medium tracking-[-0.04em]">One public PR. Real model calls. Reproducible provenance.</h3>
+              <h3 className="mt-5 max-w-[580px] text-3xl font-medium tracking-[-0.04em]">One public PR. Real model calls. Inspectable provenance.</h3>
               <p className="mt-5 max-w-[610px] leading-7 text-muted">The head passed all 30 eval observations while confirmed reporter delegation fell from 10/10 to 0/10 in each of three evals. The yellow verdict asks a human to review an intentional behavioral change.</p>
-              <a href={SHOWCASE_PR} className="mt-7 inline-flex h-11 items-center gap-2 rounded-full bg-fg px-5 text-sm font-medium text-bg">Open PR #8 <Arrow diagonal /></a>
+              <a href={SHOWCASE_PR} className="mt-7 inline-flex h-11 items-center gap-2 rounded-full bg-fg px-5 text-sm font-medium text-bg">Open PR #15 <Arrow diagonal /></a>
             </div>
             <div className="divide-y divide-line">
               {[["Model", showcase.model], ["Runs", `${showcase.runsPerRef} per ref`], ["Output tokens", `median ${showcase.featuredMetrics.outputTokens.delta.replace("-", "−")}`], ["Duration", `median ${showcase.featuredMetrics.duration.delta.replace("-", "−")}`], ["Cost", "unavailable; no savings claim"]].map(([label, value]) => (

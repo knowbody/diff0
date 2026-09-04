@@ -19,7 +19,7 @@ Optionally add a caption line under it:
 `demo/demo.gif` — 556,574 bytes (543 KB), 121.2 s, 3030 frames @ 24 fps, 1040×1400 px
 (~100 cols). This is a historical real-model capture from 2026-08-03
 (`anthropic/claude-haiku-4.5`, Eve 0.29.5, N=5). The current public source of truth is
-[showcase PR #8](https://github.com/knowbody/diff0/pull/8), which ran the same model with Eve 0.47.5
+[showcase PR #15](https://github.com/knowbody/diff0/pull/15), which ran the same model with Eve 0.47.5
 and N=10 in GitHub Actions. The GIF preserves the old `sandbox docker (inferred)` output; current
 diff0 reports the actual sandbox as unknown and labels Docker only as a host-default candidate.
 The animation's three beats are:
