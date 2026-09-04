@@ -18,10 +18,19 @@ function metric(label: string) {
 const outputTokens = metric("Output tokens / run");
 const duration = metric("Duration / run");
 const concise = (value: string) => value.split(" ")[0] ?? value;
+const allRuns = `${showcaseJson.runsPerRef}/${showcaseJson.runsPerRef}`;
+const baseEvalsPassingEveryRun = showcaseJson.evals.filter((entry) => entry.base === allRuns).length;
+const headEvalsPassingEveryRun = showcaseJson.evals.filter((entry) => entry.head === allRuns).length;
+const evalsPassingDelta = headEvalsPassingEveryRun - baseEvalsPassingEveryRun;
 
 export const showcase = {
   ...showcaseJson,
   modelDisplay: titleCaseModel,
+  evalsPassingEveryRun: {
+    base: `${baseEvalsPassingEveryRun}/${showcaseJson.evals.length}`,
+    head: `${headEvalsPassingEveryRun}/${showcaseJson.evals.length}`,
+    change: evalsPassingDelta === 0 ? "unchanged" : `${evalsPassingDelta > 0 ? "+" : ""}${evalsPassingDelta}`,
+  },
   evalPasses: {
     base: `${showcaseJson.evalObservations.basePassed} / ${showcaseJson.evalObservations.baseTotal}`,
     head: `${showcaseJson.evalObservations.headPassed} / ${showcaseJson.evalObservations.headTotal}`,

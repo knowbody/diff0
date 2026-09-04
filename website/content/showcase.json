@@ -24,10 +24,6 @@
     "headPassed": 30,
     "headTotal": 30
   },
-  "evalsPassingEveryRun": {
-    "base": "2/3",
-    "head": "3/3"
-  },
   "evals": [
     {
       "name": "revenue/total-revenue",

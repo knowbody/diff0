@@ -1,10 +1,10 @@
 # demo/demo.tape — the diff0 demo on the REAL model, three beats:
 #   1. git diff tells you what changed in the code
-#      (simplify-pipeline deletes the two reporter-delegation lines)
-#   2. eve eval tells you nothing changed (4/4 green on head)
+#      (simplify-pipeline replaces delegated reporting with a direct summary)
+#   2. eve eval tells you nothing changed (3/3 green on head)
 #   3. diff0 tells you what changed in the agent
 #      (YELLOW: reporter used in 5 of 5 base runs -> 0 of 5 head runs,
-#       cost/session down ~a third)
+#       while all eval observations stay green)
 #
 # Prerequisites: bash demo/setup.sh   (builds diff0, creates /tmp/diff0-demo
 # on branch simplify-pipeline, sources AI_GATEWAY_API_KEY from the repo .env,
@@ -62,14 +62,14 @@ Type "clear"
 Enter
 Show
 
-# --- beat 2: eve eval — 4/4 pass, green, on the real model ------------------
+# --- beat 2: eve eval — 3/3 pass, green, on the real model ------------------
 Type "# eve eval tells you nothing changed."
 Enter
 Sleep 600ms
 Type "pnpm exec eve eval 2>/dev/null"
 Sleep 500ms
 Enter
-Wait+Screen@120s /Results: 4 passed/
+Wait+Screen@120s /Results: 3 passed/
 Sleep 4s
 # eve's local world can linger on teardown; a visible ^C keeps the tape moving.
 Ctrl+C
@@ -87,6 +87,6 @@ Sleep 600ms
 Type "diff0 run --base main --head simplify-pipeline --runs 5 --cache"
 Sleep 800ms
 Enter
-Wait+Screen@240s /treat proportions, not absolutes/
-# hold on the yellow verdict + reporter subagent drift + cost lines
+Wait+Screen@240s /statistically-confirmed/
+# hold on the eval evidence, reporter drift, performance, and caveats
 Sleep 5s
