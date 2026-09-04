@@ -3,7 +3,7 @@
 ## Snippet
 
 ```markdown
-![Recorded diff0 CLI demo showing a real-model behavioral comparison after two reporter-delegation instruction lines are deleted](https://raw.githubusercontent.com/knowbody/diff0/main/demo/demo.gif)
+![Current diff0 CLI demo showing a real-model behavioral comparison after delegated reporting is replaced with a direct summary](https://raw.githubusercontent.com/knowbody/diff0/main/demo/demo.gif)
 ```
 
 (Absolute URL so the image renders on the npm package page too.)
@@ -16,23 +16,20 @@ Optionally add a caption line under it:
 
 ## Current artifact
 
-`demo/demo.gif` — 556,574 bytes (543 KB), 121.2 s, 3030 frames @ 24 fps, 1040×1400 px
-(~100 cols). This is a historical real-model capture from 2026-08-03
-(`anthropic/claude-haiku-4.5`, Eve 0.29.5, N=5). The current public source of truth is
-[showcase PR #15](https://github.com/knowbody/diff0/pull/15), which ran the same model with Eve 0.47.5
-and N=10 in GitHub Actions. The GIF preserves the old `sandbox docker (inferred)` output; current
-diff0 reports the actual sandbox as unknown and labels Docker only as a host-default candidate.
+`demo/demo.gif` — 775,511 bytes (757 KB), 148.6 s, 3,715 frames, 1040×1400 px. It is the current
+five-run real-model terminal capture, recorded with diff0 v0.1.3, Eve 0.47.5, and
+`anthropic/claude-haiku-4.5`. The corresponding 10-run GitHub Actions comparison is
+[showcase PR #15](https://github.com/knowbody/diff0/pull/15).
 The animation's three beats are:
 
 1. `# git diff tells you what changed in the code.` → `git diff main -- agent/instructions.md`
-   shows exactly the two removed reporter-delegation lines.
-2. `# eve eval tells you nothing changed.` → `pnpm exec eve eval 2>/dev/null` → 4/4 green.
+   shows delegated reporting replaced by the same direct-summary requirement.
+2. `# eve eval tells you nothing changed.` → `pnpm exec eve eval 2>/dev/null` → 3/3 green.
 3. `# diff0 tells you what changed in the agent.` →
    `diff0 run --base main --head simplify-pipeline --runs 5 --cache` → base-cache hit + 5 live head
-   runs → 🟡 YELLOW; `reporter: used in 5 of 5 base runs -> 0 of 5 head runs`; cost/session,
-   tokens, and duration all down roughly a quarter to a third (exact percentages vary run to
-   run — that's the nondeterminism the tool exists for; the committed
-   [examples/drift-report.md](../examples/drift-report.md) is its own N=5 run of the same story).
+   runs → 🟡 YELLOW; `reporter: used in 5 of 5 base runs -> 0 of 5 head runs`, with the eval
+   contract still green. Token and duration measurements vary between recordings because the
+   model and provider are nondeterministic.
 
 ## Regenerating
 

@@ -35,11 +35,11 @@ The workflow called `anthropic/claude-haiku-4.5`; the bot-authored report, sourc
 logs remain open for inspection. Cost is marked unavailable because delegated base usage was not
 fully attributed, so diff0 does not claim a cost saving.
 
-![Recorded diff0 CLI demo showing a real-model behavioral comparison after two reporter-delegation instruction lines are deleted](https://raw.githubusercontent.com/knowbody/diff0/main/demo/demo.gif)
+![Current diff0 CLI demo showing a real-model behavioral comparison after delegated reporting is replaced with a direct summary](https://raw.githubusercontent.com/knowbody/diff0/main/demo/demo.gif)
 
-_The GIF is an earlier five-run real-model capture. Its `sandbox docker (inferred)` line is
-historical: current diff0 reports the actual sandbox as unknown and labels Docker only as the
-host-default candidate. PR #15 is the current source of truth for the measured run._
+_Recorded with diff0 v0.1.3, Eve 0.47.5, and `anthropic/claude-haiku-4.5`. The terminal demo uses
+five runs per ref; [PR #15](https://github.com/knowbody/diff0/pull/15) contains the corresponding
+10-run GitHub Actions comparison._
 
 ## Quick start
 

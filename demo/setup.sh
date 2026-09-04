@@ -38,13 +38,8 @@ unset DIFF0_DEMO_MODEL
 echo "AI_GATEWAY_API_KEY is set (value not shown)"
 
 # ---------------------------------------------------------------- 1. diff0
-step "Building diff0 (${REPO_ROOT})"
-if [ ! -f "${REPO_ROOT}/dist/cli.js" ]; then
-  (cd "${REPO_ROOT}" && pnpm install && pnpm build)
-else
-  echo "dist/cli.js already present — skipping install+build"
-  echo "(delete ${REPO_ROOT}/dist to force a rebuild)"
-fi
+step "Building current diff0 (${REPO_ROOT})"
+(cd "${REPO_ROOT}" && pnpm install --frozen-lockfile && pnpm build)
 
 # ------------------------------------------------------ 2. demo repo files
 step "Creating demo repo at ${DEMO_REPO}"
@@ -67,21 +62,20 @@ git add -A
 git commit -q -m "baseline revenue analyst agent"
 
 step "Creating simplify-pipeline branch with the drift edit"
-# The drift edit: delete exactly the two instruction lines that tell the
-# analyst to delegate a one-line executive summary to the `reporter`
-# subagent. Every eval still passes on this branch — but the reporter
-# subagent stops being used (5/5 base runs -> 0/5 head runs on
-# anthropic/claude-haiku-4.5). That is the behavioral drift diff0 catches.
+# Match showcase PR #15: replace delegated reporting with the same direct
+# one-line output requirement. Every eval still passes, while the reporter
+# subagent stops being used. That runtime evidence is what diff0 adds to the
+# source diff.
 git checkout -q -b simplify-pipeline
-perl -0pi -e 's/^- After computing a figure, delegate a one-line executive summary to the\n  `reporter` subagent before replying\.\n//m' \
+perl -0pi -e 's/^- After computing a figure, delegate a one-line executive summary to the\n  `reporter` subagent before replying\.\n/- After computing a figure, give a one-line executive summary before replying.\n/m' \
   agent/instructions.md
-if [ "$(git diff --numstat -- agent/instructions.md)" != "$(printf '0\t2\tagent/instructions.md')" ]; then
-  echo "error: drift edit did not remove exactly the two reporter-delegation lines" >&2
+if [ "$(git diff --numstat -- agent/instructions.md)" != "$(printf '1\t2\tagent/instructions.md')" ]; then
+  echo "error: drift edit did not replace the reporter delegation instruction" >&2
   echo "       (fixture agent/instructions.md changed? update the perl match in setup.sh)" >&2
   exit 1
 fi
 git add agent/instructions.md
-git commit -q -m "simplify pipeline: drop the reporter hand-off"
+git commit -q -m "simplify pipeline: summarize directly"
 echo "on branch: $(git branch --show-current) (beat 2 runs eve eval here)"
 
 # --------------------------------------------------------- 4. dependencies

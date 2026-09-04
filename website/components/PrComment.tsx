@@ -72,7 +72,7 @@ export default function PrComment() {
                 <TableHead labels={["Signal", "Base", "Head", "Change"]} />
                 <tbody>
                   <tr>
-                    {["Evals passing every run", showcase.evalsPassingEveryRun.base, showcase.evalsPassingEveryRun.head, "+1"].map((value, index) => (
+                    {["Evals passing every run", showcase.evalsPassingEveryRun.base, showcase.evalsPassingEveryRun.head, showcase.evalsPassingEveryRun.change].map((value, index) => (
                       <td key={`evals-passing-${index}`} className={`${cell} ${index > 0 ? "text-right" : ""}`} style={{ borderColor: gh.border }}>{value}</td>
                     ))}
                   </tr>
@@ -101,7 +101,7 @@ export default function PrComment() {
                 </tbody>
               </table>
             </div>
-            <p className="mt-3 italic" style={{ color: gh.muted }}>Two additional inconclusive signal categories are available in the full GitHub report.</p>
+            <p className="mt-3 italic" style={{ color: gh.muted }}>Two additional inconclusive signals are available in the full comparison details.</p>
 
             <Section>Eval results</Section>
             <div className="overflow-x-auto">
