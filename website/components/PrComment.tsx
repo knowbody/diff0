@@ -128,7 +128,6 @@ export default function PrComment() {
               <p className="mt-4" style={{ color: gh.muted }}>
                 eve {showcase.eveVersion} · actual sandbox {showcase.sandbox} · host default candidate {showcase.hostDefaultSandboxCandidate} · comparison cost unavailable
               </p>
-              <p className="mt-3" style={{ color: gh.muted }}><strong>Historical framing:</strong> The linked v{showcase.releaseVersion} report displayed <Code>{showcase.historicalSandboxLabel}</Code>. Current diff0 treats that probe as a host candidate, not an observed sandbox.</p>
               <p className="mt-3"><strong>Subagent evidence:</strong> Fisher raw p={showcase.subagent.rawPValue}; Holm p={showcase.subagent.holmPValue} in each of {showcase.subagent.scope}.</p>
               <p className="mt-3"><strong>Cost note:</strong> {showcase.costNote}</p>
               <p className="mt-3"><strong>Changed file:</strong> <Code>{showcase.changedFile.path}</Code> (+{showcase.changedFile.insertions} −{showcase.changedFile.deletions})</p>
@@ -137,7 +136,7 @@ export default function PrComment() {
 
             <hr className="my-4" style={{ borderColor: gh.border }} />
             <p className="italic" style={{ color: gh.muted }}>
-              Statistical comparison across {showcase.runsPerRef} runs per ref — LLM runs are nondeterministic; treat proportions, not absolutes. <a className="not-italic underline" href={showcase.sourceUrl}>View the authoritative GitHub report.</a>
+              Statistical comparison across {showcase.runsPerRef} runs per ref — LLM runs are nondeterministic; treat proportions, not absolutes. <a className="not-italic underline" href={showcase.sourceUrl}>View the source GitHub report.</a>
             </p>
           </div>
         </div>

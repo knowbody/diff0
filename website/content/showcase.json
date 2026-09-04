@@ -1,26 +1,25 @@
 {
-  "sourceUrl": "https://github.com/knowbody/diff0/pull/8#issuecomment-5526051643",
-  "pullRequestUrl": "https://github.com/knowbody/diff0/pull/8",
-  "capturedAt": "2026-09-03",
-  "releaseVersion": "0.1.2",
+  "sourceUrl": "https://github.com/knowbody/diff0/pull/15#issuecomment-5539022795",
+  "pullRequestUrl": "https://github.com/knowbody/diff0/pull/15",
+  "capturedAt": "2026-09-04",
+  "releaseVersion": "0.1.3",
   "base": {
     "ref": "main",
-    "commitSha": "c47e019864ec02fa42cdf2d853d6bbd841642e70"
+    "commitSha": "84cb96d59bbbfcadf19e7ae625ba878a3525c0a3"
   },
   "head": {
-    "ref": "demo/diff0-showcase-v2",
-    "commitSha": "9a36e865613b6e64f74160e3699367a29e4c1f71"
+    "ref": "showcase/live-proof-v3",
+    "commitSha": "fc5efb982b03fe527c852bd317e8ea9958db65d1"
   },
   "eveVersion": "0.47.5",
   "model": "anthropic/claude-haiku-4.5",
   "runsPerRef": 10,
   "sandbox": "unknown",
-  "hostDefaultSandboxCandidate": "docker",
-  "historicalSandboxLabel": "docker (inferred)",
+  "hostDefaultSandboxCandidate": "microsandbox",
   "verdictIcon": "🟡",
   "verdictSummary": "Review recommended. No confirmed eval regressions across 10 runs per ref. Confirmed behavioral drift requires review",
   "evalObservations": {
-    "basePassed": 29,
+    "basePassed": 30,
     "baseTotal": 30,
     "headPassed": 30,
     "headTotal": 30
@@ -32,10 +31,10 @@
   "evals": [
     {
       "name": "revenue/total-revenue",
-      "base": "9/10",
+      "base": "10/10",
       "head": "10/10",
-      "result": "🟡 higher pass rate (inconclusive)",
-      "statisticalResult": "score 1 → 1 (+0) · Fisher raw p=0.5 · Holm p=1"
+      "result": "✅ pass",
+      "statisticalResult": "score 1 → 1 (+0)"
     },
     {
       "name": "revenue/no-failed-actions",
@@ -66,28 +65,28 @@
   "metrics": [
     {
       "label": "Tool calls / run (agents excluded)",
-      "base": "6",
+      "base": "6 (6–10)",
       "head": "6",
       "delta": "+0%"
     },
     {
       "label": "Output tokens / run",
-      "base": "1,067 (960–1,455)",
-      "head": "630 (613–678)",
-      "delta": "-41%"
+      "base": "1,017 (941–1,481)",
+      "head": "675 (654–714)",
+      "delta": "-34%"
     },
     {
       "label": "Duration / run",
-      "base": "21.0s (18.8s–25.2s)",
-      "head": "11.4s (10.7s–13.0s)",
-      "delta": "-46%"
+      "base": "20.2s (19.0s–27.2s)",
+      "head": "11.8s (10.8s–12.5s)",
+      "delta": "-41%"
     }
   ],
   "costNote": "Comparison cost unavailable because delegated base usage was not fully attributed.",
   "changedFile": {
     "path": "fixtures/demo-agent/agent/instructions.md",
-    "insertions": 0,
+    "insertions": 1,
     "deletions": 2
   },
-  "diffSummary": "1 file changed, 2 deletions(-)"
+  "diffSummary": "1 file changed, 1 insertion(+), 2 deletions(-)"
 }

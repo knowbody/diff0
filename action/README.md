@@ -14,7 +14,7 @@ The action ships a checked-in CLI bundle. Consumers do **not** install diff0: `u
 takes. There are zero third-party action dependencies (run steps only). Bundled library licenses
 are retained in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-[Showcase PR #8](https://github.com/knowbody/diff0/pull/8) is a permanent real-model example of
+[Showcase PR #15](https://github.com/knowbody/diff0/pull/15) is a permanent real-model example of
 the Action in use: 10 runs per ref on `anthropic/claude-haiku-4.5`, an owner-gated credential,
 one bot-authored sticky report, and no mock evidence presented as production output.
 

@@ -23,13 +23,13 @@ An eval can stay green while the agent changes how it reaches the answer. A prom
 using a tool, skip a specialist subagent, or make each run slower without changing the final score.
 diff0 makes those changes visible in the terminal and in your pull request.
 
-[Showcase PR #8](https://github.com/knowbody/diff0/pull/8) is the public, inspectable example:
+[Showcase PR #15](https://github.com/knowbody/diff0/pull/15) is the public, inspectable example:
 
 | What changed | What the run found |
 | --- | --- |
-| Two instruction lines were removed | The `reporter` subagent went from 10/10 to 0/10 uses in each of three evals |
-| The real model ran 10 times per ref | 29/30 base and 30/30 head eval observations passed; no confirmed regression |
-| Agent behavior became simpler | Median output tokens fell 41% and duration fell 46% |
+| One instruction was simplified | The `reporter` subagent went from 10/10 to 0/10 uses in each of three evals |
+| The real model ran 10 times per ref | All 60 base and head eval observations passed; no confirmed regression |
+| Agent behavior became simpler | Median output tokens fell 34% and captured eval duration fell 41% |
 
 The workflow called `anthropic/claude-haiku-4.5`; the bot-authored report, source diff, and Action
 logs remain open for inspection. Cost is marked unavailable because delegated base usage was not
@@ -39,7 +39,7 @@ fully attributed, so diff0 does not claim a cost saving.
 
 _The GIF is an earlier five-run real-model capture. Its `sandbox docker (inferred)` line is
 historical: current diff0 reports the actual sandbox as unknown and labels Docker only as the
-host-default candidate. PR #8 is the current source of truth for the measured run._
+host-default candidate. PR #15 is the current source of truth for the measured run._
 
 ## Quick start
 
