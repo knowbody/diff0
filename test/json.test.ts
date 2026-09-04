@@ -43,16 +43,16 @@ describe("renderJson", () => {
     assertKeysSortedDeep(parsed, "$");
   });
 
-  it("carries schemaVersion 3", () => {
+  it("carries schemaVersion 4", () => {
     const parsed = JSON.parse(renderJson(sampleReport())) as { schemaVersion: number };
     expect(parsed.schemaVersion).toBe(JSON_SCHEMA_VERSION);
-    expect(parsed.schemaVersion).toBe(3);
+    expect(parsed.schemaVersion).toBe(4);
   });
 
   it("is pretty-printed and newline-terminated", () => {
     const out = renderJson(sampleReport());
     expect(out.endsWith("\n")).toBe(true);
-    expect(out).toContain('\n  "schemaVersion": 3');
+    expect(out).toContain('\n  "schemaVersion": 4');
   });
 
   it("round-trips the full report content", () => {
@@ -62,6 +62,7 @@ describe("renderJson", () => {
     expect(parsed).toHaveProperty("meta");
     expect(parsed).toHaveProperty("drift");
     expect(parsed).toHaveProperty("costPerf");
+    expect(parsed).toHaveProperty("enforcement");
     expect(parsed).toHaveProperty("runSummaries");
   });
 

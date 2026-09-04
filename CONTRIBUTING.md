@@ -36,6 +36,8 @@ ones, never as mocks of diff0's own internals.
 - Run the setup commands above before opening a PR.
 - The honest-framing rules are load-bearing product behavior, not style: proportions over
   absolutes, Fisher + Holm evidence before calling an eval regressed or improved, uncertainty
-  stated explicitly, and unknown cost never rendered as $0. Tests encode them; don't weaken them.
+  stated explicitly, unknown cost never rendered as $0, unobserved sandbox selection reported as
+  unknown, and host capability probes labeled only as candidates. Tests encode them; don't weaken
+  them.
 - Paper-inspired features must be implemented from primary literature and independently written,
   not copied from another implementation.

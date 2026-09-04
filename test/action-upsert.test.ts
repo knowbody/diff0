@@ -4,7 +4,7 @@
  * an injectable fetch, so everything here runs against a stub.
  */
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -412,8 +412,13 @@ describe("action/action.yml", () => {
         "github-token",
         "head",
         "install-mode",
+        "max-cost-increase-pct",
+        "max-duration-increase-pct",
+        "max-input-token-increase-pct",
+        "max-output-token-increase-pct",
         "max-spend",
         "runs",
+        "validity-paths",
         "working-directory",
       ].sort(),
     );
@@ -429,6 +434,11 @@ describe("action/action.yml", () => {
     expect(action.inputs["github-token"]?.default).toBe("${{ github.token }}");
     expect(action.inputs["comment-key"]?.default).toBe("");
     expect(action.inputs["allow-untrusted-head"]?.default).toBe("false");
+    expect(action.inputs["validity-paths"]?.default).toBe("");
+    expect(action.inputs["max-cost-increase-pct"]?.default).toBe("");
+    expect(action.inputs["max-input-token-increase-pct"]?.default).toBe("");
+    expect(action.inputs["max-output-token-increase-pct"]?.default).toBe("");
+    expect(action.inputs["max-duration-increase-pct"]?.default).toBe("");
   });
 
   it("is a composite action with no third-party action steps", () => {
@@ -442,9 +452,10 @@ describe("action/action.yml", () => {
   });
 
   it("fails closed when the JSON artifact has a missing or unknown verdict", () => {
-    expect(yml).toContain('report.schemaVersion !== 3');
+    expect(yml).toContain('report.schemaVersion !== 4');
     expect(yml).toContain('!["green", "yellow", "red"].includes(report.verdict)');
-    expect(yml).toContain("JSON report has an unsupported schema or invalid verdict");
+    expect(yml).toContain("report.enforcement?.violations");
+    expect(yml).toContain("JSON report has an unsupported schema or invalid verdict/enforcement data");
   });
 
   it("guards the comment step to pull_request events", () => {
@@ -472,9 +483,87 @@ describe("action/action.yml", () => {
     expect(yml).toContain("install-mode 'safe' is deprecated");
     expect(yml).toContain("install-mode 'trusted' is deprecated");
     expect(yml).toContain('--install-mode "$INPUT_INSTALL_MODE"');
+    expect(yml).toContain('--validity-path "$INPUT_VALIDITY_PATHS"');
+    expect(yml).toContain('--max-cost-increase-pct "$INPUT_MAX_COST_INCREASE_PCT"');
+    expect(yml).toContain('--max-input-token-increase-pct "$INPUT_MAX_INPUT_TOKEN_INCREASE_PCT"');
+    expect(yml).toContain('--max-output-token-increase-pct "$INPUT_MAX_OUTPUT_TOKEN_INCREASE_PCT"');
+    expect(yml).toContain('--max-duration-increase-pct "$INPUT_MAX_DURATION_INCREASE_PCT"');
     expect(yml).toContain("scripts-on mode executes lifecycle/build scripts");
     expect(yml).not.toContain("skipping the PR comment");
     expect(yml).toContain("BASE_REF: ${{ inputs.base }}");
+  });
+
+  it("rejects invalid granular policy and performance inputs before invoking diff0", () => {
+    const runStep = action.runs.steps.find((step) => step.name === "Run diff0");
+    const baseEnv = {
+      ...process.env,
+      INPUT_BASE: "main",
+      INPUT_HEAD: "HEAD",
+      INPUT_RUNS: "3",
+      INPUT_EVALS: "",
+      INPUT_VALIDITY_PATHS: "",
+      INPUT_FAIL_ON: "regression",
+      INPUT_MAX_SPEND: "",
+      INPUT_MAX_COST_INCREASE_PCT: "",
+      INPUT_MAX_INPUT_TOKEN_INCREASE_PCT: "",
+      INPUT_MAX_OUTPUT_TOKEN_INCREASE_PCT: "",
+      INPUT_MAX_DURATION_INCREASE_PCT: "",
+      INPUT_WORKING_DIRECTORY: ".",
+      INPUT_INSTALL_MODE: "scripts-off",
+    };
+    for (const overrides of [
+      { INPUT_FAIL_ON: "regression,performance-regression" },
+      { INPUT_MAX_DURATION_INCREASE_PCT: "-1" },
+    ]) {
+      const result = spawnSync("bash", ["-e", "-o", "pipefail", "-c", String(runStep?.run)], {
+        encoding: "utf8",
+        env: { ...baseEnv, ...overrides },
+      });
+      expect(result.status).toBe(2);
+      expect(result.stdout).toContain("::error::diff0: invalid");
+      expect(result.stdout).not.toContain("diff0 CLI exited");
+    }
+  });
+
+  it("enforces selected granular categories from schema 4 JSON", () => {
+    const scratch = mkdtempSync(join(tmpdir(), "diff0-action-enforcement-"));
+    const reportPath = join(scratch, "report.json");
+    const outputPath = join(scratch, "output.txt");
+    const enforceStep = action.runs.steps.find((step) => step.name === "Enforce fail-on policy");
+    writeFileSync(
+      reportPath,
+      JSON.stringify({
+        schemaVersion: 4,
+        verdict: "red",
+        enforcement: {
+          violations: [
+            {
+              category: "performance-regression",
+              reasons: ["duration delta +150% exceeds +100% threshold"],
+            },
+          ],
+        },
+      }),
+    );
+    try {
+      const run = (failOn: string) =>
+        spawnSync("bash", ["-e", "-o", "pipefail", "-c", String(enforceStep?.run)], {
+          encoding: "utf8",
+          env: {
+            ...process.env,
+            CLI_EXIT: "0",
+            FAIL_ON: failOn,
+            REPORT_JSON: reportPath,
+            GITHUB_OUTPUT: outputPath,
+          },
+        });
+
+      expect(run("performance-regression").status).toBe(1);
+      expect(run("score-regression").status).toBe(0);
+      expect(run(" regression ").status).toBe(1);
+    } finally {
+      rmSync(scratch, { recursive: true, force: true });
+    }
   });
 
   it("actually rejects checkout v7's includeIf credential config", () => {

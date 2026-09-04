@@ -143,13 +143,13 @@ describe("diff0 run end to end", () => {
     const md = await readFile(mdPath, "utf8");
     expect(md.startsWith("<!-- diff0-report -->")).toBe(true);
 
-    // JSON report: schemaVersion 3, green verdict (deterministic mock model).
+    // JSON report: schemaVersion 4, green verdict (deterministic mock model).
     const parsed = JSON.parse(await readFile(jsonPath, "utf8")) as {
       schemaVersion: number;
       verdict: string;
       meta: { runsPerRef: number; costSource: string };
     };
-    expect(parsed.schemaVersion).toBe(3);
+    expect(parsed.schemaVersion).toBe(4);
     expect(parsed.verdict).toBe("green");
     expect(parsed.meta.runsPerRef).toBe(2);
     expect(parsed.meta.costSource).toBe("unavailable");

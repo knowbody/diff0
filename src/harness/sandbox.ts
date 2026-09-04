@@ -1,8 +1,8 @@
 /**
- * Sandbox backend inference. eve selects its local sandbox backend silently
- * (no log, span, or JSON field), so diff0
- * replicates eve's probe order once per process and records the result on
- * every RunRecord, labeled `inferred`.
+ * Host-default sandbox capability probe. Eve does not report which sandbox an
+ * app actually selected, and authored agent sandbox entry points can override
+ * the default. This result is therefore only a host-default candidate; it
+ * must never be presented or recorded as the backend an app actually used.
  *
  * eve's chain (dist/src/public/sandbox/backends/default.js):
  *   process.env.VERCEL          -> vercel      (n/a locally -> "unknown")
@@ -18,20 +18,26 @@ import type { SandboxBackend } from "../types.js";
 
 const execFileAsync = promisify(execFile);
 
-export interface InferredSandboxBackend {
+export interface HostDefaultSandboxCandidate {
   backend: SandboxBackend;
   inferred: true;
 }
 
-let cached: Promise<InferredSandboxBackend> | undefined;
+/** @deprecated The probe yields a host-default candidate, not the app's selected backend. */
+export type InferredSandboxBackend = HostDefaultSandboxCandidate;
 
-/** Cheap, cached-per-process inference of eve's sandbox backend choice. */
-export function inferSandboxBackend(): Promise<InferredSandboxBackend> {
+let cached: Promise<HostDefaultSandboxCandidate> | undefined;
+
+/** Cheap, cached-per-process probe of Eve's likely host default. */
+export function probeHostDefaultSandboxCandidate(): Promise<HostDefaultSandboxCandidate> {
   if (cached === undefined) {
     cached = probe();
   }
   return cached;
 }
+
+/** @deprecated Use probeHostDefaultSandboxCandidate; this does not observe the app's backend. */
+export const inferSandboxBackend = probeHostDefaultSandboxCandidate;
 
 async function probe(): Promise<InferredSandboxBackend> {
   if (process.env.VERCEL) {

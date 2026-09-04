@@ -81,7 +81,7 @@ _1 file changed, 5 insertions(+), 1 deletion(-). File attribution is correlation
 
 #### Caveats
 
-- ⚠️ External side effects (for example writes to third-party systems) are not observed; the comparison covers captured evals, traces, fingerprints, cost, and timing only.
+- ⚠️ External side effects (for example writes to third-party systems) are not observed; the comparison covers captured eval JSON/events, fingerprints, cost, and timing only.
 
 </details>
 
@@ -109,6 +109,10 @@ Comparing \`main (aaa1111)\` → \`feat/tighter-prompt (bbb2222)\` · 3 runs per
 | Cost / run | $0.0300 ($0.0290–$0.0310) | $0.0414 ($0.0400–$0.0430) | +38% |
 | Output tokens / run | 200 | 210 | +5% |
 | Duration / run | 12.0s | 13.1s | +9% |
+
+### Exceeded performance budgets
+
+- ⚠️ **Cost / session:** delta +38% exceeds +25% threshold.
 
 ### Observed behavioral differences
 
@@ -195,7 +199,7 @@ _2 files changed, 15 insertions(+), 5 deletions(-). File attribution is correlat
 
 #### Caveats
 
-- ⚠️ External side effects (for example writes to third-party systems) are not observed; the comparison covers captured evals, traces, fingerprints, cost, and timing only.
+- ⚠️ External side effects (for example writes to third-party systems) are not observed; the comparison covers captured eval JSON/events, fingerprints, cost, and timing only.
 
 </details>
 
@@ -290,7 +294,7 @@ No behavioral drift detected across 3 runs per ref.
 #### Caveats
 
 - ⚠️ Borderline results at N=3 — consider --runs 5 or more for a clearer signal.
-- ⚠️ External side effects (for example writes to third-party systems) are not observed; the comparison covers captured evals, traces, fingerprints, cost, and timing only.
+- ⚠️ External side effects (for example writes to third-party systems) are not observed; the comparison covers captured eval JSON/events, fingerprints, cost, and timing only.
 
 </details>
 
@@ -401,7 +405,7 @@ _1 file changed, 40 insertions(+), 12 deletions(-). File attribution is correlat
 #### Caveats
 
 - ⚠️ Borderline results at N=4 — consider --runs 5 or more for a clearer signal.
-- ⚠️ External side effects (for example writes to third-party systems) are not observed; the comparison covers captured evals, traces, fingerprints, cost, and timing only.
+- ⚠️ External side effects (for example writes to third-party systems) are not observed; the comparison covers captured eval JSON/events, fingerprints, cost, and timing only.
 
 </details>
 

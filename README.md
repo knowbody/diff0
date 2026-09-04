@@ -37,7 +37,9 @@ fully attributed, so diff0 does not claim a cost saving.
 
 ![Recorded diff0 CLI demo showing a real-model behavioral comparison after two reporter-delegation instruction lines are deleted](https://raw.githubusercontent.com/knowbody/diff0/main/demo/demo.gif)
 
-_The GIF is an earlier five-run real-model capture. PR #8 is the current source of truth._
+_The GIF is an earlier five-run real-model capture. Its `sandbox docker (inferred)` line is
+historical: current diff0 reports the actual sandbox as unknown and labels Docker only as the
+host-default candidate. PR #8 is the current source of truth for the measured run._
 
 ## Quick start
 
@@ -131,16 +133,17 @@ The report includes:
 - eval pass proportions and scorer changes;
 - skill, subagent, tool-call, and output drift;
 - tokens, attributable cost, and duration;
-- the model, Eve version, sandbox, and run counts used on each ref; and
+- the model, Eve version, run counts, actual sandbox as unknown, and the separately labeled host-default sandbox candidate; and
 - uncertainty instead of treating one nondeterministic run as proof.
 
 Tool inputs and final outputs are fingerprinted. Raw values and reusable hashes are not included in
 public reports.
 
-The comparison observes only what Eve writes to its eval and trace artifacts. It does not prove
-semantic equivalence, judge whether drift is desirable, or isolate the model/provider from external
-state. Changes under the selected app's `evals/` directory are called out as a validity mismatch
-because the two refs may then be measuring different standards.
+The comparison uses captured eval JSON/events and privacy-preserving fingerprints; diff0 disables
+Eve traces. It does not prove semantic equivalence, judge whether drift is desirable, or isolate
+the model/provider from external state. Changes under the selected app's `evals/` directory,
+authored sandbox configuration, and additional `--validity-path` globs are called out as validity
+mismatches because the two refs may then be measuring different standards or runtime conditions.
 
 For the statistical rules, JSON schema, exit codes, and full option list, read the
 [CLI contract](https://github.com/knowbody/diff0/blob/main/docs/cli-contract.md).
@@ -153,14 +156,26 @@ diff0 run --base <ref> [--head <ref>] [options]
 --runs <n>              runs per ref (default: 3)
 --evals <filter>        run selected eval ids or prefixes
 --app-dir <path>        Eve app path inside a monorepo
+--validity-path <glob>  add an evaluator/config validity glob
 --max-spend <usd>       stop after measured spend crosses the threshold
+--max-duration-increase-pct <pct>  override the duration regression budget
 --cache                 reuse fresh base runs for 24 hours
---fail-on <policy>      regression, drift, or never
+--fail-on <policy>      legacy policy or comma-separated granular categories
 --report-md <path>      write a Markdown report
 --report-json <path>    write a machine-readable report
 ```
 
-`diff0 estimate` performs at most one eval-suite pass and projects the full comparison. The default
+`--validity-path` is repeatable or comma-separated and adds to the built-in `<app>/evals/**`
+validity check. Granular enforcement categories are `eval-regression`, `score-regression`,
+`performance-regression`, `behavioral-drift`, and `comparison-validity`; legacy `regression`,
+`drift`, and `never` remain supported.
+
+Directional median-increase budgets default to 25% for cost and 100% for uncached input tokens,
+output tokens, and duration. The four `--max-*-increase-pct` flags override individual defaults;
+improvements never violate a budget.
+
+`diff0 estimate` performs at most one eval-suite pass and projects the full comparison. It accepts
+the same `--timeout` and `--max-concurrency` execution controls as `run`. The default
 run count is three; use five or more when you need stronger evidence and can afford the extra model
 runs.
 

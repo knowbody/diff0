@@ -20,7 +20,13 @@ import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { Command, CommanderError, InvalidArgumentError, Option } from "commander";
 import { CommandInterruptedError, EvalFilterNoMatchError, NoEvalsError } from "./adapters/eve.js";
-import { type ComputeDeltaOptions, computeDelta } from "./analyze/delta.js";
+import {
+  type ComputeDeltaOptions,
+  computeDelta,
+  ENFORCEMENT_CATEGORIES,
+  violatesEnforcement,
+} from "./analyze/delta.js";
+import type { EnforcementCategory, PerformanceThresholds } from "./analyze/types.js";
 import { getDiff0Version } from "./collect/cache.js";
 import { applyPricing } from "./collect/pricing.js";
 import { type Estimate, type EstimateOptions, runEstimate } from "./harness/estimate.js";
@@ -64,9 +70,15 @@ export interface CliHarnessSeams {
   resolveRef?: NonNullable<RunComparisonOptions["resolveRef"]>;
   readCache?: NonNullable<RunComparisonOptions["readCache"]>;
   writeCache?: NonNullable<RunComparisonOptions["writeCache"]>;
+  getEvalHarnessChanges?: NonNullable<RunComparisonOptions["getEvalHarnessChanges"]>;
+  getSandboxConfigChanges?: NonNullable<RunComparisonOptions["getSandboxConfigChanges"]>;
 }
 
 type InstallModeInput = DependencyInstallMode | "safe" | "trusted";
+type LegacyFailOn = "regression" | "drift" | "never";
+type FailOnPolicy =
+  | { kind: "legacy"; policy: LegacyFailOn }
+  | { kind: "granular"; categories: EnforcementCategory[] };
 
 interface RunFlags {
   base: string;
@@ -78,13 +90,18 @@ interface RunFlags {
   installMode: InstallModeInput;
   timeout?: number;
   maxConcurrency?: number;
+  validityPath: string[];
+  maxCostIncreasePct?: number;
+  maxInputTokenIncreasePct?: number;
+  maxOutputTokenIncreasePct?: number;
+  maxDurationIncreasePct?: number;
   maxSpend?: number;
   reportMd?: string;
   reportJson?: string;
   json: boolean;
   /** Base-ref cache is opt-in because external state cannot be represented in its key. */
   cache: boolean;
-  failOn: "regression" | "drift" | "never";
+  failOn: FailOnPolicy;
   /** Commander's --no-color: true by default, false when the flag is given. */
   color: boolean;
 }
@@ -97,6 +114,8 @@ interface EstimateFlags {
   runs: number;
   evals: string[];
   installMode: InstallModeInput;
+  timeout?: number;
+  maxConcurrency?: number;
   maxSpend?: number;
 }
 
@@ -122,6 +141,45 @@ function parseUsd(label: string) {
   };
 }
 
+function parseNonNegativePercentage(label: string) {
+  return (value: string): number => {
+    const normalized = value.trim();
+    const decimal = /^(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
+    const parsed = Number(normalized);
+    if (!decimal.test(normalized) || !Number.isFinite(parsed) || parsed < 0) {
+      throw new InvalidArgumentError(
+        `${label} must be a finite non-negative percentage (got "${value}")`,
+      );
+    }
+    return parsed;
+  };
+}
+
+const LEGACY_FAIL_ON = ["regression", "drift", "never"] as const;
+
+function parseFailOn(value: string): FailOnPolicy {
+  const tokens = value.split(",").map((token) => token.trim());
+  if (tokens.length === 0 || tokens.some((token) => token.length === 0)) {
+    throw new InvalidArgumentError("--fail-on must not contain empty policy names");
+  }
+  if (tokens.length === 1 && LEGACY_FAIL_ON.includes(tokens[0] as LegacyFailOn)) {
+    return { kind: "legacy", policy: tokens[0] as LegacyFailOn };
+  }
+  if (tokens.some((token) => LEGACY_FAIL_ON.includes(token as LegacyFailOn))) {
+    throw new InvalidArgumentError("--fail-on cannot mix legacy and granular policies");
+  }
+  const unknown = tokens.filter(
+    (token) => !ENFORCEMENT_CATEGORIES.includes(token as EnforcementCategory),
+  );
+  if (unknown.length > 0) {
+    throw new InvalidArgumentError(`unknown --fail-on policy: ${unknown.join(", ")}`);
+  }
+  return {
+    kind: "granular",
+    categories: [...new Set(tokens as EnforcementCategory[])],
+  };
+}
+
 /** Repeatable and comma-separated: --evals a,b --evals c -> ["a","b","c"]. */
 function collectEvalFilter(value: string, previous: string[]): string[] {
   const parts = value
@@ -130,6 +188,15 @@ function collectEvalFilter(value: string, previous: string[]): string[] {
     .filter((part) => part.length > 0);
   if (parts.length === 0) {
     throw new InvalidArgumentError(`evals must include at least one non-empty filter`);
+  }
+  return [...previous, ...parts];
+}
+
+/** Additive repo-relative validity globs; validation happens in the harness. */
+function collectValidityPath(value: string, previous: string[]): string[] {
+  const parts = value.split(",").map((part) => part.trim());
+  if (parts.some((part) => part.length === 0)) {
+    throw new InvalidArgumentError("--validity-path must not contain empty globs");
   }
   return [...previous, ...parts];
 }
@@ -160,7 +227,9 @@ function exitCodeForError(error: unknown): 2 | 3 | 4 {
     /was not found in/i.test(message) ||
     /eve is not installed/i.test(message) ||
     /working tree has uncommitted changes/i.test(message) ||
-    /runs must be a positive integer/i.test(message)
+    /runs must be a positive integer/i.test(message) ||
+    /^app-dir (?:contains|does not exist|must )/i.test(message) ||
+    /^validity pattern /i.test(message)
   ) {
     return 2;
   }
@@ -201,6 +270,8 @@ function applySeams(
     | "resolveRef"
     | "readCache"
     | "writeCache"
+    | "getEvalHarnessChanges"
+    | "getSandboxConfigChanges"
   >,
   seams: CliHarnessSeams | undefined,
 ): void {
@@ -212,6 +283,12 @@ function applySeams(
   if (seams.resolveRef !== undefined) target.resolveRef = seams.resolveRef;
   if (seams.readCache !== undefined) target.readCache = seams.readCache;
   if (seams.writeCache !== undefined) target.writeCache = seams.writeCache;
+  if (seams.getEvalHarnessChanges !== undefined) {
+    target.getEvalHarnessChanges = seams.getEvalHarnessChanges;
+  }
+  if (seams.getSandboxConfigChanges !== undefined) {
+    target.getSandboxConfigChanges = seams.getSandboxConfigChanges;
+  }
 }
 
 async function executeRun(flags: RunFlags, io: CliIo, seams?: CliHarnessSeams): Promise<number> {
@@ -225,6 +302,7 @@ async function executeRun(flags: RunFlags, io: CliIo, seams?: CliHarnessSeams): 
       headRef: flags.head,
       runs: flags.runs,
       evalFilter: flags.evals,
+      validityPatterns: flags.validityPath,
       installMode,
       onProgress: (message) => io.err(`${message}\n`),
     };
@@ -248,10 +326,27 @@ async function executeRun(flags: RunFlags, io: CliIo, seams?: CliHarnessSeams): 
 
     const deltaOptions: ComputeDeltaOptions = {
       sandboxInferred: meta.sandboxInferred,
+      hostDefaultSandboxCandidate: meta.hostDefaultSandboxCandidate,
       gitDiffStat,
       baseCacheHit: meta.baseCacheHit,
       validityMismatches: meta.validityMismatches,
     };
+    const performanceThresholds: Partial<PerformanceThresholds> = {};
+    if (flags.maxCostIncreasePct !== undefined) {
+      performanceThresholds.costUsd = flags.maxCostIncreasePct;
+    }
+    if (flags.maxInputTokenIncreasePct !== undefined) {
+      performanceThresholds.tokensIn = flags.maxInputTokenIncreasePct;
+    }
+    if (flags.maxOutputTokenIncreasePct !== undefined) {
+      performanceThresholds.tokensOut = flags.maxOutputTokenIncreasePct;
+    }
+    if (flags.maxDurationIncreasePct !== undefined) {
+      performanceThresholds.durationMs = flags.maxDurationIncreasePct;
+    }
+    if (Object.keys(performanceThresholds).length > 0) {
+      deltaOptions.performanceThresholds = performanceThresholds;
+    }
     if (priced.costSource !== "unavailable") deltaOptions.costSource = priced.costSource;
 
     const report = computeDelta(basePriced, headPriced, deltaOptions);
@@ -271,9 +366,12 @@ async function executeRun(flags: RunFlags, io: CliIo, seams?: CliHarnessSeams): 
       io.out(renderTerminal(report, { color: useColor(flags) }));
     }
 
-    if (flags.failOn === "never") return 0;
+    if (flags.failOn.kind === "granular") {
+      return violatesEnforcement(report, flags.failOn.categories) ? 1 : 0;
+    }
+    if (flags.failOn.policy === "never") return 0;
     if (report.verdict === "red") return 1;
-    if (report.verdict === "yellow" && flags.failOn === "drift") return 1;
+    if (report.verdict === "yellow" && flags.failOn.policy === "drift") return 1;
     return 0;
   } catch (error) {
     return reportCliError(error, io, resolve(repoPath, flags.appDir));
@@ -357,6 +455,10 @@ async function executeEstimate(
       installMode,
       onProgress: (message) => io.err(`${message}\n`),
     };
+    if (flags.timeout !== undefined) estimateOptions.timeoutMs = flags.timeout;
+    if (flags.maxConcurrency !== undefined) {
+      estimateOptions.maxConcurrency = flags.maxConcurrency;
+    }
     applySeams(estimateOptions, seams);
 
     const estimate = await runEstimate(estimateOptions);
@@ -430,6 +532,12 @@ function buildProgram(io: CliIo, onExit: (code: number) => void, seams?: CliHarn
       collectEvalFilter,
       [] as string[],
     )
+    .option(
+      "--validity-path <glob>",
+      "additive repo-relative validity glob; repeatable or comma-separated",
+      collectValidityPath,
+      [] as string[],
+    )
     .option("--timeout <ms>", "per-eval timeout in ms", parsePositiveInt("--timeout"))
     .option(
       "--max-concurrency <n>",
@@ -444,6 +552,26 @@ function buildProgram(io: CliIo, onExit: (code: number) => void, seams?: CliHarn
         "unpriced models) never trigger the cap",
       parseUsd("--max-spend"),
     )
+    .option(
+      "--max-cost-increase-pct <pct>",
+      "maximum median cost increase percentage",
+      parseNonNegativePercentage("--max-cost-increase-pct"),
+    )
+    .option(
+      "--max-input-token-increase-pct <pct>",
+      "maximum median uncached-input-token increase percentage",
+      parseNonNegativePercentage("--max-input-token-increase-pct"),
+    )
+    .option(
+      "--max-output-token-increase-pct <pct>",
+      "maximum median output-token increase percentage",
+      parseNonNegativePercentage("--max-output-token-increase-pct"),
+    )
+    .option(
+      "--max-duration-increase-pct <pct>",
+      "maximum median duration increase percentage",
+      parseNonNegativePercentage("--max-duration-increase-pct"),
+    )
     .option("--report-md <path>", "write the markdown report here")
     .option("--report-json <path>", "write the JSON report here")
     .option("--json", "print the JSON report to stdout instead of the terminal render", false)
@@ -453,9 +581,12 @@ function buildProgram(io: CliIo, onExit: (code: number) => void, seams?: CliHarn
       false,
     )
     .addOption(
-      new Option("--fail-on <policy>", "what makes exit code 1")
-        .choices(["regression", "drift", "never"])
-        .default("regression"),
+      new Option(
+        "--fail-on <policy>",
+        "legacy regression|drift|never, or comma-separated granular categories",
+      )
+        .argParser(parseFailOn)
+        .default({ kind: "legacy", policy: "regression" }, "regression"),
     )
     .option("--no-color", "disable ANSI in terminal render")
     .action(async (flags: RunFlags) => {
@@ -466,7 +597,7 @@ function buildProgram(io: CliIo, onExit: (code: number) => void, seams?: CliHarn
     .command("estimate")
     .description(
       "measure one eval-suite pass and project the full comparison's cost " +
-        "and duration before spending",
+        "and duration before the full comparison",
     )
     .requiredOption("--base <ref>", "base git ref (e.g. main, origin/main, a SHA)")
     .option("--head <ref>", "head git ref", "HEAD")
@@ -494,10 +625,16 @@ function buildProgram(io: CliIo, onExit: (code: number) => void, seams?: CliHarn
       collectEvalFilter,
       [] as string[],
     )
+    .option("--timeout <ms>", "per-eval timeout in ms", parsePositiveInt("--timeout"))
+    .option(
+      "--max-concurrency <n>",
+      "passed to eve eval --max-concurrency",
+      parsePositiveInt("--max-concurrency"),
+    )
     .option(
       "--max-spend <usd>",
       "exit 4 when the projected cost exceeds this USD cap (lets CI gate " +
-        "before spending); when cost is unmeasurable the cap cannot be " +
+        "before the full comparison runs); when cost is unmeasurable the cap cannot be " +
         "enforced ahead of time and the estimate exits 0",
       parseUsd("--max-spend"),
     )

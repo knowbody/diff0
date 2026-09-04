@@ -25,11 +25,26 @@ inputs:
   evals:
     description: "Eval id/prefix filter (comma-separated). Empty runs all evals."
     default: ""
+  validity-paths:
+    description: "Additional repo-relative evaluator/config globs (comma-separated). Changes matching these paths make comparison validity fail."
+    default: ""
   fail-on:
-    description: "When to fail the check: regression | drift | never. Execution errors always fail."
+    description: "Legacy regression | drift | never, or comma-separated granular categories: eval-regression, score-regression, performance-regression, behavioral-drift, comparison-validity."
     default: "regression"
   max-spend:
     description: "Measured-cost USD stop threshold. Checked after each atomic suite run, so it can overshoot by one run; unavailable cost cannot be enforced. Empty disables it."
+    default: ""
+  max-cost-increase-pct:
+    description: "Maximum median cost increase percentage. Empty uses the core default (25)."
+    default: ""
+  max-input-token-increase-pct:
+    description: "Maximum median uncached-input-token increase percentage. Empty uses the core default (100)."
+    default: ""
+  max-output-token-increase-pct:
+    description: "Maximum median output-token increase percentage. Empty uses the core default (100)."
+    default: ""
+  max-duration-increase-pct:
+    description: "Maximum median duration increase percentage. Empty uses the core default (100)."
     default: ""
   working-directory:
     description: "Path of the eve app within the repo (maps to CLI --app-dir; the repo root is always the workflow checkout)."
@@ -116,19 +131,61 @@ runs:
         INPUT_HEAD: ${{ inputs.head }}
         INPUT_RUNS: ${{ inputs.runs }}
         INPUT_EVALS: ${{ inputs.evals }}
+        INPUT_VALIDITY_PATHS: ${{ inputs.validity-paths }}
         INPUT_FAIL_ON: ${{ inputs.fail-on }}
         INPUT_MAX_SPEND: ${{ inputs.max-spend }}
+        INPUT_MAX_COST_INCREASE_PCT: ${{ inputs.max-cost-increase-pct }}
+        INPUT_MAX_INPUT_TOKEN_INCREASE_PCT: ${{ inputs.max-input-token-increase-pct }}
+        INPUT_MAX_OUTPUT_TOKEN_INCREASE_PCT: ${{ inputs.max-output-token-increase-pct }}
+        INPUT_MAX_DURATION_INCREASE_PCT: ${{ inputs.max-duration-increase-pct }}
         INPUT_WORKING_DIRECTORY: ${{ inputs.working-directory }}
         INPUT_INSTALL_MODE: ${{ inputs.install-mode }}
       run: |
         # Validate cheap things up front, before any eval spend.
-        case "$INPUT_FAIL_ON" in
-          regression|drift|never) ;;
-          *)
-            echo "::error::diff0: invalid fail-on input '$INPUT_FAIL_ON' (expected regression | drift | never)."
-            exit 2
-            ;;
-        esac
+        if ! node <<'NODE'
+        const legacy = new Set(["regression", "drift", "never"]);
+        const granular = new Set([
+          "eval-regression",
+          "score-regression",
+          "performance-regression",
+          "behavioral-drift",
+          "comparison-validity",
+        ]);
+        const raw = process.env.INPUT_FAIL_ON ?? "";
+        const tokens = raw.split(",").map((token) => token.trim());
+        const fail = (message) => {
+          console.log(`::error::diff0: invalid fail-on input '${raw}' (${message}).`);
+          process.exit(2);
+        };
+        if (tokens.some((token) => token.length === 0)) fail("empty policy name");
+        if (tokens.length === 1 && legacy.has(tokens[0])) {
+          // Valid legacy policy.
+        } else if (tokens.some((token) => legacy.has(token))) {
+          fail("legacy and granular policies cannot be mixed");
+        } else {
+          const unknown = tokens.filter((token) => !granular.has(token));
+          if (unknown.length > 0) fail(`unknown policy: ${unknown.join(", ")}`);
+        }
+
+        const percentages = [
+          ["max-cost-increase-pct", process.env.INPUT_MAX_COST_INCREASE_PCT],
+          ["max-input-token-increase-pct", process.env.INPUT_MAX_INPUT_TOKEN_INCREASE_PCT],
+          ["max-output-token-increase-pct", process.env.INPUT_MAX_OUTPUT_TOKEN_INCREASE_PCT],
+          ["max-duration-increase-pct", process.env.INPUT_MAX_DURATION_INCREASE_PCT],
+        ];
+        const decimal = /^(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
+        for (const [name, rawValue] of percentages) {
+          if (rawValue === undefined || rawValue === "") continue;
+          const value = Number(rawValue);
+          if (!decimal.test(rawValue.trim()) || !Number.isFinite(value) || value < 0) {
+            console.log(`::error::diff0: invalid ${name} input '${rawValue}' (expected a finite non-negative percentage).`);
+            process.exit(2);
+          }
+        }
+        NODE
+        then
+          exit 2
+        fi
         case "$INPUT_INSTALL_MODE" in
           scripts-off|scripts-on) ;;
           safe)
@@ -169,11 +226,17 @@ runs:
         # --head defaults to HEAD inside the CLI; only pass it when we have one.
         if [ -n "$INPUT_HEAD" ]; then args+=(--head "$INPUT_HEAD"); fi
         if [ -n "$INPUT_EVALS" ]; then args+=(--evals "$INPUT_EVALS"); fi
+        if [ -n "$INPUT_VALIDITY_PATHS" ]; then args+=(--validity-path "$INPUT_VALIDITY_PATHS"); fi
         if [ -n "$INPUT_MAX_SPEND" ]; then args+=(--max-spend "$INPUT_MAX_SPEND"); fi
+        if [ -n "$INPUT_MAX_COST_INCREASE_PCT" ]; then args+=(--max-cost-increase-pct "$INPUT_MAX_COST_INCREASE_PCT"); fi
+        if [ -n "$INPUT_MAX_INPUT_TOKEN_INCREASE_PCT" ]; then args+=(--max-input-token-increase-pct "$INPUT_MAX_INPUT_TOKEN_INCREASE_PCT"); fi
+        if [ -n "$INPUT_MAX_OUTPUT_TOKEN_INCREASE_PCT" ]; then args+=(--max-output-token-increase-pct "$INPUT_MAX_OUTPUT_TOKEN_INCREASE_PCT"); fi
+        if [ -n "$INPUT_MAX_DURATION_INCREASE_PCT" ]; then args+=(--max-duration-increase-pct "$INPUT_MAX_DURATION_INCREASE_PCT"); fi
 
         # The CLI always runs with --fail-on never so the report (and the PR
         # comment in the next step) is produced before any failure. The fail-on
-        # INPUT is enforced in the final step from the JSON report's verdict.
+        # INPUT is enforced in the final step from the JSON verdict and typed
+        # enforcement categories.
         set +e
         node "$GITHUB_ACTION_PATH/dist/cli.mjs" "${args[@]}"
         code=$?
@@ -235,17 +298,37 @@ runs:
           exit 3
         fi
 
-        if ! verdict="$(node -e '
+        if ! report_state="$(node -e '
           const report = JSON.parse(require("node:fs").readFileSync(process.env.REPORT_JSON, "utf8"));
-          if (report.schemaVersion !== 3 || !["green", "yellow", "red"].includes(report.verdict)) {
+          const categories = new Set([
+            "eval-regression", "score-regression", "performance-regression",
+            "behavioral-drift", "comparison-validity",
+          ]);
+          const violations = report.enforcement?.violations;
+          if (
+            report.schemaVersion !== 4 ||
+            !["green", "yellow", "red"].includes(report.verdict) ||
+            !Array.isArray(violations) ||
+            !violations.every((violation) =>
+              violation && categories.has(violation.category) &&
+              Array.isArray(violation.reasons) &&
+              violation.reasons.every((reason) => typeof reason === "string")
+            )
+          ) {
             process.exit(3);
           }
-          process.stdout.write(report.verdict);
+          process.stdout.write(`${report.verdict}|${violations.map((item) => item.category).join(",")}`);
         ')"; then
-          echo "::error::diff0: JSON report has an unsupported schema or invalid verdict."
+          echo "::error::diff0: JSON report has an unsupported schema or invalid verdict/enforcement data."
           exit 3
         fi
+        verdict="${report_state%%|*}"
+        violation_categories="${report_state#*|}"
         echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
+
+        # Preflight accepts surrounding whitespace by trimming policy tokens;
+        # enforce the same normalized value here.
+        FAIL_ON="${FAIL_ON//[[:space:]]/}"
 
         case "$FAIL_ON" in
           regression)
@@ -261,5 +344,15 @@ runs:
             fi
             ;;
           never) ;;
+          *)
+            IFS=',' read -r -a selected_categories <<< "$FAIL_ON"
+            for selected in "${selected_categories[@]}"; do
+              selected="${selected//[[:space:]]/}"
+              if [[ ",$violation_categories," == *",$selected,"* ]]; then
+                echo "::error::diff0: enforcement category '$selected' was violated (fail-on: $FAIL_ON). The full report is in the PR comment."
+                exit 1
+              fi
+            done
+            ;;
         esac
         echo "diff0 verdict: $verdict (fail-on: $FAIL_ON) — check passed."

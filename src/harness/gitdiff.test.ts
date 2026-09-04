@@ -3,7 +3,12 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { getDiffStat, getEvalHarnessChanges } from "./gitdiff.js";
+import {
+  getDiffStat,
+  getEvalHarnessChanges,
+  getSandboxConfigChanges,
+  normalizeValidityPattern,
+} from "./gitdiff.js";
 
 function gitIn(repo: string, args: string[]): string {
   return execFileSync(
@@ -25,8 +30,14 @@ beforeAll(async () => {
 
   await writeFile(join(repo, "a.txt"), "one\ntwo\nthree\n", "utf8");
   await writeFile(join(repo, "img.bin"), Buffer.from([0x00, 0x01, 0x02, 0xff, 0x00, 0x7f]));
+  await mkdir(join(repo, "agent"), { recursive: true });
   await mkdir(join(repo, "apps", "agent", "evals"), { recursive: true });
+  await mkdir(join(repo, "apps", "agent", "agent"), { recursive: true });
+  await mkdir(join(repo, "packages", "eval-utils"), { recursive: true });
   await writeFile(join(repo, "apps", "agent", "evals", "quality.eval.ts"), "expect(42);\n");
+  await writeFile(join(repo, "apps", "agent", "agent", "sandbox.ts"), "use(defaults);\n");
+  await writeFile(join(repo, "packages", "eval-utils", "scorer.ts"), "export const score = 1;\n");
+  await writeFile(join(repo, "agent", "sandbox.ts"), "use(defaults);\n");
   gitIn(repo, ["add", "-A"]);
   gitIn(repo, ["commit", "-q", "-m", "one"]);
   sha1 = gitIn(repo, ["rev-parse", "HEAD"]).trim();
@@ -35,6 +46,9 @@ beforeAll(async () => {
   await writeFile(join(repo, "a.txt"), "one\n2\nthree\nfour\n", "utf8");
   await writeFile(join(repo, "img.bin"), Buffer.from([0x00, 0xaa, 0xbb, 0x00, 0xcc, 0x00]));
   await writeFile(join(repo, "apps", "agent", "evals", "quality.eval.ts"), "expect(43);\n");
+  await writeFile(join(repo, "apps", "agent", "agent", "sandbox.ts"), "use(vercel);\n");
+  await writeFile(join(repo, "packages", "eval-utils", "scorer.ts"), "export const score = 2;\n");
+  await writeFile(join(repo, "agent", "sandbox.ts"), "use(vercel);\n");
   gitIn(repo, ["add", "-A"]);
   gitIn(repo, ["commit", "-q", "-m", "two"]);
   sha2 = gitIn(repo, ["rev-parse", "HEAD"]).trim();
@@ -50,10 +64,13 @@ describe("getDiffStat", () => {
     expect(stat).not.toBeNull();
     expect(stat?.files).toEqual([
       { path: "a.txt", insertions: 2, deletions: 1 },
+      { path: "agent/sandbox.ts", insertions: 1, deletions: 1 },
+      { path: "apps/agent/agent/sandbox.ts", insertions: 1, deletions: 1 },
       { path: "apps/agent/evals/quality.eval.ts", insertions: 1, deletions: 1 },
       { path: "img.bin", insertions: 0, deletions: 0 },
+      { path: "packages/eval-utils/scorer.ts", insertions: 1, deletions: 1 },
     ]);
-    expect(stat?.summary).toBe("3 files changed, 3 insertions(+), 2 deletions(-)");
+    expect(stat?.summary).toBe("6 files changed, 6 insertions(+), 5 deletions(-)");
   });
 
   it("returns an empty stat for identical shas", async () => {
@@ -78,9 +95,42 @@ describe("getEvalHarnessChanges", () => {
     await expect(getEvalHarnessChanges(repo, sha1, sha2, ".")).resolves.toEqual([]);
   });
 
+  it("adds caller-provided repo-relative validity globs for shared evaluator helpers", async () => {
+    await expect(
+      getEvalHarnessChanges(repo, sha1, sha2, "apps/agent", ["packages/eval-utils/**"]),
+    ).resolves.toEqual(["apps/agent/evals/quality.eval.ts", "packages/eval-utils/scorer.ts"]);
+  });
+
+  it("ignores unrelated changed files that match neither the default nor custom globs", async () => {
+    await expect(getEvalHarnessChanges(repo, sha1, sha2, "apps/agent")).resolves.not.toContain(
+      "a.txt",
+    );
+  });
+
+  it("rejects absolute, traversing, empty, and negated validity globs", () => {
+    expect(() => normalizeValidityPattern("/tmp/**")).toThrow(/contained repo-relative/);
+    expect(() => normalizeValidityPattern("../shared/**")).toThrow(/contained repo-relative/);
+    expect(() => normalizeValidityPattern("   ")).toThrow(/contained repo-relative/);
+    expect(() => normalizeValidityPattern("!evals/**")).toThrow(/contained repo-relative/);
+  });
+
   it("returns null when git cannot inspect the refs", async () => {
     await expect(
       getEvalHarnessChanges(repo, sha1, "0000000000000000000000000000000000000000", "."),
     ).resolves.toBeNull();
+  });
+});
+
+describe("getSandboxConfigChanges", () => {
+  it("finds authored sandbox entry-point changes for a monorepo app", async () => {
+    await expect(getSandboxConfigChanges(repo, sha1, sha2, "apps/agent")).resolves.toEqual([
+      "apps/agent/agent/sandbox.ts",
+    ]);
+  });
+
+  it("finds authored sandbox entry-point changes for a root app", async () => {
+    await expect(getSandboxConfigChanges(repo, sha1, sha2, ".")).resolves.toEqual([
+      "agent/sandbox.ts",
+    ]);
   });
 });

@@ -64,6 +64,48 @@ describe("renderTerminal", () => {
     expect(out).not.toMatch(/\bundefined\b/);
     expect(out).not.toMatch(/\bNaN\b/);
   });
+
+  it("shows exceeded performance budgets only when a budget is exceeded", () => {
+    const base = repeatRuns("main", "aaa1111", 2, {
+      evals: { e: true },
+      tokens: { input: 100, output: 100 },
+      durationMs: 1_000,
+    });
+    const head = repeatRuns("feat", "bbb2222", 2, {
+      evals: { e: true },
+      tokens: { input: 100, output: 250 },
+      durationMs: 2_500,
+    });
+    const exceeded = renderTerminal(computeDelta(base, head, { now: FIXED_NOW }), {
+      color: false,
+    });
+    const unchanged = renderTerminal(
+      computeDelta(base, base.map((run) => ({ ...run, ref: "feat" })), { now: FIXED_NOW }),
+      { color: false },
+    );
+
+    expect(exceeded).toContain("EXCEEDED PERFORMANCE BUDGETS");
+    expect(exceeded).toContain("output tokens delta +150% exceeds +100% threshold");
+    expect(exceeded).toContain("duration delta +150% exceeds +100% threshold");
+    expect(unchanged).not.toContain("EXCEEDED PERFORMANCE BUDGETS");
+  });
+
+  it("separates the unknown actual sandbox from the host default candidate", () => {
+    const runs = repeatRuns("main", "aaa1111", 2, {
+      evals: { e: true },
+      sandboxBackend: "unknown",
+    });
+    const report = computeDelta(runs, runs.map((run) => ({ ...run, ref: "feat" })), {
+      now: FIXED_NOW,
+      sandboxInferred: false,
+      hostDefaultSandboxCandidate: "docker",
+    });
+    const out = renderTerminal(report, { color: false });
+
+    expect(out).toContain("actual sandbox unknown");
+    expect(out).toContain("host default candidate docker");
+    expect(out).not.toContain("sandbox docker (inferred)");
+  });
 });
 
 describe("renderTerminal 100-column fit", () => {

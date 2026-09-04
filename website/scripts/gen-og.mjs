@@ -86,12 +86,12 @@ const og = el(
         {
           style: {
             display: "flex",
-            fontSize: "44px",
+            fontSize: "38px",
             color: YELLOW,
             fontWeight: 500,
           },
         },
-        "real-model drift · no eval regression",
+        "real-model drift · no confirmed regression",
       ),
     ),
     el(

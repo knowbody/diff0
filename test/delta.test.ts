@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   COST_DRIFT_THRESHOLD_PCT,
+  DEFAULT_PERFORMANCE_THRESHOLDS,
   OPERATIONAL_REGRESSION_MIN_RUNS,
   SOFT_SCORE_REGRESSION_THRESHOLD,
   computeDelta,
+  violatesEnforcement,
 } from "../src/analyze/delta.js";
 import type { EvalDelta } from "../src/analyze/types.js";
 import { buildRuns, FIXED_NOW, repeatRuns } from "./helpers/records.js";
@@ -33,6 +35,7 @@ describe("computeDelta: eval statuses & verdict", () => {
       alpha: 0.05,
     });
     expect(report.verdict).toBe("red");
+    expect(violatesEnforcement(report, ["eval-regression"])).toBe(true);
     expect(report.verdictSummary).toContain("regressed");
     expect(report.verdictReasons.join("\n")).toContain("passed 3/3 on base, 0/3 on head");
   });
@@ -158,6 +161,7 @@ describe("computeDelta: eval statuses & verdict", () => {
     const report = computeDelta(base, head, { now: FIXED_NOW });
     expect(evalByName(report.evals, "fixed").status).toBe("improved");
     expect(report.verdict).toBe("green");
+    expect(violatesEnforcement(report, ["eval-regression"])).toBe(false);
   });
 
   it("consistently failing on both refs -> fail (pre-existing failure, not a regression)", () => {
@@ -281,6 +285,7 @@ describe("computeDelta: soft scores", () => {
     });
     expect(report.verdict).toBe("yellow");
     expect(report.verdictSummary).toContain("material score regression");
+    expect(violatesEnforcement(report, ["score-regression"])).toBe(true);
   });
 
   it("keeps scorer movement below the material threshold non-gating", () => {
@@ -293,6 +298,22 @@ describe("computeDelta: soft scores", () => {
     const report = computeDelta(base, head, { now: FIXED_NOW });
 
     expect(evalByName(report.evals, "judge").softScores?.classification).toBe("within-threshold");
+    expect(report.verdict).toBe("green");
+  });
+
+  it("does not classify a material score improvement as a score regression", () => {
+    const base = repeatRuns("main", "aaa1111", 3, {
+      evals: { judge: { passed: true, scores: [0.6] } },
+    });
+    const head = repeatRuns("feat", "bbb2222", 3, {
+      evals: { judge: { passed: true, scores: [0.9] } },
+    });
+    const report = computeDelta(base, head, { now: FIXED_NOW });
+
+    expect(evalByName(report.evals, "judge").softScores?.classification).toBe(
+      "material-improvement",
+    );
+    expect(violatesEnforcement(report, ["score-regression"])).toBe(false);
     expect(report.verdict).toBe("green");
   });
 
@@ -375,6 +396,7 @@ describe("computeDelta: behavioral drift", () => {
     ]);
     expect(report.verdict).toBe("yellow");
     expect(report.verdictReasons.join("\n")).toContain("1 of 3 head runs");
+    expect(violatesEnforcement(report, ["behavioral-drift"])).toBe(true);
   });
 
   it("no skill drift entry when proportions match", () => {
@@ -677,10 +699,16 @@ describe("computeDelta: cost & performance", () => {
     expect(report.costPerf.costUsd.base?.median).toBeCloseTo(0.03, 6);
     expect(report.costPerf.costUsd.head?.median).toBeCloseTo(0.0414, 6);
     expect(report.costPerf.costUsd.deltaPct).toBeCloseTo(38, 1);
-    // >25% median cost delta counts as drift-worthy yellow.
-    expect(Math.abs(report.costPerf.costUsd.deltaPct ?? 0)).toBeGreaterThan(
-      COST_DRIFT_THRESHOLD_PCT,
+    // >25% median cost increase counts as a directional performance regression.
+    expect(report.costPerf.costUsd.deltaPct ?? 0).toBeGreaterThan(COST_DRIFT_THRESHOLD_PCT);
+    expect(report.costPerf.regressions).toContainEqual(
+      expect.objectContaining({
+        metric: "costUsd",
+        deltaPct: 38,
+        thresholdPct: COST_DRIFT_THRESHOLD_PCT,
+      }),
     );
+    expect(violatesEnforcement(report, ["performance-regression"])).toBe(true);
     expect(report.verdict).toBe("yellow");
     expect(report.meta.totalComparisonCostUsd).toBeCloseTo(0.2144, 6);
   });
@@ -719,6 +747,8 @@ describe("computeDelta: cost & performance", () => {
       expect(report.meta.totalComparisonCostUsd).toBeNull();
       expect(report.verdict).toBe("yellow");
       expect(report.verdictReasons.join("\n")).toContain("cost comparability unavailable");
+      expect(violatesEnforcement(report, ["performance-regression"])).toBe(false);
+      expect(violatesEnforcement(report, ["comparison-validity"])).toBe(true);
     });
   }
 
@@ -750,6 +780,92 @@ describe("computeDelta: cost & performance", () => {
     expect(report.costPerf.durationMs.deltaPct).toBeCloseTo(50, 1);
     expect(report.costPerf.tokensIn.deltaPct).toBeCloseTo(50, 1);
     expect(report.costPerf.tokensOut.base?.median).toBe(200);
+    expect(report.costPerf.regressions).toEqual([]);
+    expect(report.verdict).toBe("green");
+  });
+
+  it("turns a 900% duration and token increase into explicit non-green regressions", () => {
+    const base = repeatRuns("main", "aaa1111", 3, {
+      evals: { e: true },
+      durationMs: 100,
+      tokens: { input: 100, output: 20 },
+    });
+    const head = repeatRuns("feat", "bbb2222", 3, {
+      evals: { e: true },
+      durationMs: 1000,
+      tokens: { input: 1000, output: 200 },
+    });
+    const report = computeDelta(base, head, { now: FIXED_NOW });
+
+    expect(report.verdict).toBe("yellow");
+    expect(report.costPerf.regressions).toEqual([
+      {
+        metric: "tokensIn",
+        baseMedian: 100,
+        headMedian: 1000,
+        deltaPct: 900,
+        thresholdPct: DEFAULT_PERFORMANCE_THRESHOLDS.tokensIn,
+      },
+      {
+        metric: "tokensOut",
+        baseMedian: 20,
+        headMedian: 200,
+        deltaPct: 900,
+        thresholdPct: DEFAULT_PERFORMANCE_THRESHOLDS.tokensOut,
+      },
+      {
+        metric: "durationMs",
+        baseMedian: 100,
+        headMedian: 1000,
+        deltaPct: 900,
+        thresholdPct: DEFAULT_PERFORMANCE_THRESHOLDS.durationMs,
+      },
+    ]);
+    expect(report.verdictReasons.join("\n")).toContain(
+      "duration/session performance regression: median increased +900% (threshold 100%; base 100, head 1000)",
+    );
+    expect(violatesEnforcement(report, ["performance-regression"])).toBe(true);
+  });
+
+  it("supports stricter directional performance thresholds", () => {
+    const base = repeatRuns("main", "aaa1111", 3, {
+      evals: { e: true },
+      durationMs: 100,
+    });
+    const head = repeatRuns("feat", "bbb2222", 3, {
+      evals: { e: true },
+      durationMs: 150,
+    });
+    const report = computeDelta(base, head, {
+      now: FIXED_NOW,
+      performanceThresholds: { durationMs: 40 },
+    });
+
+    expect(report.costPerf.regressions).toContainEqual(
+      expect.objectContaining({ metric: "durationMs", deltaPct: 50, thresholdPct: 40 }),
+    );
+    expect(report.verdict).toBe("yellow");
+  });
+
+  it("does not classify cost or performance decreases as regressions", () => {
+    const base = repeatRuns("main", "aaa1111", 3, {
+      evals: { e: true },
+      costUsd: 0.04,
+      durationMs: 1000,
+      tokens: { input: 1000, output: 200 },
+    });
+    const head = repeatRuns("feat", "bbb2222", 3, {
+      evals: { e: true },
+      costUsd: 0.02,
+      durationMs: 500,
+      tokens: { input: 500, output: 100 },
+    });
+    const report = computeDelta(base, head, { now: FIXED_NOW });
+
+    expect(report.costPerf.costUsd.deltaPct).toBe(-50);
+    expect(report.costPerf.regressions).toEqual([]);
+    expect(violatesEnforcement(report, ["performance-regression"])).toBe(false);
+    expect(report.verdict).toBe("green");
   });
 });
 
@@ -813,6 +929,8 @@ describe("computeDelta: meta, mismatches, caveats, edge cases", () => {
 
     expect(evalByName(report.evals, "e").status).toBe("regressed");
     expect(report.verdict).toBe("yellow");
+    expect(violatesEnforcement(report, ["eval-regression"])).toBe(true);
+    expect(violatesEnforcement(report, ["comparison-validity"])).toBe(true);
     expect(report.verdictSummary).toContain("confounded by comparison validity");
   });
 
@@ -829,6 +947,7 @@ describe("computeDelta: meta, mismatches, caveats, edge cases", () => {
 
     expect(report.verdict).toBe("yellow");
     expect(report.meta.mismatches).toContain(warning);
+    expect(violatesEnforcement(report, ["comparison-validity"])).toBe(true);
     expect(report.verdictSummary).toContain("confounded by comparison validity");
   });
 
