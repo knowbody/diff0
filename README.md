@@ -103,7 +103,7 @@ jobs:
         with:
           node-version: 24
 
-      - uses: knowbody/diff0/action@v0.1.2
+      - uses: knowbody/diff0/action@v0.1.3
         with:
           working-directory: .
           runs: "3"

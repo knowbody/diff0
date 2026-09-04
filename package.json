@@ -1,6 +1,6 @@
 {
   "name": "@knowbody/diff0",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "CLI for behavioral diffs of Eve agents: run an eval suite against two git refs and compare what the agent did.",
   "keywords": [
     "eve",
