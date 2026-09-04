@@ -23,7 +23,8 @@ const execFileAsync = promisify(execFile);
 
 /** Relative location in a normal (non-linked) checkout. */
 export const CACHE_DIR_NAME = join(".git", "diff0-cache");
-export const CACHE_SCHEMA_VERSION = 5;
+// v6 stops reusing records that labeled a host-default probe as the actual app sandbox.
+export const CACHE_SCHEMA_VERSION = 6;
 export const DEFAULT_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 export interface CacheKeyInput {
@@ -39,7 +40,7 @@ export interface CacheKeyInput {
   timeoutMs?: number | null;
   /** Suite concurrency forwarded to eve; omitted and explicit null are equivalent. */
   maxConcurrency?: number | null;
-  /** Inferred execution sandbox. A backend change can change behavior. */
+  /** Host-default sandbox candidate; authored app config may override it. */
   sandboxBackend?: SandboxBackend | null;
   /** Dependency lifecycle/build-script policy; scripts can change generated artifacts. */
   installMode?: DependencyInstallMode | null;

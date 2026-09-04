@@ -220,6 +220,45 @@ describe("renderMarkdown structure", () => {
     expect(md).not.toContain("$0.00 ");
   });
 
+  it("separates the unknown actual sandbox from the host default candidate", () => {
+    const runs = repeatRuns("main", "aaa1111", 2, {
+      evals: { e: true },
+      sandboxBackend: "unknown",
+    });
+    const report = computeDelta(runs, runs.map((run) => ({ ...run, ref: "feat" })), {
+      now: FIXED_NOW,
+      sandboxInferred: false,
+      hostDefaultSandboxCandidate: "docker",
+    });
+    const md = renderMarkdown(report);
+
+    expect(md).toContain("actual sandbox unknown");
+    expect(md).toContain("host default candidate docker");
+    expect(md).not.toContain("sandbox docker (inferred)");
+  });
+
+  it("shows exceeded performance budgets only when a budget is exceeded", () => {
+    const base = repeatRuns("main", "aaa1111", 2, {
+      evals: { e: true },
+      tokens: { input: 100, output: 100 },
+      durationMs: 1_000,
+    });
+    const head = repeatRuns("feat", "bbb2222", 2, {
+      evals: { e: true },
+      tokens: { input: 100, output: 250 },
+      durationMs: 2_500,
+    });
+    const exceeded = renderMarkdown(computeDelta(base, head, { now: FIXED_NOW }));
+    const unchanged = renderMarkdown(
+      computeDelta(base, base.map((run) => ({ ...run, ref: "feat" })), { now: FIXED_NOW }),
+    );
+
+    expect(exceeded).toContain("### Exceeded performance budgets");
+    expect(exceeded).toContain("**Output tokens:** delta +150% exceeds +100% threshold.");
+    expect(exceeded).toContain("**Duration:** delta +150% exceeds +100% threshold.");
+    expect(unchanged).not.toContain("### Exceeded performance budgets");
+  });
+
   it("drift section uses `X of N runs` language and the pitch numbers", () => {
     const md = renderMarkdown(driftOnlyYellowReport());
     expect(md).toContain("loaded in 3 of 3 base runs → 1 of 3 head runs");

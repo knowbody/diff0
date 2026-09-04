@@ -9,6 +9,7 @@ import type {
   EvalDelta,
   EvalStatus,
   MetricDelta,
+  PerformanceRegression,
   RunSummary,
 } from "../analyze/types.js";
 import {
@@ -164,6 +165,19 @@ export function renderTerminal(report: DeltaReport, opts: TerminalOptions = {}):
 
   // Validity line — packed at " | " boundaries so it never overflows.
   const inferred = meta.base.sandboxInferred ? " (inferred)" : "";
+  const sandboxSegments =
+    meta.hostDefaultSandboxCandidate !== undefined
+      ? [
+          meta.base.sandboxBackend === meta.head.sandboxBackend
+            ? `actual sandbox ${safeTerminalText(String(meta.base.sandboxBackend))}`
+            : `actual sandbox base ${safeTerminalText(String(meta.base.sandboxBackend))} / head ${safeTerminalText(String(meta.head.sandboxBackend))}`,
+          `host default candidate ${safeTerminalText(String(meta.hostDefaultSandboxCandidate))}`,
+        ]
+      : [
+          meta.base.sandboxBackend === meta.head.sandboxBackend
+            ? `sandbox ${safeTerminalText(String(meta.base.sandboxBackend))}${inferred}`
+            : `sandbox base ${safeTerminalText(String(meta.base.sandboxBackend))} / head ${safeTerminalText(String(meta.head.sandboxBackend))}${inferred}`,
+        ];
   const validitySegments = [
     meta.base.eveVersion === meta.head.eveVersion
       ? `eve ${safeTerminalText(meta.base.eveVersion)}`
@@ -172,9 +186,7 @@ export function renderTerminal(report: DeltaReport, opts: TerminalOptions = {}):
       ? `model ${safeTerminalText(meta.base.model)}`
       : `model base ${safeTerminalText(meta.base.model)} / head ${safeTerminalText(meta.head.model)}`,
     phrase,
-    meta.base.sandboxBackend === meta.head.sandboxBackend
-      ? `sandbox ${safeTerminalText(String(meta.base.sandboxBackend))}${inferred}`
-      : `sandbox base ${safeTerminalText(String(meta.base.sandboxBackend))} / head ${safeTerminalText(String(meta.head.sandboxBackend))}${inferred}`,
+    ...sandboxSegments,
     meta.totalComparisonCostUsd !== null
       ? `comparison cost ${formatUsd(meta.totalComparisonCostUsd)} (${meta.costSource})`
       : "comparison cost unavailable",
@@ -255,6 +267,12 @@ export function renderTerminal(report: DeltaReport, opts: TerminalOptions = {}):
         `head ${headCell.padEnd(headColWidth)}  ${deltaCell}`,
     );
   }
+  if (report.costPerf.regressions.length > 0) {
+    lines.push(pc.yellow(pc.bold("  EXCEEDED PERFORMANCE BUDGETS")));
+    for (const regression of report.costPerf.regressions) {
+      lines.push(pc.yellow(`  ! ${performanceBudgetText(regression)}`));
+    }
+  }
 
   // Changed files
   if (meta.gitDiffStat !== null) {
@@ -300,6 +318,20 @@ export function renderTerminal(report: DeltaReport, opts: TerminalOptions = {}):
   lines.push(pc.dim("LLM runs are nondeterministic; treat proportions, not absolutes."));
 
   return `${lines.join("\n")}\n`;
+}
+
+const PERFORMANCE_LABELS: Record<PerformanceRegression["metric"], string> = {
+  costUsd: "cost/session",
+  tokensIn: "uncached input tokens",
+  tokensOut: "output tokens",
+  durationMs: "duration",
+};
+
+function performanceBudgetText(regression: PerformanceRegression): string {
+  return (
+    `${PERFORMANCE_LABELS[regression.metric]} delta ${formatSignedPct(regression.deltaPct)} ` +
+    `exceeds ${formatSignedPct(regression.thresholdPct)} threshold`
+  );
 }
 
 function colorStatus(status: EvalStatus, pc: Colors): string {

@@ -47,7 +47,7 @@ export interface RefMeta {
   eveVersion: string;
   model: string;
   sandboxBackend: SandboxBackend | string;
-  /** True when diff0 inferred the backend by replicating eve's probe (eve never reports it). */
+  /** True only for legacy/programmatic reports that label a backend from inference. */
   sandboxInferred: boolean;
   runs: number;
 }
@@ -61,10 +61,12 @@ export interface ComparisonMeta {
   totalComparisonCostUsd: number | null;
   costSource: CostSource;
   dataSources: DataSourcesSummary;
+  /** Host capability probe only; not evidence of either app's actual sandbox. */
+  hostDefaultSandboxCandidate?: SandboxBackend;
   /** ISO 8601. Injectable via ComputeDeltaOptions.now for deterministic output. */
   generatedAt: string;
   /**
-   * Comparison-validity problems: model/eveVersion/sandbox differing between
+   * Comparison-validity problems: model/Eve version/run evidence differing between
    * refs (or inconsistent within one ref), differing run counts. Non-empty
    * mismatches feed the report's validity warning block.
    */
@@ -278,14 +280,50 @@ export interface CostPerf {
   cacheReadTokens: MetricDelta;
   cacheWriteTokens: MetricDelta;
   durationMs: MetricDelta;
+  /** Directional median increases that exceeded the configured percentage budgets. */
+  regressions: PerformanceRegression[];
+}
+
+/** Metrics whose increases can violate a directional performance budget. */
+export type PerformanceMetric = "costUsd" | "tokensIn" | "tokensOut" | "durationMs";
+
+/** Percentage budgets are increase-only: improvements never create a regression. */
+export type PerformanceThresholds = Record<PerformanceMetric, number>;
+
+/** Machine-readable evidence for one exceeded directional performance budget. */
+export interface PerformanceRegression {
+  metric: PerformanceMetric;
+  baseMedian: number;
+  headMedian: number;
+  deltaPct: number;
+  thresholdPct: number;
+}
+
+/** Independently selectable policy categories; callers never need to parse verdict prose. */
+export type EnforcementCategory =
+  | "eval-regression"
+  | "score-regression"
+  | "performance-regression"
+  | "behavioral-drift"
+  | "comparison-validity";
+
+/** One category violated by the comparison, with human-readable supporting evidence. */
+export interface EnforcementViolation {
+  category: EnforcementCategory;
+  reasons: string[];
+}
+
+export interface EnforcementClassification {
+  /** Contains at most one entry per category, in stable category order. */
+  violations: EnforcementViolation[];
 }
 
 /**
  * red    = at least one statistically confirmed REGRESSED eval, or a complete all-pass base to
  *          all-fail head collapse across at least 3 runs per ref (an operational regression).
  * yellow = no confirmed regression, but a comparison-validity warning,
- *          removed/added/flaky/inconclusive eval, behavioral change, or material cost drift
- *          requires review.
+ *          removed/added/flaky/inconclusive eval, behavioral change, or a directional
+ *          cost/duration/token budget regression requires review.
  * green  = no confirmed or reviewable change.
  */
 export type Verdict = "green" | "yellow" | "red";
@@ -312,6 +350,8 @@ export interface DeltaReport {
   evals: EvalDelta[];
   drift: DriftSection;
   costPerf: CostPerf;
+  /** Granular policy findings, independent of the legacy green/yellow/red presentation. */
+  enforcement: EnforcementClassification;
   /**
    * Honest-framing caveats renderers MUST surface: N=1 flakiness-undetectable
    * warning, the "--runs 5" recommendation, and the external-side-effect limitation.

@@ -161,7 +161,7 @@ describe("runComparison", () => {
       adapter.calls.map((c) => `${c.opts.cwd.includes("/main") ? "base" : "head"}:${c.runIndex}`),
     ).toEqual(["base:0", "head:0", "head:1", "base:1", "base:2", "head:2"]);
     for (const call of adapter.calls) {
-      expect(call.opts.sandboxBackend).toBe("docker");
+      expect(call.opts.sandboxBackend).toBe("unknown");
       expect(call.opts.evalFilter).toEqual(["revenue"]);
       expect(call.opts.timeoutMs).toBe(60_000);
       expect(call.opts.maxConcurrency).toBe(2);
@@ -174,8 +174,9 @@ describe("runComparison", () => {
       headSha: sha,
       baseEveVersion: FAKE_EVE_VERSION,
       headEveVersion: FAKE_EVE_VERSION,
-      sandboxBackend: "docker",
-      sandboxInferred: true,
+      sandboxBackend: "unknown",
+      sandboxInferred: false,
+      hostDefaultSandboxCandidate: "docker",
       baseCacheHit: false,
       runsPerRef: 3,
       validityMismatches: [],
@@ -187,10 +188,14 @@ describe("runComparison", () => {
     // Progress counts every run out of the counterbalanced total.
     expect(progress.some((m) => m.includes("[1/6] base run 1"))).toBe(true);
     expect(progress.some((m) => m.includes("[6/6] head run 3"))).toBe(true);
+    expect(progress).toContain(
+      "host default sandbox candidate: docker (actual app sandbox is not observable)",
+    );
   });
 
   it("surfaces evaluator changes as comparison-validity mismatches before running", async () => {
     const progress: string[] = [];
+    let receivedValidityPatterns: readonly string[] | undefined;
     const result = await runComparison({
       repoPath: repo,
       appDir: "apps/agent",
@@ -204,7 +209,11 @@ describe("runComparison", () => {
       createWorktree: fakeWorktrees(sha).factory,
       inferSandbox: fakeSandbox,
       getAgentInfo: fakeAgentInfo,
-      getEvalHarnessChanges: async () => ["apps/agent/evals/quality.eval.ts"],
+      validityPatterns: ["packages/eval-utils/**"],
+      getEvalHarnessChanges: async (_repo, _base, _head, _app, patterns) => {
+        receivedValidityPatterns = patterns;
+        return ["apps/agent/evals/quality.eval.ts", "packages/eval-utils/scorer.ts"];
+      },
       ...fakeGitAndCache,
     });
 
@@ -212,6 +221,33 @@ describe("runComparison", () => {
       expect.stringContaining("eval harness differs between refs"),
     ]);
     expect(progress[0]).toContain("warning: eval harness differs between refs");
+    expect(receivedValidityPatterns).toEqual(["packages/eval-utils/**"]);
+  });
+
+  it("flags authored sandbox configuration changes without claiming a backend", async () => {
+    const result = await runComparison({
+      repoPath: repo,
+      appDir: "apps/agent",
+      baseRef: "main",
+      headRef: "HEAD",
+      runs: 1,
+      evalFilter: [],
+      noCache: true,
+      adapter: new FakeAdapter(),
+      createWorktree: fakeWorktrees(sha).factory,
+      inferSandbox: fakeSandbox,
+      getAgentInfo: fakeAgentInfo,
+      getEvalHarnessChanges: async () => [],
+      getSandboxConfigChanges: async () => ["apps/agent/agent/sandbox.ts"],
+      ...fakeGitAndCache,
+    });
+
+    expect(result.meta.sandboxBackend).toBe("unknown");
+    expect(result.meta.sandboxInferred).toBe(false);
+    expect(result.meta.hostDefaultSandboxCandidate).toBe("docker");
+    expect(result.meta.validityMismatches).toEqual([
+      expect.stringContaining("sandbox configuration differs between refs"),
+    ]);
   });
 
   it("passes scripts-on install mode to both worktrees", async () => {

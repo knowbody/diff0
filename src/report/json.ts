@@ -5,7 +5,7 @@
  */
 import type { DeltaReport } from "../analyze/types.js";
 
-export const JSON_SCHEMA_VERSION = 3;
+export const JSON_SCHEMA_VERSION = 4;
 
 function opaqueFingerprintLabels(report: DeltaReport): DeltaReport {
   const copy = structuredClone(report);

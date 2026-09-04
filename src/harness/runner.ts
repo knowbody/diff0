@@ -1,6 +1,6 @@
 /**
  * N-run comparison orchestration: worktrees for both refs, probe, one
- * sandbox inference for the whole comparison, base-ref cache consultation,
+ * host-default sandbox capability probe, base-ref cache consultation,
  * and COUNTERBALANCED execution (AB, then BA) so provider/time-order drift
  * does not consistently advantage one ref.
  *
@@ -27,8 +27,8 @@ import type {
   RunRecord,
   SandboxBackend,
 } from "../types.js";
-import { getEvalHarnessChanges } from "./gitdiff.js";
-import { type InferredSandboxBackend, inferSandboxBackend } from "./sandbox.js";
+import { getEvalHarnessChanges, getSandboxConfigChanges } from "./gitdiff.js";
+import { type HostDefaultSandboxCandidate, probeHostDefaultSandboxCandidate } from "./sandbox.js";
 import {
   type CreateWorktreeOptions,
   createWorktree,
@@ -107,6 +107,11 @@ export interface RunComparisonOptions {
   headRef: string;
   runs: number;
   evalFilter: string[];
+  /**
+   * Additional repo-relative globs whose changes can invalidate evaluator
+   * comparability. Additive to the default <appDir>/evals/** match.
+   */
+  validityPatterns?: string[];
   /** Dependency lifecycle policy; scripts-off disables scripts and is the default. */
   installMode?: DependencyInstallMode;
   timeoutMs?: number;
@@ -130,13 +135,14 @@ export interface RunComparisonOptions {
     ref: string,
     opts?: CreateWorktreeOptions,
   ) => Promise<WorktreeHandle>;
-  inferSandbox?: () => Promise<InferredSandboxBackend>;
+  inferSandbox?: () => Promise<HostDefaultSandboxCandidate>;
   getAgentInfo?: (cwd: string) => Promise<AgentInfo | null>;
   /** Git/cache seams keep orchestration tests free of subprocess and filesystem timing. */
   resolveRef?: typeof resolveRef;
   readCache?: typeof readCache;
   writeCache?: typeof writeCache;
   getEvalHarnessChanges?: typeof getEvalHarnessChanges;
+  getSandboxConfigChanges?: typeof getSandboxConfigChanges;
 }
 
 export interface ComparisonRunMeta {
@@ -144,9 +150,11 @@ export interface ComparisonRunMeta {
   headSha: string;
   baseEveVersion: string;
   headEveVersion: string;
-  sandboxBackend: SandboxBackend;
-  /** Always true in v1: eve never reports its pick, diff0 replicates the probe. */
-  sandboxInferred: true;
+  /** Actual sandbox backend is not observable from Eve's eval output. */
+  sandboxBackend: "unknown";
+  sandboxInferred: false;
+  /** Host default only; authored app sandbox configuration may override it. */
+  hostDefaultSandboxCandidate: SandboxBackend;
   baseCacheHit: boolean;
   runsPerRef: number;
   /** Preflight findings that cap an apparent regression at yellow. */
@@ -192,20 +200,24 @@ export async function runComparison(opts: RunComparisonOptions): Promise<Compari
       installMode: opts.installMode ?? "scripts-off",
       resolvedCommitSha,
     });
-  const inferSandbox = opts.inferSandbox ?? inferSandboxBackend;
+  const inferSandbox = opts.inferSandbox ?? probeHostDefaultSandboxCandidate;
   const probeAgentInfo = opts.getAgentInfo ?? getAgentInfo;
   const resolveGitRef = opts.resolveRef ?? resolveRef;
   const loadCache = opts.readCache ?? readCache;
   const saveCache = opts.writeCache ?? writeCache;
   const inspectEvalHarness = opts.getEvalHarnessChanges ?? getEvalHarnessChanges;
+  const inspectSandboxConfig = opts.getSandboxConfigChanges ?? getSandboxConfigChanges;
 
   // Fail fast on unknown refs BEFORE paying for any worktree install.
   const baseSha = await resolveGitRef(opts.repoPath, opts.baseRef);
   const headSha = await resolveGitRef(opts.repoPath, opts.headRef);
-  const evalHarnessChanges = await inspectEvalHarness(opts.repoPath, baseSha, headSha, appDir);
+  const [evalHarnessChanges, sandboxConfigChanges] = await Promise.all([
+    inspectEvalHarness(opts.repoPath, baseSha, headSha, appDir, opts.validityPatterns),
+    inspectSandboxConfig(opts.repoPath, baseSha, headSha, appDir),
+  ]);
   const displayedEvalChanges = evalHarnessChanges?.slice(0, 5) ?? [];
   const omittedEvalChanges = (evalHarnessChanges?.length ?? 0) - displayedEvalChanges.length;
-  const validityMismatches =
+  const validityMismatches: string[] =
     evalHarnessChanges !== null && evalHarnessChanges.length > 0
       ? [
           `eval harness differs between refs (${evalHarnessChanges.length} file${evalHarnessChanges.length === 1 ? "" : "s"}): ` +
@@ -213,6 +225,15 @@ export async function runComparison(opts: RunComparisonOptions): Promise<Compari
             "Outcome changes may come from evaluator changes rather than agent behavior.",
         ]
       : [];
+  if (sandboxConfigChanges !== null && sandboxConfigChanges.length > 0) {
+    const displayed = sandboxConfigChanges.slice(0, 5);
+    const omitted = sandboxConfigChanges.length - displayed.length;
+    validityMismatches.push(
+      `sandbox configuration differs between refs (${sandboxConfigChanges.length} file${sandboxConfigChanges.length === 1 ? "" : "s"}): ` +
+        `${displayed.join(", ")}${omitted > 0 ? `, and ${omitted} more` : ""}. ` +
+        "Diff0 cannot observe the actual backend selected by either ref, so behavior may reflect sandbox changes.",
+    );
+  }
   for (const mismatch of validityMismatches) progress(`warning: ${mismatch}`);
 
   const worktrees: WorktreeHandle[] = [];
@@ -247,10 +268,13 @@ export async function runComparison(opts: RunComparisonOptions): Promise<Compari
         `head ${headProbe.eveVersion} (${headProbe.evalIds.length} evals)`,
     );
 
-    // One sandbox inference for the WHOLE comparison: both refs are
-    // guaranteed to be labeled with the same inferred host conditions.
+    // This is only a host-default candidate. Authored sandbox configuration
+    // can override it independently in either ref, and Eve does not expose
+    // the actual selection in eval output.
     const sandbox = await inferSandbox();
-    progress(`sandbox backend (inferred): ${sandbox.backend}`);
+    progress(
+      `host default sandbox candidate: ${sandbox.backend} (actual app sandbox is not observable)`,
+    );
 
     // Base-ref cache consultation.
     let baseRuns: RunRecord[] = [];
@@ -294,7 +318,7 @@ export async function runComparison(opts: RunComparisonOptions): Promise<Compari
         cwd,
         runIndex,
         evalFilter: opts.evalFilter,
-        sandboxBackend: sandbox.backend,
+        sandboxBackend: "unknown",
       };
       if (opts.timeoutMs !== undefined) runOptions.timeoutMs = opts.timeoutMs;
       if (opts.maxConcurrency !== undefined) runOptions.maxConcurrency = opts.maxConcurrency;
@@ -385,8 +409,9 @@ export async function runComparison(opts: RunComparisonOptions): Promise<Compari
         headSha,
         baseEveVersion: baseProbe.eveVersion,
         headEveVersion: headProbe.eveVersion,
-        sandboxBackend: sandbox.backend,
-        sandboxInferred: true,
+        sandboxBackend: "unknown",
+        sandboxInferred: false,
+        hostDefaultSandboxCandidate: sandbox.backend,
         baseCacheHit,
         runsPerRef: opts.runs,
         validityMismatches,

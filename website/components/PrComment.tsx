@@ -126,8 +126,9 @@ export default function PrComment() {
                 Full comparison details
               </summary>
               <p className="mt-4" style={{ color: gh.muted }}>
-                eve {showcase.eveVersion} · sandbox {showcase.sandbox} · comparison cost unavailable
+                eve {showcase.eveVersion} · actual sandbox {showcase.sandbox} · host default candidate {showcase.hostDefaultSandboxCandidate} · comparison cost unavailable
               </p>
+              <p className="mt-3" style={{ color: gh.muted }}><strong>Historical framing:</strong> The linked v{showcase.releaseVersion} report displayed <Code>{showcase.historicalSandboxLabel}</Code>. Current diff0 treats that probe as a host candidate, not an observed sandbox.</p>
               <p className="mt-3"><strong>Subagent evidence:</strong> Fisher raw p={showcase.subagent.rawPValue}; Holm p={showcase.subagent.holmPValue} in each of {showcase.subagent.scope}.</p>
               <p className="mt-3"><strong>Cost note:</strong> {showcase.costNote}</p>
               <p className="mt-3"><strong>Changed file:</strong> <Code>{showcase.changedFile.path}</Code> (+{showcase.changedFile.insertions} −{showcase.changedFile.deletions})</p>

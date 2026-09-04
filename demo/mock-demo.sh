@@ -94,4 +94,4 @@ pnpm install --prefer-offline
 step "Running diff0 on the deterministic mock (3 runs per ref, \$0.00)"
 DIFF0_DEMO_MODEL=mock node "${REPO_ROOT}/dist/cli.js" run \
   --base main --head tighten-instructions \
-  --repo "${DEMO_REPO}" --runs 3 --no-cache
+  --repo "${DEMO_REPO}" --runs 3

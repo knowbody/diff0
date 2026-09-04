@@ -20,18 +20,29 @@ diff0 run --base <ref> [--head <ref>] [options]
 | `--app-dir <path>` | `.` | Path of the eve app *within* the repo (for monorepos / fixtures) |
 | `--runs <n>` | `3` | Eval-suite executions per ref |
 | `--evals <filter>` | all | Eval id/prefix filter; repeatable or comma-separated (passed through as eve eval positional ids) |
+| `--validity-path <glob>` | none | Additive repo-relative validity glob; repeatable or comma-separated |
 | `--timeout <ms>` | eve default | Per-eval timeout (passed to `eve eval --timeout`) |
 | `--max-concurrency <n>` | eve default | Passed to `eve eval --max-concurrency` |
 | `--install-mode <mode>` | `scripts-off` | `scripts-off` disables dependency lifecycle/build scripts; `scripts-on` enables them for reviewed refs |
 | `--max-spend <usd>` | none | Measured-cost stop threshold; checked after each atomic suite run, so it may overshoot by one run |
+| `--max-cost-increase-pct <pct>` | `25` | Maximum directional median cost increase |
+| `--max-input-token-increase-pct <pct>` | `100` | Maximum directional median uncached-input-token increase |
+| `--max-output-token-increase-pct <pct>` | `100` | Maximum directional median output-token increase |
+| `--max-duration-increase-pct <pct>` | `100` | Maximum directional median duration increase |
 | `--report-md <path>` | none | Write the markdown report here |
 | `--report-json <path>` | none | Write the JSON report here |
 | `--json` | off | Print the JSON report to stdout instead of the terminal render |
 | `--cache` | off | Opt into the 24-hour base-ref cache; external state is not part of its key |
-| `--fail-on <policy>` | `regression` | `regression` \| `drift` \| `never` — what makes exit code 1 |
+| `--fail-on <policy>` | `regression` | One legacy policy, or comma-separated granular enforcement categories |
 | `--no-color` | auto | Disable ANSI in terminal render |
 
 Compatibility: `safe` and `trusted` are deprecated aliases for `scripts-off` and `scripts-on`.
+
+Legacy `--fail-on regression|drift|never` semantics are unchanged. Granular mode accepts any
+comma-separated selection of `eval-regression`, `score-regression`, `performance-regression`,
+`behavioral-drift`, and `comparison-validity`; mixing legacy and granular names is invalid.
+Performance budgets are increase-only, so improvements never violate them. Explicit budget flags
+override the corresponding built-in default.
 
 Behavior:
 - Checks out `base` and `head` into isolated worktrees (never touches the working tree). A literal
@@ -68,8 +79,9 @@ Behavior:
   plus repeated-name occurrence, not array position. A changed scorer set or scorer missing from
   any expected run is a comparison-validity warning; sparse coverage is not summarized as a soft
   score delta.
-- Any comparison-validity mismatch — changed files under the selected app's `evals/` directory,
-  model, Eve version, sandbox, run count, scored-check set, or scored-check coverage — caps the
+- Any comparison-validity mismatch — changed files under the selected app's `evals/` directory or
+  an additive `--validity-path` glob, authored sandbox configuration, model, Eve version, run
+  count, scored-check set, or scored-check coverage — caps the
   top-level verdict at yellow. Eval rows retain their evidence
   and may say `regressed`, but the summary calls these apparent regressions confounded by validity;
   a mismatched comparison never produces a red gate.
@@ -78,18 +90,22 @@ Behavior:
   unchanged p=1 hypotheses; only changed rows are rendered. Repeated, deterministic differences in
   per-eval tool sequence/count, tool-input fingerprints, or final output fingerprints are labeled
   `stable`; weaker behavioral evidence is `inconclusive`.
+- The actual sandbox selected by Eve is not observable and is reported as `unknown`. The separate
+  host-default candidate is a capability probe, not evidence that either ref used that backend.
 - With `--cache`, base-ref results are cached under the repository's resolved Git common directory, normally
-  `.git/diff0-cache/`. Cache schema 5's versioned key covers the commit, diff0/Eve versions, model,
-  sorted eval filter, timeout, concurrency, install mode, and inferred sandbox. Entries expire after
+  `.git/diff0-cache/`. Cache schema 6's versioned key covers the commit, diff0/Eve versions, model,
+  sorted eval filter, timeout, concurrency, install mode, and host-default candidate. Entries expire after
   24 hours; expired, incompatible, or malformed entries are safe misses. Cached reports warn that
   environment variables and external service state are outside the key; omit `--cache` for release gates.
 - Terminal render always goes to stdout (unless `--json`); progress/diagnostics to stderr.
+- Evidence comes from captured eval JSON/events and privacy-preserving fingerprints. Eve traces are
+  disabled and are not claimed as a report source.
 - User env passes through to eval runs untouched; key values are never logged or persisted.
 
 Exit codes:
 - `0` — ran to completion; fail-on policy satisfied (note: drift alone is 0 under the default policy)
-- `1` — fail-on policy violated (a Holm-adjusted or operational eval regression; or drift when
-  `--fail-on drift`)
+- `1` — fail-on policy violated (legacy verdict policy, or any selected granular category appears
+  in `report.enforcement.violations`)
 - `2` — usage/config error: not a git repo, unknown ref, dirty literal `HEAD`, eve not installed in target, **no eval suites**
   (prints the teaching message with a 5-line example eval), bad flag values
 - `3` — execution error: eval run crashed / eve exit code 2 / install failure
@@ -98,18 +114,25 @@ Exit codes:
 ## `diff0 estimate`
 
 ```
-diff0 estimate --base <ref> [--head <ref>] [options: --repo, --app-dir, --runs, --evals, --install-mode]
+diff0 estimate --base <ref> [--head <ref>] [options: --repo, --app-dir, --runs, --evals, --install-mode, --timeout, --max-concurrency]
 ```
 
 Performs ONE eval-suite pass on the head ref (or reuses an existing fresh base-cache entry) to measure
 per-run cost/tokens/duration, then prints the projected full-comparison cost
 (`measured per-run cost x runs x 2 refs`, with the caveat that base/head may differ) and exits 0.
-Exit codes 2/3 as above. `--max-spend` accepted and compared against the projection (exit 4 if the
-projection exceeds it — lets CI gate before spending).
+`--timeout` and `--max-concurrency` are forwarded to the measurement run and included in its base
+cache lookup exactly as they are for `run`. Exit codes 2/3 are as above. `--max-spend` is accepted
+and compared against the projection (exit 4 if it exceeds the cap before the full comparison).
 
 ## JSON report
 
-`renderJson` output (`schemaVersion: 3`) — see `src/report/json.ts`. Version 3 adds:
+`renderJson` output (`schemaVersion: 4`) — see `src/report/json.ts`. Version 4 adds:
+
+- directional `costPerf.regressions` with metric, medians, delta, and threshold;
+- `enforcement.violations`, grouped by granular policy category; and
+- `meta.hostDefaultSandboxCandidate`, separate from the actual sandbox reported as `unknown`.
+
+It retains the version 3 evidence fields:
 
 - `baseExpectedRuns` / `headExpectedRuns` and the `partial-*` eval statuses;
 - soft-score `materialThreshold` and `classification`;
@@ -129,9 +152,9 @@ contain label/run-count entries, and output character-length sets remain availab
 `pricingModel` remains an internal, nullable per-run `RunRecord` field and is not serialized into
 the public report. `RunRecord.model` joins the distinct usage-bearing `step.started.modelId` values.
 Multiple models, incomplete step attribution, or delegated usage without model identity make
-`pricingModel` null so fallback pricing becomes unavailable instead of guessing. The GitHub Action reads `verdict`
-(`green|yellow|red`) and `meta` from the JSON artifact. Consumers should reject unknown schema
-versions rather than silently assuming an older shape.
+`pricingModel` null so fallback pricing becomes unavailable instead of guessing. The GitHub Action
+reads `verdict` (`green|yellow|red`) and `enforcement.violations` from the JSON artifact. Consumers
+should reject unknown schema versions rather than silently assuming an older shape.
 
 ## Markdown report
 
@@ -146,9 +169,14 @@ src/report/markdown.ts). The Action upserts the PR comment containing that marke
 | `head` | PR head SHA | Head ref |
 | `runs` | `3` | Runs per ref |
 | `evals` | all | Eval filter |
+| `validity-paths` | none | Comma-separated additive repo-relative validity globs |
 | `install-mode` | `scripts-off` | `scripts-off` disables install scripts; `scripts-on` enables them for reviewed refs |
-| `fail-on` | `regression` | `regression` \| `drift` \| `never` — when to fail the check |
+| `fail-on` | `regression` | One legacy policy or comma-separated granular categories |
 | `max-spend` | none | Measured-cost stop threshold; checked after each suite run and may overshoot by one run; unavailable cost cannot be enforced |
+| `max-cost-increase-pct` | core default (`25`) | Maximum directional median cost increase |
+| `max-input-token-increase-pct` | core default (`100`) | Maximum directional median uncached-input-token increase |
+| `max-output-token-increase-pct` | core default (`100`) | Maximum directional median output-token increase |
+| `max-duration-increase-pct` | core default (`100`) | Maximum directional median duration increase |
 | `working-directory` | `.` | Where the eve app lives (maps to CLI `--app-dir`; the repo root is always the workflow checkout) |
 | `github-token` | `${{ github.token }}` | For the sticky comment (needs `pull-requests: write`) |
 | `comment-key` | empty | Stable key for an independent sticky report when one PR runs multiple comparisons |
@@ -156,8 +184,9 @@ src/report/markdown.ts). The Action upserts the PR comment containing that marke
 
 The Action: installs deps in the target, runs `diff0 run` with `--report-md`/`--report-json`,
 upserts the sticky PR comment for its `comment-key` (find by marker, edit; else create), and sets the
-step outcome from the exit code + `fail-on` (drift under default policy = neutral, comment still
-posted). An empty key preserves the original `<!-- diff0-report -->` marker.
+step outcome from the exit code + the legacy verdict or selected schema-4 enforcement categories
+(drift under the default policy remains neutral; the comment is still posted). An empty key
+preserves the original `<!-- diff0-report -->` marker.
 The caller must use `actions/checkout` with `persist-credentials: false`; the Action refuses a
 checkout-persisted HTTP auth header or checkout v7 `includeIf` credential config because evaluated
 head code could recover that job token.

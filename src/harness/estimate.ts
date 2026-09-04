@@ -1,6 +1,6 @@
 /**
  * `diff0 estimate` — measure ONE eval-suite pass, project the cost and
- * duration of the full N-run comparison before any real money is spent.
+ * duration of the full N-run comparison before that full comparison runs.
  *
  * Reuses the exact worktree / adapter / cache / pricing machinery of the
  * runner — there is no second eve-invocation code path. Interleaving is
@@ -29,7 +29,7 @@ import type {
   RunOptions,
   RunRecord,
 } from "../types.js";
-import { type InferredSandboxBackend, inferSandboxBackend } from "./sandbox.js";
+import { type HostDefaultSandboxCandidate, probeHostDefaultSandboxCandidate } from "./sandbox.js";
 import {
   type CreateWorktreeOptions,
   createWorktree,
@@ -47,6 +47,10 @@ export interface EstimateOptions {
   /** Planned runs per ref of the full comparison being projected. */
   runs: number;
   evalFilter: string[];
+  /** Per-eval timeout forwarded to eve and included in the base-cache key. */
+  timeoutMs?: number;
+  /** Suite concurrency forwarded to eve and included in the base-cache key. */
+  maxConcurrency?: number;
   /** Dependency lifecycle policy; scripts-off disables scripts and is the default. */
   installMode?: DependencyInstallMode;
   onProgress?: (message: string) => void;
@@ -58,7 +62,7 @@ export interface EstimateOptions {
     ref: string,
     opts?: CreateWorktreeOptions,
   ) => Promise<WorktreeHandle>;
-  inferSandbox?: () => Promise<InferredSandboxBackend>;
+  inferSandbox?: () => Promise<HostDefaultSandboxCandidate>;
   getAgentInfo?: (cwd: string) => Promise<AgentInfo | null>;
   /** Git/cache seams keep orchestration tests free of subprocess and filesystem timing. */
   resolveRef?: typeof resolveRef;
@@ -135,7 +139,7 @@ export async function runEstimate(opts: EstimateOptions): Promise<Estimate> {
       installMode: opts.installMode ?? "scripts-off",
       resolvedCommitSha,
     });
-  const inferSandbox = opts.inferSandbox ?? inferSandboxBackend;
+  const inferSandbox = opts.inferSandbox ?? probeHostDefaultSandboxCandidate;
   const probeAgentInfo = opts.getAgentInfo ?? getAgentInfo;
   const resolveGitRef = opts.resolveRef ?? resolveRef;
   const loadCache = opts.readCache ?? readCache;
@@ -167,9 +171,9 @@ export async function runEstimate(opts: EstimateOptions): Promise<Estimate> {
     // (one measured run) rather than ever reusing a stale sample.
     const info = await probeAgentInfo(headCwd);
     const model = info?.model ?? "unknown";
-    // Sandbox choice affects execution semantics and is therefore part of the
-    // cache key. Probe it before cache lookup so estimate and run share the
-    // exact same compatibility boundary.
+    // Host default capability affects execution semantics when an app does
+    // not override it, so it remains a conservative cache-key input. It is
+    // not evidence of the actual sandbox selected by this app.
     const sandbox = await inferSandbox();
     const cacheKey = computeCacheKey({
       appDir,
@@ -179,6 +183,8 @@ export async function runEstimate(opts: EstimateOptions): Promise<Estimate> {
       evalFilter: opts.evalFilter,
       sandboxBackend: sandbox.backend,
       installMode: opts.installMode ?? "scripts-off",
+      ...(opts.timeoutMs !== undefined ? { timeoutMs: opts.timeoutMs } : {}),
+      ...(opts.maxConcurrency !== undefined ? { maxConcurrency: opts.maxConcurrency } : {}),
     });
     const cached = await loadCache(opts.repoPath, cacheKey);
 
@@ -197,8 +203,12 @@ export async function runEstimate(opts: EstimateOptions): Promise<Estimate> {
         cwd: headCwd,
         runIndex: 0,
         evalFilter: opts.evalFilter,
-        sandboxBackend: sandbox.backend,
+        sandboxBackend: "unknown",
       };
+      if (opts.timeoutMs !== undefined) runOptions.timeoutMs = opts.timeoutMs;
+      if (opts.maxConcurrency !== undefined) {
+        runOptions.maxConcurrency = opts.maxConcurrency;
+      }
       const record = await adapter.runEvalSuite(opts.headRef, headSha, runOptions);
       sample = [record];
       sampleSource = "head-run";

@@ -16,6 +16,8 @@ import type {
   DataSourcesSummary,
   DeltaReport,
   DriftSection,
+  EnforcementCategory,
+  EnforcementClassification,
   EvalDelta,
   EvalStatisticalEvidence,
   EvalStatus,
@@ -23,6 +25,9 @@ import type {
   GitDiffStat,
   MetricDelta,
   MetricStats,
+  PerformanceMetric,
+  PerformanceRegression,
+  PerformanceThresholds,
   RefMeta,
   RunSummary,
   SkillDrift,
@@ -34,8 +39,28 @@ import type {
   Verdict,
 } from "./types.js";
 
-/** Median cost delta (absolute %) above which the comparison is flagged yellow. */
+/** Median cost increase above which the comparison is flagged yellow. */
 export const COST_DRIFT_THRESHOLD_PCT = 25;
+
+/**
+ * Conservative built-in directional budgets. Cost retains its existing 25% magnitude;
+ * duration and token medians must more than double before they affect the verdict.
+ * Decreases never violate these budgets.
+ */
+export const DEFAULT_PERFORMANCE_THRESHOLDS: Readonly<PerformanceThresholds> = {
+  costUsd: COST_DRIFT_THRESHOLD_PCT,
+  tokensIn: 100,
+  tokensOut: 100,
+  durationMs: 100,
+};
+
+export const ENFORCEMENT_CATEGORIES = [
+  "eval-regression",
+  "score-regression",
+  "performance-regression",
+  "behavioral-drift",
+  "comparison-validity",
+] as const satisfies readonly EnforcementCategory[];
 
 /** Below this many runs per ref, borderline results trigger a --runs 5 recommendation. */
 export const RECOMMENDED_RUNS = 5;
@@ -55,8 +80,10 @@ export const SOFT_SCORE_REGRESSION_THRESHOLD = 0.1;
 export interface ComputeDeltaOptions {
   /** How per-run costUsd was derived. Defaults to "gateway" when costs exist, "unavailable" otherwise. */
   costSource?: "gateway" | "priced-tokens";
-  /** eve never reports its sandbox pick, so diff0 infers it; default true. Pass false when authored agent/sandbox.ts pins one. */
+  /** Whether RunRecord sandbox labels are inferred; the CLI passes false and records actual as unknown. */
   sandboxInferred?: boolean;
+  /** Host capability probe only; kept separate from the unobservable actual sandbox. */
+  hostDefaultSandboxCandidate?: RunRecord["sandboxBackend"];
   /** git diff --stat between the refs, supplied by the caller (the analysis layer does no I/O). */
   gitDiffStat?: GitDiffStat | null;
   /** ISO 8601 timestamp override for deterministic output (tests, snapshots). */
@@ -65,6 +92,8 @@ export interface ComputeDeltaOptions {
   baseCacheHit?: boolean;
   /** Preflight findings that make the two refs unsuitable for a red/green comparison. */
   validityMismatches?: string[];
+  /** Override one or more built-in, increase-only median percentage budgets. */
+  performanceThresholds?: Partial<PerformanceThresholds>;
 }
 
 export function computeDelta(
@@ -104,6 +133,9 @@ export function computeDelta(
     totalComparisonCostUsd,
     costSource,
     dataSources: summarizeDataSources([...baseRuns, ...headRuns]),
+    ...(opts.hostDefaultSandboxCandidate !== undefined
+      ? { hostDefaultSandboxCandidate: opts.hostDefaultSandboxCandidate }
+      : {}),
     generatedAt: opts.now ?? new Date().toISOString(),
     mismatches,
     gitDiffStat: opts.gitDiffStat ?? null,
@@ -111,7 +143,7 @@ export function computeDelta(
 
   const evals = computeEvalDeltas(baseRuns, headRuns);
   const drift = computeDrift(baseRuns, headRuns);
-  const costPerf = computeCostPerf(baseRuns, headRuns);
+  const costPerf = computeCostPerf(baseRuns, headRuns, opts.performanceThresholds);
 
   const { verdict, verdictSummary, verdictReasons } = computeVerdict(
     evals,
@@ -130,6 +162,7 @@ export function computeDelta(
     flakinessDetectable,
     opts.baseCacheHit ?? false,
   );
+  const enforcement = classifyEnforcement(evals, drift, costPerf, mismatches);
 
   return {
     meta,
@@ -139,6 +172,7 @@ export function computeDelta(
     evals,
     drift,
     costPerf,
+    enforcement,
     caveats,
     flakinessDetectable,
     runSummaries: {
@@ -1242,8 +1276,12 @@ function usableCosts(runs: RunRecord[]): number[] | null {
   return costs;
 }
 
-function computeCostPerf(baseRuns: RunRecord[], headRuns: RunRecord[]): CostPerf {
-  return {
+function computeCostPerf(
+  baseRuns: RunRecord[],
+  headRuns: RunRecord[],
+  thresholdOverrides: Partial<PerformanceThresholds> = {},
+): CostPerf {
+  const costPerf: Omit<CostPerf, "regressions"> = {
     costUsd: metricDelta(usableCosts(baseRuns), usableCosts(headRuns)),
     tokensIn: metricDelta(
       baseRuns.map((r) => r.tokens.input),
@@ -1266,6 +1304,53 @@ function computeCostPerf(baseRuns: RunRecord[], headRuns: RunRecord[]): CostPerf
       headRuns.map((r) => r.durationMs),
     ),
   };
+  const thresholds: PerformanceThresholds = {
+    ...DEFAULT_PERFORMANCE_THRESHOLDS,
+    ...thresholdOverrides,
+  };
+  for (const metric of PERFORMANCE_METRICS) {
+    if (!Number.isFinite(thresholds[metric]) || thresholds[metric] < 0) {
+      throw new Error(`computeDelta: performance threshold for ${metric} must be non-negative`);
+    }
+  }
+  return {
+    ...costPerf,
+    regressions: performanceRegressions(costPerf, thresholds),
+  };
+}
+
+const PERFORMANCE_METRICS: readonly PerformanceMetric[] = [
+  "costUsd",
+  "tokensIn",
+  "tokensOut",
+  "durationMs",
+];
+
+function performanceRegressions(
+  costPerf: Omit<CostPerf, "regressions">,
+  thresholds: PerformanceThresholds,
+): PerformanceRegression[] {
+  const regressions: PerformanceRegression[] = [];
+  for (const metric of PERFORMANCE_METRICS) {
+    const delta = costPerf[metric];
+    const thresholdPct = thresholds[metric];
+    if (
+      delta.deltaPct !== null &&
+      delta.deltaPct > 0 &&
+      delta.deltaPct > thresholdPct &&
+      delta.base !== null &&
+      delta.head !== null
+    ) {
+      regressions.push({
+        metric,
+        baseMedian: delta.base.median,
+        headMedian: delta.head.median,
+        deltaPct: delta.deltaPct,
+        thresholdPct,
+      });
+    }
+  }
+  return regressions;
 }
 
 // ---------------------------------------------------------------------------
@@ -1292,6 +1377,83 @@ function isOperationalRegression(evalDelta: EvalDelta): boolean {
     evalDelta.basePassed === evalDelta.baseTotal &&
     evalDelta.headPassed === 0
   );
+}
+
+const PERFORMANCE_LABELS: Record<PerformanceMetric, string> = {
+  costUsd: "cost/session",
+  tokensIn: "input tokens/session",
+  tokensOut: "output tokens/session",
+  durationMs: "duration/session",
+};
+
+function performanceRegressionReason(regression: PerformanceRegression): string {
+  const sign = regression.deltaPct >= 0 ? "+" : "";
+  return (
+    `${PERFORMANCE_LABELS[regression.metric]} performance regression: median increased ${sign}` +
+    `${regression.deltaPct}% (threshold ${regression.thresholdPct}%; ` +
+    `base ${regression.baseMedian}, head ${regression.headMedian})`
+  );
+}
+
+function classifyEnforcement(
+  evals: EvalDelta[],
+  drift: DriftSection,
+  costPerf: CostPerf,
+  mismatches: string[],
+): EnforcementClassification {
+  const reasons = new Map<EnforcementCategory, string[]>();
+  const add = (category: EnforcementCategory, reason: string) => {
+    const current = reasons.get(category) ?? [];
+    current.push(reason);
+    reasons.set(category, current);
+  };
+
+  for (const evalDelta of evals) {
+    if (evalDelta.status === "regressed" || isOperationalRegression(evalDelta)) {
+      add(
+        "eval-regression",
+        `${evalDelta.name}: passed ${evalDelta.basePassed}/${evalDelta.baseTotal} on base, ` +
+          `${evalDelta.headPassed}/${evalDelta.headTotal} on head`,
+      );
+    }
+    if (evalDelta.softScores?.classification === "material-regression") {
+      add(
+        "score-regression",
+        `${evalDelta.name}: median score ${evalDelta.softScores.baseMedian} on base vs ` +
+          `${evalDelta.softScores.headMedian} on head`,
+      );
+    }
+  }
+  for (const regression of costPerf.regressions) {
+    add("performance-regression", performanceRegressionReason(regression));
+  }
+  if (drift.hasDrift) add("behavioral-drift", "behavioral drift detected");
+  if (drift.hasInconclusive) {
+    add("behavioral-drift", "behavioral differences detected with inconclusive confidence");
+  }
+  for (const mismatch of mismatches) add("comparison-validity", mismatch);
+  if ((costPerf.costUsd.base === null) !== (costPerf.costUsd.head === null)) {
+    add(
+      "comparison-validity",
+      "cost comparability unavailable: one ref has complete non-zero cost data and the other does not",
+    );
+  }
+
+  return {
+    violations: ENFORCEMENT_CATEGORIES.flatMap((category) => {
+      const categoryReasons = reasons.get(category);
+      return categoryReasons ? [{ category, reasons: categoryReasons }] : [];
+    }),
+  };
+}
+
+/** True when a report violates any selected granular policy category. */
+export function violatesEnforcement(
+  report: DeltaReport,
+  categories: readonly EnforcementCategory[],
+): boolean {
+  const selected = new Set(categories);
+  return report.enforcement.violations.some((violation) => selected.has(violation.category));
 }
 
 function computeVerdict(
@@ -1433,16 +1595,12 @@ function computeVerdict(
     );
   }
 
-  const costPct = costPerf.costUsd.deltaPct;
-  const costDrift = costPct !== null && Math.abs(costPct) > COST_DRIFT_THRESHOLD_PCT;
+  const performanceRegressions = costPerf.regressions;
+  const hasPerformanceRegression = performanceRegressions.length > 0;
   const costAvailabilityMismatch =
     (costPerf.costUsd.base === null) !== (costPerf.costUsd.head === null);
-  if (costDrift) {
-    const sign = costPct >= 0 ? "+" : "";
-    reasons.push(
-      `cost drift: median cost/session changed ${sign}${Math.round(costPct)}% ` +
-        `(threshold ${COST_DRIFT_THRESHOLD_PCT}%)`,
-    );
+  for (const regression of performanceRegressions) {
+    reasons.push(performanceRegressionReason(regression));
   }
   if (costAvailabilityMismatch) {
     reasons.push(
@@ -1471,7 +1629,7 @@ function computeVerdict(
   if (
     drift.hasDrift ||
     drift.hasInconclusive ||
-    costDrift ||
+    hasPerformanceRegression ||
     costAvailabilityMismatch ||
     mismatches.length > 0 ||
     reviewEvals.length > 0 ||
@@ -1513,7 +1671,11 @@ function computeVerdict(
           : "behavioral differences inconclusive",
       );
     }
-    if (costDrift) summaryParts.push("cost drift detected");
+    if (hasPerformanceRegression) {
+      summaryParts.push(
+        `${performanceRegressions.length} performance regression${performanceRegressions.length === 1 ? "" : "s"}`,
+      );
+    }
     if (costAvailabilityMismatch) summaryParts.push("cost comparability unavailable");
     if (mismatches.length > 0) summaryParts.push("comparison validity warnings");
     return {
@@ -1578,7 +1740,7 @@ function computeCaveats(
   }
   caveats.push(
     "External side effects (for example writes to third-party systems) are not observed; " +
-      "the comparison covers captured evals, traces, fingerprints, cost, and timing only.",
+      "the comparison covers captured eval JSON/events, fingerprints, cost, and timing only.",
   );
   return caveats;
 }

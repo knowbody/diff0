@@ -69,7 +69,7 @@ export interface FinalOutputFingerprint {
   length?: number;
 }
 
-/** Which local sandbox backend eve actually used for a run. */
+/** Which local sandbox backend Eve actually used, or unknown when Eve did not report it. */
 export type SandboxBackend = "docker" | "microsandbox" | "just-bash" | "unknown";
 
 /**
@@ -127,8 +127,9 @@ export interface RunOptions {
   /** Extra environment (user env vars pass through untouched; keys are never logged). */
   env?: Record<string, string>;
   /**
-   * Sandbox backend inferred by the harness (see harness/sandbox.ts) and
-   * recorded verbatim on the RunRecord. Defaults to "unknown".
+   * Sandbox backend actually observed by the caller. Diff0's host-default
+   * capability probe is not evidence of the app's authored sandbox choice,
+   * so the comparison harness passes "unknown". Defaults to "unknown".
    */
   sandboxBackend?: SandboxBackend;
 }

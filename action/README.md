@@ -84,9 +84,14 @@ always-running gate the required check and conditionally run the diff0 job behin
 | `head` | PR head SHA | Head ref |
 | `runs` | `3` | Runs per ref |
 | `evals` | all | Eval filter |
+| `validity-paths` | none | Comma-separated additive repo-relative evaluator/config globs |
 | `install-mode` | `scripts-off` | Disable install scripts (scripts-off) or allow them for reviewed refs (scripts-on) |
-| `fail-on` | `regression` | `regression` \| `drift` \| `never` — when to fail the check |
+| `fail-on` | `regression` | One legacy policy or comma-separated granular enforcement categories |
 | `max-spend` | none | Measured-cost stop threshold; checked after each suite run and may overshoot by one run; unavailable cost cannot be enforced |
+| `max-cost-increase-pct` | core default (`25`) | Maximum directional median cost increase |
+| `max-input-token-increase-pct` | core default (`100`) | Maximum directional median uncached-input-token increase |
+| `max-output-token-increase-pct` | core default (`100`) | Maximum directional median output-token increase |
+| `max-duration-increase-pct` | core default (`100`) | Maximum directional median duration increase |
 | `working-directory` | `.` | Where the eve app lives (maps to CLI `--app-dir`; the repo root is always the workflow checkout) |
 | `github-token` | `${{ github.token }}` | For the sticky comment (needs `pull-requests: write`) |
 | `comment-key` | empty | Stable key for a separate sticky report when one PR compares multiple Eve apps |
@@ -94,6 +99,15 @@ always-running gate the required check and conditionally run the diff0 job behin
 
 The former `safe` and `trusted` values remain accepted as deprecated aliases for `scripts-off`
 and `scripts-on`, respectively.
+
+For a selective quality/performance gate without blocking every behavioral difference:
+
+```yaml
+with:
+  fail-on: eval-regression,score-regression,performance-regression,comparison-validity
+  max-duration-increase-pct: "50"
+  validity-paths: src/scorers/**,packages/eval-utils/**
+```
 
 Set `comment-key` when one pull request compares more than one Eve app. Each key gets its own
 sticky comment; reruns update only the matching report. Leaving it empty preserves the original
@@ -122,6 +136,17 @@ Then the action enforces the `fail-on` **input**:
 - `fail-on: regression` (default) — fail on a `red` verdict; drift alone (`yellow`) passes.
 - `fail-on: drift` — fail on `red` or `yellow`.
 - `fail-on: never` — never fail on the verdict (execution errors still fail).
+- A comma-separated granular selection fails when any selected schema-4 enforcement category is
+  present: `eval-regression`, `score-regression`, `performance-regression`, `behavioral-drift`, or
+  `comparison-validity`.
+
+Legacy and granular names cannot be mixed. Performance budgets are directional: improvements do
+not fail. Empty budget inputs use the core defaults; explicit values override one metric. The
+`validity-paths` input adds to the built-in selected-app `evals/**` validity check.
+
+The report records the actual Eve sandbox as `unknown`, because Eve does not expose it, and shows
+the host-default sandbox candidate separately. A changed authored sandbox configuration is a
+comparison-validity warning.
 
 ## Requirements
 

@@ -10,6 +10,7 @@ import type {
   EvalStatus,
   MetricDelta,
   MetricStats,
+  PerformanceRegression,
   RunSummary,
 } from "../analyze/types.js";
 import {
@@ -104,6 +105,15 @@ export function renderMarkdown(report: DeltaReport): string {
   lines.push("### At a glance");
   lines.push("");
   renderOverview(report, lines);
+
+  if (report.costPerf.regressions.length > 0) {
+    lines.push("### Exceeded performance budgets");
+    lines.push("");
+    for (const regression of report.costPerf.regressions) {
+      lines.push(`- ⚠️ ${performanceBudgetText(regression)}`);
+    }
+    lines.push("");
+  }
 
   if (report.drift.hasDrift || report.drift.hasInconclusive) {
     lines.push("### Observed behavioral differences");
@@ -496,11 +506,20 @@ function validityLine(report: DeltaReport): string {
   );
   parts.push(runsPhrase(meta));
   const inferredBase = meta.base.sandboxInferred ? " (inferred)" : "";
-  parts.push(
-    meta.base.sandboxBackend === meta.head.sandboxBackend
-      ? `sandbox ${safeText(String(meta.base.sandboxBackend))}${inferredBase}`
-      : `sandbox base ${safeText(String(meta.base.sandboxBackend))} / head ${safeText(String(meta.head.sandboxBackend))}${inferredBase}`,
-  );
+  if (meta.hostDefaultSandboxCandidate !== undefined) {
+    parts.push(
+      meta.base.sandboxBackend === meta.head.sandboxBackend
+        ? `actual sandbox ${safeText(String(meta.base.sandboxBackend))}`
+        : `actual sandbox base ${safeText(String(meta.base.sandboxBackend))} / head ${safeText(String(meta.head.sandboxBackend))}`,
+    );
+    parts.push(`host default candidate ${safeText(String(meta.hostDefaultSandboxCandidate))}`);
+  } else {
+    parts.push(
+      meta.base.sandboxBackend === meta.head.sandboxBackend
+        ? `sandbox ${safeText(String(meta.base.sandboxBackend))}${inferredBase}`
+        : `sandbox base ${safeText(String(meta.base.sandboxBackend))} / head ${safeText(String(meta.head.sandboxBackend))}${inferredBase}`,
+    );
+  }
   parts.push(
     meta.totalComparisonCostUsd !== null
       ? `comparison cost ${formatUsd(meta.totalComparisonCostUsd)} (${meta.costSource})`
@@ -677,6 +696,21 @@ function metricCells(
         ? `unavailable (${unavailableNote})`
         : "n/a";
   return [label, baseCell, headCell, deltaCell];
+}
+
+const PERFORMANCE_LABELS: Record<PerformanceRegression["metric"], string> = {
+  costUsd: "Cost / session",
+  tokensIn: "Uncached input tokens",
+  tokensOut: "Output tokens",
+  durationMs: "Duration",
+};
+
+function performanceBudgetText(regression: PerformanceRegression): string {
+  return (
+    `**${PERFORMANCE_LABELS[regression.metric]}:** delta ` +
+    `${formatSignedPct(regression.deltaPct)} exceeds ` +
+    `${formatSignedPct(regression.thresholdPct)} threshold.`
+  );
 }
 
 function pushTable(lines: string[], rows: string[][], align: string[]): void {

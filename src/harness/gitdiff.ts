@@ -6,22 +6,51 @@
  */
 
 import { execFile } from "node:child_process";
-import { posix } from "node:path";
+import { isAbsolute, posix, win32 } from "node:path";
 import { promisify } from "node:util";
+import { minimatch } from "minimatch";
 import type { GitDiffFileStat, GitDiffStat } from "../analyze/types.js";
 
 const execFileAsync = promisify(execFile);
 
+/** Known Eve-authored sandbox entry points, relative to the selected app. */
+export const EVE_SANDBOX_CONFIG_GLOBS = [
+  "agent/sandbox.{ts,tsx,js,mjs,cjs}",
+  "agent/subagents/**/sandbox.{ts,tsx,js,mjs,cjs}",
+] as const;
+
+function appRelativeGlob(appDir: string, pattern: string): string {
+  const normalizedAppDir = normalizeRepoPath(appDir);
+  return normalizedAppDir === "." ? pattern : posix.join(normalizedAppDir, pattern);
+}
+
+function normalizeRepoPath(path: string): string {
+  return path.split("\\").join("/").replace(/^\.\//, "").replace(/\/$/, "") || ".";
+}
+
 /**
- * Return evaluator files changed between the compared commits. These files
- * define what "pass" means, so changing them confounds an agent comparison.
- * null is reserved for an unexpected git failure.
+ * Validate and normalize a user-authored repo-relative glob. Patterns are
+ * intentionally additive; callers cannot negate the default eval harness.
  */
-export async function getEvalHarnessChanges(
+export function normalizeValidityPattern(pattern: string): string {
+  const normalized = normalizeRepoPath(pattern.trim());
+  if (
+    pattern.includes("\0") ||
+    normalized === "." ||
+    normalized.startsWith("!") ||
+    isAbsolute(pattern) ||
+    win32.isAbsolute(pattern) ||
+    normalized.split("/").includes("..")
+  ) {
+    throw new Error(`validity pattern must be a contained repo-relative glob (got ${pattern})`);
+  }
+  return normalized;
+}
+
+async function getChangedPaths(
   repoPath: string,
   baseSha: string,
   headSha: string,
-  appDir: string,
 ): Promise<string[] | null> {
   let stdout: string;
   try {
@@ -33,14 +62,60 @@ export async function getEvalHarnessChanges(
   } catch {
     return null;
   }
-
-  const normalizedAppDir =
-    appDir === "." ? "" : `${appDir.split("\\").join("/").replace(/\/$/, "")}/`;
-  const evalPrefix = `${posix.join(normalizedAppDir, "evals")}/`;
   return stdout
     .split("\0")
-    .filter((path) => path.startsWith(evalPrefix))
+    .filter((path) => path.length > 0)
+    .map(normalizeRepoPath);
+}
+
+function matchingPaths(paths: string[], patterns: readonly string[]): string[] {
+  return paths
+    .filter((path) =>
+      patterns.some((pattern) =>
+        minimatch(path, pattern, { dot: true, nonegate: true, windowsPathsNoEscape: true }),
+      ),
+    )
     .sort();
+}
+
+/**
+ * Return evaluator files changed between the compared commits. These files
+ * define what "pass" means, so changing them confounds an agent comparison.
+ * null is reserved for an unexpected git failure.
+ */
+export async function getEvalHarnessChanges(
+  repoPath: string,
+  baseSha: string,
+  headSha: string,
+  appDir: string,
+  validityPatterns: readonly string[] = [],
+): Promise<string[] | null> {
+  const patterns = [
+    appRelativeGlob(appDir, "evals/**"),
+    ...validityPatterns.map(normalizeValidityPattern),
+  ];
+  const paths = await getChangedPaths(repoPath, baseSha, headSha);
+  if (paths === null) return null;
+  return matchingPaths(paths, patterns);
+}
+
+/**
+ * Return changed, authored Eve sandbox entry points. The host capability
+ * probe cannot reveal whether either ref overrides Eve's default backend, so
+ * a change to one of these files is an explicit comparison-validity warning.
+ */
+export async function getSandboxConfigChanges(
+  repoPath: string,
+  baseSha: string,
+  headSha: string,
+  appDir: string,
+): Promise<string[] | null> {
+  const paths = await getChangedPaths(repoPath, baseSha, headSha);
+  if (paths === null) return null;
+  return matchingPaths(
+    paths,
+    EVE_SANDBOX_CONFIG_GLOBS.map((pattern) => appRelativeGlob(appDir, pattern)),
+  );
 }
 
 /**

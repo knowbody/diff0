@@ -48,6 +48,7 @@ function record(
 
 class FakeAdapter implements EveAdapter {
   readonly suiteCalls: Array<{ ref: string; cwd: string; runIndex: number }> = [];
+  readonly runOptions: RunOptions[] = [];
   constructor(private readonly costPerRun: number | null) {}
 
   async probe(_cwd: string): Promise<{ eveVersion: string; evalIds: string[] }> {
@@ -56,6 +57,7 @@ class FakeAdapter implements EveAdapter {
 
   async runEvalSuite(ref: string, commitSha: string, opts: RunOptions): Promise<RunRecord> {
     this.suiteCalls.push({ ref, cwd: opts.cwd, runIndex: opts.runIndex });
+    this.runOptions.push(structuredClone(opts));
     return record(ref, commitSha, opts.runIndex, this.costPerRun);
   }
 }
@@ -218,6 +220,55 @@ describe("runEstimate", () => {
     expect(worktrees.cleanups).toEqual(["HEAD"]);
   });
 
+  it("includes timeout and concurrency in the cache key and forwards them to eve on a miss", async () => {
+    const adapter = new FakeAdapter(0.05);
+    const worktrees = fakeWorktrees(sha);
+    let observedCacheKey = "";
+
+    await runEstimate({
+      repoPath: repo,
+      appDir: ".",
+      baseRef: "main",
+      headRef: "HEAD",
+      runs: 3,
+      evalFilter: ["e/one"],
+      timeoutMs: 45_000,
+      maxConcurrency: 2,
+      adapter,
+      createWorktree: worktrees.factory,
+      inferSandbox: fakeSandbox,
+      getAgentInfo: fakeAgentInfo,
+      resolveRef: fakeResolveRef,
+      readCache: async (_repoPath, key) => {
+        observedCacheKey = key;
+        return null;
+      },
+    });
+
+    expect(observedCacheKey).toBe(
+      computeCacheKey({
+        appDir: ".",
+        commitSha: sha,
+        eveVersion: FAKE_EVE_VERSION,
+        model: FAKE_MODEL,
+        evalFilter: ["e/one"],
+        timeoutMs: 45_000,
+        maxConcurrency: 2,
+        sandboxBackend: "docker",
+      }),
+    );
+    expect(adapter.runOptions).toEqual([
+      {
+        cwd: "/fake-worktree/HEAD",
+        runIndex: 0,
+        evalFilter: ["e/one"],
+        timeoutMs: 45_000,
+        maxConcurrency: 2,
+        sandboxBackend: "unknown",
+      },
+    ]);
+  });
+
   it("keeps cost honest when unmeasurable: null projection, source unavailable", async () => {
     const adapter = new FakeAdapter(null); // no gateway cost, unpriced model
     const worktrees = fakeWorktrees(sha);
@@ -319,7 +370,11 @@ describe("diff0 estimate via runCli", () => {
   it("documents and threads the deliberate scripts-on opt-in", async () => {
     const help = await cli(["estimate", "--help"], seamsWith(new FakeAdapter(0.05)));
     expect(help.code).toBe(0);
+    expect(help.stdout).toContain("before the full comparison");
+    expect(help.stdout).not.toContain("before spending");
     expect(help.stdout).toContain("--install-mode <mode>");
+    expect(help.stdout).toContain("--timeout <ms>");
+    expect(help.stdout).toContain("--max-concurrency <n>");
     expect(help.stdout).toContain("repository-controlled scripts");
     expect(help.stdout.replace(/\s+/g, " ")).toContain("MUST only be used for refs you trust");
 
@@ -339,6 +394,27 @@ describe("diff0 estimate via runCli", () => {
     expect(worktrees.options).toEqual([
       { installDirs: [], installMode: "scripts-on", resolvedCommitSha: sha },
     ]);
+  });
+
+  it("forwards --timeout and --max-concurrency from the CLI to the measurement run", async () => {
+    const adapter = new FakeAdapter(0.05);
+    const result = await cli(
+      [
+        "estimate",
+        "--base",
+        "main",
+        "--repo",
+        repo,
+        "--timeout",
+        "45000",
+        "--max-concurrency",
+        "2",
+      ],
+      seamsWith(adapter),
+    );
+
+    expect(result.code).toBe(0);
+    expect(adapter.runOptions[0]).toMatchObject({ timeoutMs: 45_000, maxConcurrency: 2 });
   });
 
   it("rejects unknown install modes before creating a worktree", async () => {

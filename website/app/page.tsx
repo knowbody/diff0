@@ -124,7 +124,7 @@ export default function Home() {
               <span className="font-editorial font-normal tracking-[-0.045em] italic">not just the diff.</span>
             </h1>
             <p className="mx-auto mt-8 max-w-[660px] text-lg leading-8 text-muted text-balance sm:text-xl">
-              diff0 compares how your Eve agent behaves across two committed refs—so silent drift in your eval evidence shows up before you merge it.
+              diff0 compares how your Eve agent behaves across two committed refs—so captured behavioral changes can show up before you merge them.
             </p>
             <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <a href={SHOWCASE_PR} className="group inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-fg px-5 text-sm font-medium text-bg transition-transform hover:-translate-y-0.5 sm:w-auto">
@@ -192,7 +192,7 @@ export default function Home() {
         <section className="border-b border-line" aria-label="Product principles">
           <div className="mx-auto grid max-w-[1240px] grid-cols-2 divide-x divide-line px-5 sm:px-8 md:grid-cols-4">
             {[
-              ["Eve-native", "Reads Eve eval and trace artifacts"],
+              ["Eve-native", "Reads captured Eve eval JSON and events"],
               ["Two refs", "Base behavior vs. head behavior"],
               ["N runs", "Evidence, not anecdotes"],
               ["One comment", "The result lives in your PR"],
@@ -212,7 +212,7 @@ export default function Home() {
               Your eval passed.<br />Your agent still changed.
             </h2>
             <p className="mx-auto mt-7 max-w-[640px] text-lg leading-8 text-muted">
-              A scorer tells you whether the answer was acceptable. diff0 tells you how the agent got there—and whether that behavior moved with your code.
+              A scorer tells you whether the answer was acceptable. diff0 shows captured evidence about how the agent got there—and whether that behavior moved with your code.
             </p>
           </div>
 
@@ -230,7 +230,7 @@ export default function Home() {
             <article className="bg-card p-7 sm:p-9">
               <span className="font-mono text-[11px] text-muted">02</span>
               <h3 className="mt-12 text-xl font-medium tracking-[-0.025em]">Green evals</h3>
-              <p className="mt-2 max-w-[18rem] text-sm leading-6 text-muted">The head clears every eval observation. Repetition reveals what one green run misses.</p>
+              <p className="mt-2 max-w-[18rem] text-sm leading-6 text-muted">The head clears every eval observation. Repetition can reveal what one green run misses.</p>
               <div className="mt-8 rounded-xl border border-line bg-codebg p-4 font-mono text-[11px] leading-6">
                 {["no-failed-actions", "uses-sql-tool", "total-revenue"].map((x) => (
                   <p key={x} className="flex items-center justify-between gap-3"><span className="truncate text-muted">{x}</span><span className="text-green-600">pass</span></p>
@@ -263,7 +263,7 @@ export default function Home() {
                 ["01", "Checkout", "Base and head run in isolated git worktrees. A dirty local HEAD is rejected so edits are never silently omitted."],
                 ["02", "Run", "Existing Eve evals run N times per ref in counterbalanced AB/BA order."],
                 ["03", "Collect", "Tool calls, subagents, skills, tokens, available cost, and duration come from Eve's own artifacts."],
-                ["04", "Report", "Statistical changes and stable trace drift land in the terminal and one sticky PR comment."],
+                ["04", "Report", "Statistical changes and stable behavioral drift land in the terminal and one sticky PR comment."],
               ].map(([n, title, copy]) => (
                 <li key={n} className="grid grid-cols-[52px_1fr] gap-4 px-5 py-9 sm:grid-cols-[72px_1fr] sm:px-10 sm:py-11">
                   <span className="font-mono text-xs text-muted">{n}</span>
@@ -312,7 +312,7 @@ export default function Home() {
               {[
                 ["Pass-rate evidence", "One-sided Fisher exact tests compare differing proportions across runs."],
                 ["Multiple comparisons", "Holm adjustment keeps a suite full of evals from manufacturing confidence."],
-                ["Validity caps", "Changed eval harness, model, sandbox, run count, or scorer validity caps the verdict at yellow."],
+                ["Validity caps", "Changed eval harness, authored sandbox configuration, model, run count, or scorer validity caps the verdict at yellow."],
               ].map(([title, copy]) => (
                 <div key={title} className="bg-[#111] p-7 sm:p-9"><div className="mb-10 h-8 w-8 rounded-full border border-white/15 bg-white/[0.03]" /><h3 className="font-medium">{title}</h3><p className="mt-2 text-sm leading-6 text-white/60">{copy}</p></div>
               ))}
@@ -338,7 +338,7 @@ export default function Home() {
                 <div>
                   <p className="mb-5 font-mono text-[11px] tracking-[0.16em] opacity-60 uppercase">Run it on your agent</p>
                   <h2 className="max-w-[530px] text-[clamp(2.6rem,5vw,4.6rem)] leading-[0.98] font-medium tracking-[-0.055em]">Compare two refs.<br />Review one report.</h2>
-                  <p className="mt-6 max-w-[480px] leading-7 opacity-55">From a repository with an Eve eval suite, compare the branch you plan to merge against its base. No diff0 install step required.</p>
+                  <p className="mt-6 max-w-[480px] leading-7 opacity-55">From a repository with an Eve eval suite, compare the branch you plan to merge against its base. No global diff0 install is required.</p>
                 </div>
                 <div className="min-w-0"><Command command={RUN_CMD} inverse /></div>
               </div>
@@ -348,7 +348,7 @@ export default function Home() {
             <div className="mt-16 grid gap-10 border-t border-line pt-12 lg:grid-cols-[1fr_1.2fr]">
               <div>
                 <h3 className="text-xl font-medium tracking-[-0.025em]">Add it to CI</h3>
-                <p className="mt-3 max-w-[430px] text-sm leading-6 text-muted">Run the comparison on pull requests and post one self-updating comment. The default blocks red regressions but reports yellow drift without failing; use <code>fail-on: drift</code> to gate both. Fork PRs stay refused by default.</p>
+                <p className="mt-3 max-w-[430px] text-sm leading-6 text-muted">Run the comparison on pull requests and post one self-updating comment. The default blocks red regressions but reports yellow drift without failing; granular policies can gate eval, score, performance, behavioral, and validity findings independently. Fork PRs stay refused by default.</p>
                 <div className="mt-5 inline-flex"><CopyButton text={actionYaml} label="Copy workflow YAML" /></div>
               </div>
               <div className="overflow-x-auto rounded-xl border border-line bg-codebg"><pre className="min-w-max px-5 py-5 font-mono text-[12px] leading-6">{actionYaml}</pre></div>

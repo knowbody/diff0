@@ -14,7 +14,9 @@
   "eveVersion": "0.47.5",
   "model": "anthropic/claude-haiku-4.5",
   "runsPerRef": 10,
-  "sandbox": "docker (inferred)",
+  "sandbox": "unknown",
+  "hostDefaultSandboxCandidate": "docker",
+  "historicalSandboxLabel": "docker (inferred)",
   "verdictIcon": "🟡",
   "verdictSummary": "Review recommended. No confirmed eval regressions across 10 runs per ref. Confirmed behavioral drift requires review",
   "evalObservations": {
