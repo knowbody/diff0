@@ -37,6 +37,7 @@
     "dist",
     "prices.json",
     "README.md",
+    "docs/library-api.md",
     "LICENSE",
     "action"
   ],
@@ -64,13 +65,19 @@
   "bin": {
     "diff0": "dist/cli.js"
   },
-  "exports": {},
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./runner": { "types": "./dist/runner.d.ts", "import": "./dist/runner.js" },
+    "./reporters": { "types": "./dist/reporters.d.ts", "import": "./dist/reporters.js" },
+    "./eve": { "types": "./dist/eve.d.ts", "import": "./dist/eve.js" }
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && chmod +x dist/cli.js",
     "action:build": "node scripts/build-action.mjs",
     "typecheck": "tsc --noEmit && pnpm agent:typecheck",
     "test": "pnpm test:unit",
-    "test:unit": "vitest run --exclude '**/*.integration.test.ts'",
+    "test:unit": "vitest run --exclude '**/*.integration.test.ts' --exclude '**/*.package.test.ts'",
+    "test:package": "pnpm build && vitest run test/library.package.test.ts",
     "test:integration": "vitest run integration.test.ts",
     "agent:build": "eve build",
     "agent:check": "biome check agent evals test/agent-security.test.ts test/agent-publishing.test.ts",

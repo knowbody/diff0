@@ -20,30 +20,21 @@ import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { Command, CommanderError, InvalidArgumentError, Option } from "commander";
 import { CommandInterruptedError, EvalFilterNoMatchError, NoEvalsError } from "./adapters/eve.js";
-import {
-  type ComputeDeltaOptions,
-  computeDelta,
-  ENFORCEMENT_CATEGORIES,
-  violatesEnforcement,
-} from "./analyze/delta.js";
 import type { EnforcementCategory, PerformanceThresholds } from "./analyze/types.js";
 import { getDiff0Version } from "./collect/cache.js";
-import { applyPricing } from "./collect/pricing.js";
 import { type Estimate, type EstimateOptions, runEstimate } from "./harness/estimate.js";
-import { getDiffStat } from "./harness/gitdiff.js";
+import type { InferredSandboxBackend } from "./harness/sandbox.js";
+import type { CreateWorktreeOptions, WorktreeHandle } from "./harness/worktree.js";
+import { ENFORCEMENT_CATEGORIES, violatesEnforcement } from "./index.js";
+import { formatDuration, formatUsd, shortSha } from "./report/format.js";
+import { renderNoEvalsHelp } from "./report/teach.js";
+import { renderJson, renderMarkdown, renderTerminal } from "./reporters.js";
 import {
+  compareRefs,
   EvalRunError,
   MaxSpendExceededError,
   type RunComparisonOptions,
-  runComparison,
-} from "./harness/runner.js";
-import type { InferredSandboxBackend } from "./harness/sandbox.js";
-import type { CreateWorktreeOptions, WorktreeHandle } from "./harness/worktree.js";
-import { formatDuration, formatUsd, shortSha } from "./report/format.js";
-import { renderJson } from "./report/json.js";
-import { renderMarkdown } from "./report/markdown.js";
-import { renderNoEvalsHelp } from "./report/teach.js";
-import { renderTerminal } from "./report/terminal.js";
+} from "./runner.js";
 import type { AgentInfo, DependencyInstallMode, EveAdapter } from "./types.js";
 
 declare const DIFF0_ACTION_BUNDLE: boolean | undefined;
@@ -311,26 +302,9 @@ async function executeRun(flags: RunFlags, io: CliIo, seams?: CliHarnessSeams): 
       comparisonOptions.maxConcurrency = flags.maxConcurrency;
     }
     if (flags.maxSpend !== undefined) comparisonOptions.maxSpendUsd = flags.maxSpend;
-    if (!flags.cache) comparisonOptions.noCache = true;
+    comparisonOptions.noCache = !flags.cache;
     applySeams(comparisonOptions, seams);
 
-    const { baseRuns, headRuns, meta } = await runComparison(comparisonOptions);
-
-    // One pricing pass over ALL records so the comparison gets a single,
-    // coherent cost-source label; order is preserved, so split by count.
-    const priced = applyPricing([...baseRuns, ...headRuns]);
-    const basePriced = priced.records.slice(0, baseRuns.length);
-    const headPriced = priced.records.slice(baseRuns.length);
-
-    const gitDiffStat = await getDiffStat(repoPath, meta.baseSha, meta.headSha);
-
-    const deltaOptions: ComputeDeltaOptions = {
-      sandboxInferred: meta.sandboxInferred,
-      hostDefaultSandboxCandidate: meta.hostDefaultSandboxCandidate,
-      gitDiffStat,
-      baseCacheHit: meta.baseCacheHit,
-      validityMismatches: meta.validityMismatches,
-    };
     const performanceThresholds: Partial<PerformanceThresholds> = {};
     if (flags.maxCostIncreasePct !== undefined) {
       performanceThresholds.costUsd = flags.maxCostIncreasePct;
@@ -344,12 +318,7 @@ async function executeRun(flags: RunFlags, io: CliIo, seams?: CliHarnessSeams): 
     if (flags.maxDurationIncreasePct !== undefined) {
       performanceThresholds.durationMs = flags.maxDurationIncreasePct;
     }
-    if (Object.keys(performanceThresholds).length > 0) {
-      deltaOptions.performanceThresholds = performanceThresholds;
-    }
-    if (priced.costSource !== "unavailable") deltaOptions.costSource = priced.costSource;
-
-    const report = computeDelta(basePriced, headPriced, deltaOptions);
+    const report = await compareRefs({ ...comparisonOptions, performanceThresholds });
 
     if (flags.reportMd !== undefined) {
       await writeReportFile(flags.reportMd, renderMarkdown(report));
