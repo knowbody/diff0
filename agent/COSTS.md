@@ -13,7 +13,8 @@ regional rates, context tiers, cache behavior, and future price changes can chan
 
 Luna handles structured routing and coordination. Mini handles bounded investigation.
 Sonnet handles repository edits and tools. Terra retains a stronger independent review gate from
-a different provider family. The connected coding/review quality still needs validation.
+a different provider family. One small connected task has now completed; see
+[`SMALL-TASK-RUN.md`](SMALL-TASK-RUN.md) for measured costs and validation gaps.
 No automatic upgrade to a more expensive model is configured. These assignments live only in
 `agent/lib/models.ts` and are not live in production until deployment.
 
@@ -45,9 +46,11 @@ prices each cache category separately, and adds output. Where a model has no sep
 rate, writes use the input rate. It excludes external tools, hosting, and other CI/eval runs.
 
 The CI thresholds ($3 maintenance agent, $0.30 demo) remain measured-cost stop thresholds,
-not guaranteed caps. The full task still lacks a hard dollar budget. Lower model prices do not
+not guaranteed caps. Production tasks still lack a per-task dollar budget. Lower model prices do not
 solve runaway behavior: keep paid retries paused until an explicit budget and progress-stop
-policy are agreed and enforced. The connected coding/review model selection remains untested.
+policy are agreed and enforced. The controlled small-task run used a dedicated $3 Gateway key
+and delivered a draft PR for $0.79705881 in model charges, excluding infrastructure. This is
+one narrow sample, not a replacement for the planning allowances above.
 
 ## Luna orchestration trial
 

@@ -93,6 +93,10 @@ or fork code.
 
 ## First end-to-end assignment
 
+The subsequent budgeted `pipeline/tiny-cost` assignment delivered a draft PR for about $0.80
+in model charges. See [the run record](SMALL-TASK-RUN.md) for stage costs, evidence, and the
+offline validation and retry limitations it exposed.
+
 The private `knowbody/diff0-eve-sandbox` repository is a disposable copy of diff0 at `474e7f5`.
 Its first assignment reproduces the missing GitHub-tool registration bug, adds deterministic
 coverage, and requires the full station pipeline to deliver a reviewed draft PR:
