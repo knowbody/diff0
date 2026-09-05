@@ -1,5 +1,6 @@
 import { defineSandbox } from "eve/sandbox";
 import { vercel } from "eve/sandbox/vercel";
+import { connectorFreeEval, unavailableStationSandbox } from "../../lib/eval-sandbox.js";
 import {
   FACTORY_SANDBOX_CREATE_OPTIONS,
   factoryBootstrap,
@@ -17,9 +18,11 @@ import {
  * template build; each session pays only a fetch to the current default
  * branch, then branches, implements, verifies, and pushes from here.
  */
-export default defineSandbox({
-  backend: vercel(FACTORY_SANDBOX_CREATE_OPTIONS),
-  bootstrap: factoryBootstrap,
-  onSession: factoryOnSession,
-  revalidationKey: factoryRevalidationKey,
-});
+export default connectorFreeEval
+  ? unavailableStationSandbox
+  : defineSandbox({
+      backend: vercel(FACTORY_SANDBOX_CREATE_OPTIONS),
+      bootstrap: factoryBootstrap,
+      onSession: factoryOnSession,
+      revalidationKey: factoryRevalidationKey,
+    });

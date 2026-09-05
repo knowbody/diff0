@@ -119,6 +119,12 @@ before using path filters; GitHub can leave a skipped required workflow pending.
 The job also needs whichever model credential your eval suite normally uses. Add it only after
 deciding which pull-request authors and branches you trust with that credential.
 
+This repository dogfoods that workflow on both its demo fixture and its own
+[Eve maintenance agent](agent/README.md). Changes to the agent, its evals, or diff0 run four
+connector-free maintenance evals against the PR base and head, with a separate sticky report.
+The maintenance agent can also take labeled GitHub issues through implementation and independent
+review to a draft PR; its README describes intake, deployment, and the opt-in full-pipeline eval.
+
 ## What the report means
 
 diff0 checks both refs out into temporary worktrees and counterbalances repeated runs (AB, then BA)
