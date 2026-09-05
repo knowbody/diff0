@@ -643,6 +643,7 @@ describe("action/action.yml", () => {
         "github.event.pull_request.user.login == github.repository_owner",
       );
       expect(job.if).toContain("github.actor == github.repository_owner");
+      expect(job.if).toContain("github.triggering_actor == github.repository_owner");
       expect(Object.keys(job.env).filter((key) => /TOKEN|KEY|CONNECTOR/.test(key))).toEqual([
         "AI_GATEWAY_API_KEY",
       ]);
