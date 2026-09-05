@@ -6,14 +6,14 @@ regional rates, context tiers, cache behavior, and future price changes can chan
 
 | Responsibility | Model | Input | Output | Cached input read |
 | --- | --- | ---: | ---: | ---: |
-| Classification | GPT-5.6 Luna | 0.20 | 1.20 | 0.02 |
-| Orchestration, analysis, research | GPT-5.4 Mini | 0.75 | 4.50 | 0.075 |
+| Classification, orchestration | GPT-5.6 Luna | 0.20 | 1.20 | 0.02 |
+| Analysis, research | GPT-5.4 Mini | 0.75 | 4.50 | 0.075 |
 | Implementation | Claude Sonnet 5 | 2.00 | 10.00 | 0.20 |
 | Independent review | GPT-5.6 Terra | 2.00 | 12.00 | 0.20 |
 
-Luna handles narrow structured routing. Mini handles coordination and bounded investigation.
+Luna handles structured routing and coordination. Mini handles bounded investigation.
 Sonnet handles repository edits and tools. Terra retains a stronger independent review gate from
-a different provider family. This is an initial cost/quality choice, not a completed quality eval.
+a different provider family. The connected coding/review quality still needs validation.
 No automatic upgrade to a more expensive model is configured. These assignments live only in
 `agent/lib/models.ts` and are not live in production until deployment.
 
@@ -26,7 +26,8 @@ planning/review. A medium example using 500k fresh input, 2m cached input, and 4
 $1.80 before planning/review. Cache creation is separate: Sonnet's listed write rate is $2.50/M.
 Long investigations, retries, large context, or poor cache reuse can exceed these allowances.
 
-Repricing the failed first attempt's recorded step tokens with the selected models gives:
+Repricing the failed first attempt's recorded step tokens with the initial economical mix
+(Mini orchestration, before the Luna trial below) gives:
 
 | Completed usage through failure | Hypothetical cost |
 | --- | ---: |
@@ -46,4 +47,24 @@ rate, writes use the input rate. It excludes external tools, hosting, and other 
 The CI thresholds ($3 maintenance agent, $0.30 demo) remain measured-cost stop thresholds,
 not guaranteed caps. The full task still lacks a hard dollar budget. Lower model prices do not
 solve runaway behavior: keep paid retries paused until an explicit budget and progress-stop
-policy are agreed and enforced. No paid eval was run to validate this model selection.
+policy are agreed and enforced. The connected coding/review model selection remains untested.
+
+## Luna orchestration trial
+
+On 2026-09-05, one pass of the four connector-free evals passed using Luna for both root
+orchestration and classification: `smoke`, `routing/needs-clarification`,
+`safety/prompt-injection`, and `safety/write-requires-approval`. Execution took approximately
+38 seconds. The dedicated Gateway key reported $0.01063793 of spend and $0 of BYOK spend.
+It had an active $1 budget, no automatic refresh, and included BYOK in the quota. The test
+used local just-bash, not hosted Vercel sandboxes. The key was created only for this trial.
+
+This validates a single routing/safety pass, not the full coding pipeline or statistical
+reliability. Source validation also passed 72 tests with zero discovery diagnostics.
+The raw local evidence is `.eve/luna-trial.json`; key quota metadata is in
+`.eve/luna-key-metadata.json`. No secret key value belongs in this document or Git.
+
+For future controlled trials, use a dedicated [Gateway key budget](https://vercel.com/changelog/budgets-for-api-keys-on-ai-gateway)
+shared by every station, with refresh disabled. Gateway rejects further requests after its
+budget is exceeded; an in-flight request may overshoot. This is separate from hosting charges
+and is stronger than the comparison report's incomplete cost attribution. Do not silently
+fall back to an unbudgeted key or project OIDC credential.
