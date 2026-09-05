@@ -137,3 +137,47 @@ References checked online: [GitHub channel](https://eve.dev/docs/channels/github
 [Vercel function duration](https://vercel.com/docs/functions/configuring-functions/duration).
 Online docs were compared against the pinned Eve 0.47.5 package; newer stream and background
 task semantics were not assumed to apply to this deployment.
+
+The first staged build of the split-check gate hit the Hobby snapshot-storage quota. Removing
+23 obsolete, reproducible template snapshots from earlier trials freed about 5.84 GB of logical
+storage; current production templates and task checkouts were retained. The retry built
+successfully. No plan upgrade or new model allowance was purchased. Hobby includes 15 GB
+of snapshot storage; see [Sandbox quotas](https://vercel.com/docs/sandbox/pricing).
+
+The split-check implementation passed 377 unit tests, 82 agent tests, typecheck, lint, build,
+the mocked retry-limit regression, and zero Eve discovery diagnostics. It was deployed from
+`99d0f27df13f22bd43763854994e1427fd4bb167` after a staged health check. The cancelled GitHub
+session was reset before intake was retried, so the fresh session uses the new runtime.
+
+The fresh production session completed on 2026-09-05 at 21:48:05 UTC, 18m01s after start, and
+delivered [draft PR #21](https://github.com/knowbody/diff0/pull/21). Its head is the exact
+attested SHA `37ac4b6e51fb16aa7cf0d0569f2f80164a5fc92d`. All seven required checks passed
+through separate `check_review` calls; the longest call took 164.197 seconds. Each subsequent
+call retained the earlier results. `attest_review` then succeeded, the root opened the draft,
+removed `eve-build`, posted the result on issue #20, and reached `session.waiting`. Completed
+sandbox compute was stopped afterward.
+
+| Station | Successful production run model cost (USD) |
+| --- | ---: |
+| Orchestrator | 0.01047113 |
+| Classifier | 0.00088040 |
+| Analyst | 0.03974535 |
+| Implementer | 0.20450760 |
+| Reviewer | 0.14253340 |
+| Completed production task | 0.39813788 |
+
+The timed-out production attempt cost $0.34663790, making production verification total
+$0.74477578 in model calls. Including the earlier $0.75807281 local round, the same Gateway
+key reports $1.50284859 used and $1.49715141 remaining from its $3 non-refreshing allowance.
+The production key remains active under that remaining allowance; no new key, automatic
+refresh, model upgrade, or plan upgrade was added. Local raw credential copies were removed.
+These figures cover models only; Sandbox uses the separate Hobby infrastructure quotas.
+
+The optional package-consumer test did not complete in the offline sandbox because it needs
+npm registry access. The seven required checks, including integration and behavioral comparison,
+passed autonomously; the optional package test is not claimed as a pass. Both delivery PR #21
+and integration PR #19 remain drafts for human review. No merge or ready transition occurred.
+
+Local evidence: `.eve/production-success-summary.json`, the corresponding
+`.eve/production-stream-*.json` files, `.eve/production-final-budget.json`,
+`.eve/production-pr21.json`, and `.eve/production-sandbox-cleanup.log`.

@@ -152,7 +152,10 @@ Before deploying a fork:
 7. Subscribe the GitHub trigger to `issues`, `issue_comment`, and
    `pull_request_review_comment` events, with the project trigger destination set to
    `/eve/v1/github`. Read back the connector configuration to verify the destination.
-8. Validate read-only behavior against a scratch repository before enabling unattended intake.
+8. Check Sandbox storage headroom and remove obsolete trial templates; stopping persistent
+   sandboxes saves compute but retains snapshots. Hobby currently includes 15 GB of snapshot
+   storage ([quotas](https://vercel.com/docs/sandbox/pricing)).
+9. Validate read-only behavior against a scratch repository before enabling unattended intake.
 
 Follow Eve's online [GitHub channel](https://eve.dev/docs/channels/github),
 [Vercel deployment](https://eve.dev/docs/guides/deployment/vercel), and

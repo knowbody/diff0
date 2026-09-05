@@ -84,3 +84,17 @@ Stopping a local eval client does not cancel its durable Eve turn. Before restar
 trial, cancel its active session through `POST /eve/v1/session/<id>/cancel` and confirm
 `turn.cancelled` followed by `session.waiting`. Keep all attempts on the same budgeted key so
 resumed work cannot silently acquire a fresh spending allowance.
+
+## Production verification
+
+The live GitHub issue-to-draft-PR run completed for **$0.39813788** in model calls. Including
+the first production attempt that hit the hosted function deadline, production verification
+used **$0.74477578**. The entire capped round (local setup/trials plus production) used
+**$1.50284859**, leaving **$1.49715141** on the same $3 non-refreshing Gateway key. No plan
+upgrade or additional model allowance was purchased. Infrastructure quotas are separate.
+
+The successful run produced [draft PR #21](https://github.com/knowbody/diff0/pull/21) after all
+seven required checks passed inside the reviewer sandbox. The optional package-consumer test
+needs registry access and remains unverified there. See `SMALL-TASK-RUN.md` for the complete
+record, failed attempts, deployment fixes, and snapshot cleanup. This remains one narrow task,
+not a guarantee for arbitrary project work.
