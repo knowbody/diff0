@@ -8,8 +8,12 @@ import type { ComparisonMeta, MetricStats } from "../analyze/types.js";
  * One consistent precision rule everywhere costs render:
  * below $1 -> always 4 decimals ("$0.0300", "$0.0414"), so per-session costs
  * in the same table never mix precisions; $1 and up -> 2 decimals ("$12.00").
+ * Some tiny positive values round *up* to "$0.0001" at four decimals rather
+ * than to zero, so any finite value strictly between 0 and 0.0001 renders as
+ * the literal "<$0.0001" instead of a misleading "$0.0000".
  */
 export function formatUsd(value: number): string {
+  if (Number.isFinite(value) && value > 0 && value < 0.0001) return "<$0.0001";
   return `$${value >= 1 ? value.toFixed(2) : value.toFixed(4)}`;
 }
 
