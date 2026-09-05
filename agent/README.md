@@ -30,6 +30,7 @@ sandbox or process.
 ```sh
 pnpm install --frozen-lockfile --ignore-scripts
 pnpm agent:validate
+pnpm agent:test:runtime
 pnpm exec eve eval --list --json
 ```
 
@@ -124,9 +125,11 @@ Eve stops before delegating a third attempt. Successful station results reset th
 a valid reviewer request for changes can still enter the revision loop. Run the mocked runtime
 regression with `pnpm agent:test:runtime`; it makes no model calls to a provider.
 
-The reviewer calls `attest_review` only after judging the diff. That tool runs the required
-repository checks itself, refuses failing or timed-out checks, and verifies the clean commit
-again afterward. Engine and Action changes additionally require a consistent Action bundle
+The reviewer calls `check_review` sequentially after judging the diff. Each call runs one
+required check with a 240-second deadline and durably records the result against the clean
+branch, head SHA, and base SHA. This keeps each check below Vercel Hobby's 300-second function
+limit. `attest_review` requires every recorded check and verifies the clean commit again;
+missing, failed, timed-out, or stale evidence cannot receive an attestation. Engine and Action changes additionally require a consistent Action bundle
 and a green deterministic demo comparison. Unchecked prerequisites cannot receive an attestation.
 
 The station bootstrap caches Corepack and pnpm outside HOME, installs both locked dependency
@@ -147,8 +150,32 @@ Before deploying a fork:
 5. Enable AI Gateway access for every model configured in the root agent and stations.
 6. Create the intake label named by `FACTORY_LABEL`; protect the default branch and require review.
 7. Subscribe the GitHub trigger to `issues`, `issue_comment`, and
-   `pull_request_review_comment` events.
+   `pull_request_review_comment` events, with the project trigger destination set to
+   `/eve/v1/github`. Read back the connector configuration to verify the destination.
 8. Validate read-only behavior against a scratch repository before enabling unattended intake.
+
+Follow Eve's online [GitHub channel](https://eve.dev/docs/channels/github),
+[Vercel deployment](https://eve.dev/docs/guides/deployment/vercel), and
+[sandbox](https://eve.dev/docs/sandbox) guides, checking APIs against the pinned package.
+The online docs can include features that are newer than Eve 0.47.5.
+
+Keep `.vercelignore` in place: Vercel CLI uploads do not inherit `.gitignore`, and `.eve/`
+contains local credentials and traces. Local eval backend factories must only execute when
+that backend is selected; hosted bundles prune local implementations.
+
+Stage production builds without moving the public alias, then verify the built runtime before
+promotion (substitute the actual linked team and deployment URL):
+
+```sh
+vercel deploy --prod --skip-domain --yes --scope YOUR_TEAM
+vercel curl /eve/v1/health --deployment DEPLOYMENT_URL -- --fail --silent --show-error
+vercel promote DEPLOYMENT_URL --yes --scope YOUR_TEAM
+```
+
+Verify `/eve/v1/health` again on the public alias. Health alone does not prove GitHub delivery:
+confirm a real webhook reaches `/eve/v1/github` with HTTP 200, then apply `eve-build` once to
+a bounded issue and observe the station results, reviewer checks, and draft PR. For CLI-deployed
+builds, use `vercel logs DEPLOYMENT_URL --no-branch` so the local Git branch does not hide logs.
 
 Set spend and concurrency limits appropriate to the selected models. Intake is at-most-once while
 the label remains present: if a delivery fails after it claims the issue, inspect the Eve delivery

@@ -16,7 +16,8 @@ Sonnet handles repository edits and tools. Terra retains a stronger independent 
 a different provider family. One small connected task has now completed; see
 [`SMALL-TASK-RUN.md`](SMALL-TASK-RUN.md) for measured costs and validation gaps.
 No automatic upgrade to a more expensive model is configured. These assignments live only in
-`agent/lib/models.ts` and are not live in production until deployment.
+`agent/lib/models.ts` and are deployed to `diff0-eve.vercel.app`. The controlled production
+verification shares the same non-refreshing $3 Gateway key as the fully verified follow-up.
 
 ## Estimates
 

@@ -106,5 +106,34 @@ the separately authorized deployment/intake verification.
 
 Local evidence: `.eve/verified-trial-run.json`, `.eve/verified-trial-trace.json`,
 `.eve/verified-task-cost-summary.json`, `.eve/verified-trial-key-metadata.json`, and
-`.eve/station-retry-proof.json`. Local repository verification passed 374 unit tests, six integration
-tests, 79 agent tests, typecheck, lint, build, and zero Eve discovery diagnostics.
+`.eve/station-retry-proof.json`. Local repository verification passed 376 unit tests, six integration
+tests, 81 agent tests, typecheck, lint, build, and zero Eve discovery diagnostics.
+
+## Production intake verification
+
+The initial hosted build failed on an eagerly constructed local eval backend. It was rolled
+back, the backend construction was made conditional, and a regression test was added. The
+replacement was staged without moving the public alias, health-checked, then promoted.
+Online Eve documentation confirmed `/eve/v1/github` as the Connect trigger destination;
+the connector was corrected from `/triggers/github`, and a real webhook returned HTTP 200.
+
+The first production attempt on [issue #20](https://github.com/knowbody/diff0/issues/20)
+classified, analyzed, implemented, and independently reviewed the three-file formatting change.
+The reviewer ran 366 unit tests, six integration tests, bundle consistency, and a green mock
+comparison. However, the subsequent app-controlled attestation ran all seven checks in one
+tool call and exceeded Vercel Hobby's 300-second function limit. No attestation or draft PR
+was produced. Root and reviewer turns were explicitly cancelled and confirmed through their
+streams; the intake label was removed and their sandbox compute stopped.
+
+The gate now advances through one app-owned check per `check_review` call, using Eve's durable
+per-session state. Passing results bind to the branch, head SHA, base SHA, and exact prescribed
+commands. A changed commit resets progress. Each command has a 240-second deadline with a
+five-second kill grace; `attest_review` refuses incomplete or stale evidence. The reviewer
+prompt uses this gate for standard checks instead of duplicating them manually.
+
+References checked online: [GitHub channel](https://eve.dev/docs/channels/github),
+[Eve deployment](https://eve.dev/docs/guides/deployment/vercel),
+[durable state](https://eve.dev/docs/concepts/state), and
+[Vercel function duration](https://vercel.com/docs/functions/configuring-functions/duration).
+Online docs were compared against the pinned Eve 0.47.5 package; newer stream and background
+task semantics were not assumed to apply to this deployment.

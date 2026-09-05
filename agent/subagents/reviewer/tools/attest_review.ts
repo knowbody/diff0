@@ -4,7 +4,11 @@ import { getGitHubRef } from "../../../lib/github/api.js";
 import { githubCredentials } from "../../../lib/github/credentials.js";
 import { mintInstallationToken, REPO_DIR, validateBranch } from "../../../lib/github/git-remote.js";
 import { saveReviewAttestation } from "../../../lib/github/review-attestation.js";
-import { runReviewChecks } from "../../../lib/github/review-checks.js";
+import {
+  requireReviewChecks,
+  reviewCheckPlan,
+  reviewChecks,
+} from "../../../lib/github/review-checks.js";
 import { isOwnedBranch } from "../../../lib/github/runtime-push.js";
 
 const SHA_PATTERN = /^[a-f0-9]{40}$/;
@@ -46,7 +50,7 @@ export default defineTool({
 
     let checks: string[];
     try {
-      checks = await runReviewChecks(sandbox);
+      checks = requireReviewChecks(reviewChecks.get(), branch, sha, await reviewCheckPlan(sandbox));
     } catch (error) {
       return {
         error: error instanceof Error ? error.message : "Required review checks failed.",

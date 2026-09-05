@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { runReviewChecks } from "../agent/lib/github/review-checks.js";
+import {
+  type ReviewChecks,
+  requireReviewChecks,
+  reviewCheckPlan,
+  runNextReviewCheck,
+} from "../agent/lib/github/review-checks.js";
 import {
   enforceStationRetries,
   recordStationResult,
@@ -41,45 +46,97 @@ describe("station retry limit", () => {
 });
 
 function sandbox(fail?: string, changed = "src/report/format.ts") {
+  let sha = "b".repeat(40);
   const run = vi.fn(async ({ command }: { command: string }) => ({
-    exitCode: fail && command.includes(fail) ? 1 : 0,
-    stdout: command.includes("diff --name-only") ? changed : "passed",
+    exitCode: fail && command.includes(fail) ? 124 : 0,
+    stdout: command.includes("diff --name-only")
+      ? changed
+      : command.includes("status --porcelain")
+        ? ""
+        : command.includes("branch --show-current")
+          ? `eve/test\n${sha}`
+          : "passed",
     stderr: fail && command.includes(fail) ? "prerequisite unavailable" : "",
   }));
   return {
     run,
+    moveHead: () => {
+      sha = "c".repeat(40);
+    },
     readTextFile: vi.fn(async () => JSON.stringify({ sha: "a".repeat(40) })),
   };
 }
 
 describe("required review checks", () => {
-  it("blocks missing integration prerequisites before attestation or comparison", async () => {
-    const vm = sandbox("pnpm test:integration");
-    await expect(runReviewChecks(vm as never)).rejects.toThrow("prerequisite unavailable");
-    expect(vm.run.mock.calls.some(([input]) => input.command.includes("DIFF0_DEMO_MODEL"))).toBe(
-      false,
-    );
-  });
-
-  it("requires the bundle and a mock comparison for engine changes", async () => {
+  it("persists one bounded check per call and refuses incomplete attestation", async () => {
     const vm = sandbox();
-    const passed = await runReviewChecks(vm as never);
-    expect(passed).toHaveLength(7);
-    expect(passed.at(-1)).toContain("DIFF0_DEMO_MODEL=mock");
-    expect(passed.at(-1)).toContain("--fail-on drift");
-    expect(passed.at(-2)).toContain("git diff --exit-code -- action/dist/cli.mjs");
+    const plan = await reviewCheckPlan(vm as never);
+    let state: ReviewChecks | null = null;
+    for (let i = 0; i < 7; i++) {
+      expect(() => requireReviewChecks(state, "eve/test", "b".repeat(40), plan)).toThrow(
+        "incomplete",
+      );
+      state = await runNextReviewCheck(vm as never, "eve/test", state);
+      expect(state.passed).toHaveLength(i + 1);
+      expect(
+        vm.run.mock.calls.filter(([input]) => input.command.includes("timeout -k 5 240")),
+      ).toHaveLength(i + 1);
+    }
+    expect(requireReviewChecks(state, "eve/test", "b".repeat(40), plan)).toHaveLength(7);
+    expect(state?.passed.at(-1)).toContain("--fail-on drift");
+    expect(state?.passed.at(-2)).toContain("git diff --exit-code -- action/dist/cli.mjs");
+    await runNextReviewCheck(vm as never, "eve/test", state);
+    expect(
+      vm.run.mock.calls.filter(([input]) => input.command.includes("timeout -k 5 240")),
+    ).toHaveLength(7);
   });
 
-  it("does not waive a failed comparison", async () => {
-    await expect(runReviewChecks(sandbox("DIFF0_DEMO_MODEL") as never)).rejects.toThrow(
-      "Required review check failed",
-    );
+  it("does not advance a failed check or waive a timed-out comparison", async () => {
+    for (const fail of ["pnpm test:integration", "DIFF0_DEMO_MODEL"]) {
+      const vm = sandbox(fail);
+      let state: ReviewChecks | null = null;
+      const successful = fail === "pnpm test:integration" ? 3 : 6;
+      for (let i = 0; i < successful; i++)
+        state = await runNextReviewCheck(vm as never, "eve/test", state);
+      await expect(runNextReviewCheck(vm as never, "eve/test", state)).rejects.toThrow("exit 124");
+      expect(state?.passed).toHaveLength(successful);
+    }
+  });
+
+  it("invalidates old results when the commit changes", async () => {
+    const vm = sandbox();
+    const old = await runNextReviewCheck(vm as never, "eve/test", null);
+    vm.moveHead();
+    const next = await runNextReviewCheck(vm as never, "eve/test", old);
+    expect(next.sha).not.toBe(old.sha);
+    expect(next.passed).toEqual(["pnpm typecheck"]);
+  });
+
+  it("rejects stale branch, SHA, base, or incomplete command evidence", async () => {
+    const vm = sandbox();
+    const plan = await reviewCheckPlan(vm as never);
+    const state: ReviewChecks = {
+      branch: "eve/test",
+      sha: "b".repeat(40),
+      baseSha: plan.baseSha,
+      passed: plan.checks,
+    };
+    for (const altered of [
+      { ...state, branch: "eve/other" },
+      { ...state, sha: "c".repeat(40) },
+      { ...state, baseSha: "d".repeat(40) },
+      { ...state, passed: ["claimed pass"] },
+    ]) {
+      expect(() => requireReviewChecks(altered, "eve/test", "b".repeat(40), plan)).toThrow(
+        "incomplete",
+      );
+    }
   });
 
   it("rejects an invalid base before executing commands", async () => {
     const vm = sandbox();
     vm.readTextFile.mockResolvedValue(JSON.stringify({ sha: "$(command)" }));
-    await expect(runReviewChecks(vm as never)).rejects.toThrow("valid checkout base SHA");
+    await expect(reviewCheckPlan(vm as never)).rejects.toThrow("valid checkout base SHA");
     expect(vm.run).not.toHaveBeenCalled();
   });
 });

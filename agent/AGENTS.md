@@ -1,8 +1,10 @@
 # diff0 Eve factory guidance
 
 This repository is an Eve 0.47.5 app that maintains `knowbody/diff0`; its authored runtime lives in
-this directory and its evals live in `../evals/`. Read the relevant guide under
-`node_modules/eve/docs/` before changing framework code; do not infer Eve APIs from an older template.
+this directory and its evals live in `../evals/`. Read the relevant official guide at
+https://eve.dev/docs and compare it with `node_modules/eve/docs/` before changing framework code
+or deployment configuration. Online docs can describe a newer runtime than our pinned version;
+verify API compatibility in the installed package. Do not infer Eve APIs from an older template.
 
 ## Required validation
 
