@@ -71,3 +71,15 @@ shared by every station, with refresh disabled. Gateway rejects further requests
 budget is exceeded; an in-flight request may overshoot. This is separate from hosting charges
 and is stronger than the comparison report's incomplete cost attribution. Do not silently
 fall back to an unbudgeted key or project OIDC credential.
+
+## Fully verified follow-up
+
+The same small formatting assignment subsequently completed with all required checks running
+inside the independent reviewer's offline sandbox for **$0.44270089** in model calls. The local
+round total was **$0.75807281**, including setup failures and interrupted durable sessions that
+resumed before explicit cancellation. Infrastructure is additional. See `SMALL-TASK-RUN.md`.
+
+Stopping a local eval client does not cancel its durable Eve turn. Before restarting a stopped
+trial, cancel its active session through `POST /eve/v1/session/<id>/cancel` and confirm
+`turn.cancelled` followed by `session.waiting`. Keep all attempts on the same budgeted key so
+resumed work cannot silently acquire a fresh spending allowance.

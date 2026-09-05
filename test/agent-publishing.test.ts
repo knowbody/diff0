@@ -89,10 +89,13 @@ describe("trusted runtime publication", () => {
     });
 
     const commands = local.run.mock.calls.map(([input]) => input.command);
-    expect(commands.some((command) => command.includes(`diff --name-only -z ${BASE_SHA} ${LOCAL_SHA}`)))
-      .toBe(true);
+    expect(
+      commands.some((command) => command.includes(`diff --name-only -z ${BASE_SHA} ${LOCAL_SHA}`)),
+    ).toBe(true);
     expect(commands.some((command) => command.includes(`ls-tree -z ${LOCAL_SHA}`))).toBe(true);
-    expect(commands.some((command) => command.includes(`log -1 --pretty=%B ${LOCAL_SHA}`))).toBe(true);
+    expect(commands.some((command) => command.includes(`log -1 --pretty=%B ${LOCAL_SHA}`))).toBe(
+      true,
+    );
     expect(
       commands.filter((command) => /(?:diff --name-only|ls-tree|log -1).*\bHEAD\b/.test(command)),
     ).toEqual([]);
@@ -124,7 +127,14 @@ describe("trusted runtime publication", () => {
     ["tree", { message: "Fix the thing", parents: [{ sha: BASE_SHA }], tree: { sha: "other" } }],
     ["parent", { message: "Fix the thing", parents: [{ sha: LOCAL_SHA }], tree: { sha: "tree" } }],
     ["message", { message: "Other", parents: [{ sha: BASE_SHA }], tree: { sha: "tree" } }],
-    ["merge", { message: "Fix the thing", parents: [{ sha: BASE_SHA }, { sha: LOCAL_SHA }], tree: { sha: "tree" } }],
+    [
+      "merge",
+      {
+        message: "Fix the thing",
+        parents: [{ sha: BASE_SHA }, { sha: LOCAL_SHA }],
+        tree: { sha: "tree" },
+      },
+    ],
   ])("rejects a retry with a different %s", (_field, existing) => {
     expect(
       matchesExistingPublication(existing, {

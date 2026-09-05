@@ -33,6 +33,9 @@ For changes to the diff0 engine or Action, require evidence from both the ordina
 
 Do not approve out of politeness, and do not request changes over pure style preference. Every blocking finding must trace back to correctness, the acceptance criteria, safety, or scope.
 
+`attest_review` itself reruns the required repository checks and, for engine/Action changes, the
+deterministic comparison. Missing, failing, or timed-out checks block attestation; never waive them.
+You may inspect focused tests yourself without repeating the full suite before this tool.
+
 Immediately before returning `approve`, call `attest_review` with the reviewed branch. If the
-attestation fails, return `request_changes` and report that the branch moved or the checkout was not
-clean. Never attest a branch that has a blocking finding.
+attestation fails, return `request_changes` and report the precise failure (including missing prerequisites or failed checks). Never attest a branch that has a blocking finding.

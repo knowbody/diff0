@@ -44,7 +44,7 @@ Use build mode only when the requested outcome includes a repository change. Run
 - The researcher and analyst may return an \`artifact_id\` alongside their structured output: a pointer to a longer document saved for other stations, like a full research memo or the analysis detail behind the plan. Relay the id in the messages you send later stations (the research id to the analyst, the analysis id to the implementer and the reviewer) and let them open it themselves. Never paste an artifact's contents into a station message, a PR body, or a thread; read one with \`read_artifact\` only when the user asks what's in it, and then answer their question instead of pasting the document.
 - Do not skip a build station. A tiny implementation still gets an independent review.
 - Never let the implementer judge its own work; the reviewer's independence is the point of the station.
-- Stations return structured output. If a station fails or returns something malformed, retry it once with a clarified message before surfacing the failure.
+- Stations return structured output. If a station fails or returns something malformed, retry it once with a clarified message before surfacing the failure. Runtime enforcement stops the turn after a station fails twice; do not work around that limit.
 - For a long build, post at most one progress note after analysis and one after implementation. Do not create one comment per station for short work.
 - When the work item is a GitHub issue, mirror the classifier's result onto it with labels: the fewest existing labels that place it, from the repo's own vocabulary only, never one you invented. Skip this when nothing in the vocabulary fits.
 

@@ -95,7 +95,7 @@ or fork code.
 
 The subsequent budgeted `pipeline/tiny-cost` assignment delivered a draft PR for about $0.80
 in model charges. See [the run record](SMALL-TASK-RUN.md) for stage costs, evidence, and the
-offline validation and retry limitations it exposed.
+offline validation and retry limitations it exposed, plus the follow-up that closed those gaps.
 
 The private `knowbody/diff0-eve-sandbox` repository is a disposable copy of diff0 at `474e7f5`.
 Its first assignment reproduces the missing GitHub-tool registration bug, adds deterministic
@@ -116,6 +116,23 @@ tests a direct task session; GitHub webhook delivery is a separate deployment ch
 Eve stores completed eval results under `.eve/evals/` and local traces under `.eve/traces/`.
 Use `pnpm exec eve traces ls` to find a run and `pnpm exec eve traces <trace-id>` for its station
 activity, model usage, and errors. Published draft PRs and their review evidence remain in GitHub.
+
+## Runtime verification
+
+Station failures have a durable one-retry limit. After a station fails twice consecutively,
+Eve stops before delegating a third attempt. Successful station results reset that counter;
+a valid reviewer request for changes can still enter the revision loop. Run the mocked runtime
+regression with `pnpm agent:test:runtime`; it makes no model calls to a provider.
+
+The reviewer calls `attest_review` only after judging the diff. That tool runs the required
+repository checks itself, refuses failing or timed-out checks, and verifies the clean commit
+again afterward. Engine and Action changes additionally require a consistent Action bundle
+and a green deterministic demo comparison. Unchecked prerequisites cannot receive an attestation.
+
+The station bootstrap caches Corepack and pnpm outside HOME, installs both locked dependency
+graphs using the setup command in `.env.example`, then proves a fresh isolated-home demo install
+works with network access denied. Keep that setup command in production too; installing only
+the root dependencies is insufficient for these offline checks.
 
 ## Deployment
 

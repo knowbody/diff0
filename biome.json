@@ -6,7 +6,7 @@
       "action/**/*.mjs",
       "agent/**/*.ts",
       "evals/**/*.ts",
-      "test/agent-security.test.ts",
+      "test/agent-*.test.ts",
       "test/library.package.test.ts",
       "test/fixtures/library-consumer/**",
       "test/runner-api.test.ts",

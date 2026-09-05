@@ -4,6 +4,7 @@ import { getGitHubRef } from "../../../lib/github/api.js";
 import { githubCredentials } from "../../../lib/github/credentials.js";
 import { mintInstallationToken, REPO_DIR, validateBranch } from "../../../lib/github/git-remote.js";
 import { saveReviewAttestation } from "../../../lib/github/review-attestation.js";
+import { runReviewChecks } from "../../../lib/github/review-checks.js";
 import { isOwnedBranch } from "../../../lib/github/runtime-push.js";
 
 const SHA_PATTERN = /^[a-f0-9]{40}$/;
@@ -43,19 +44,38 @@ export default defineTool({
       };
     }
 
+    let checks: string[];
+    try {
+      checks = await runReviewChecks(sandbox);
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error.message : "Required review checks failed.",
+        success: false as const,
+      };
+    }
+    const after = await sandbox.run({
+      command: `git -C ${REPO_DIR} status --porcelain && git -C ${REPO_DIR} rev-parse HEAD`,
+    });
+    if (after.exitCode !== 0 || String(after.stdout).trim() !== sha) {
+      return {
+        error: "The reviewer checkout changed during verification.",
+        success: false as const,
+      };
+    }
     const token = await mintInstallationToken(githubCredentials);
     const remote = await getGitHubRef(`heads/${input.branch}`, { signal: ctx.abortSignal, token });
     if (remote?.object.sha !== sha) {
       return { error: "The remote branch moved during review.", success: false as const };
     }
     await saveReviewAttestation(rootSessionId, { branch: input.branch, sha });
-    return { branch: input.branch, sha, success: true as const };
+    return { branch: input.branch, checks, sha, success: true as const };
   },
   inputSchema: z.object({
     branch: z.string().min(1).describe("The session-owned branch that passed review."),
   }),
   outputSchema: z.object({
     branch: z.string().optional(),
+    checks: z.array(z.string()).optional(),
     error: z.string().optional(),
     sha: z.string().optional(),
     success: z.boolean(),

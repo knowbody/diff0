@@ -11,6 +11,7 @@ Run from the repository root:
 ```sh
 pnpm install --frozen-lockfile --ignore-scripts
 pnpm agent:validate
+pnpm agent:test:runtime
 pnpm exec eve eval --list --json
 ```
 
