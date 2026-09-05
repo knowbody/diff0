@@ -1,4 +1,4 @@
-# Dogfood workflow: run diff0 on its own fixture agent.
+# Dogfood workflow: run diff0 on its maintenance agent and demo fixture.
 #
 # Relevant pull requests behaviorally diff fixtures/demo-agent between the PR
 # base and head with a real model, then upsert the sticky report comment.
@@ -10,6 +10,8 @@ on:
       - ".github/workflows/diff0.yml"
       - "action/action.yml"
       - "action/dist/**"
+      - "agent/**"
+      - "evals/**"
       - "fixtures/demo-agent/**"
       - "scripts/build-action.mjs"
       - "src/**"
@@ -35,7 +37,8 @@ jobs:
     if: >-
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.user.login == github.repository_owner &&
-      github.actor == github.repository_owner
+      github.actor == github.repository_owner &&
+      github.triggering_actor == github.repository_owner
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -63,4 +66,39 @@ jobs:
           # Ten runs per ref make the public evidence robust to model variance.
           runs: "10"
           max-spend: "0.30"
+          fail-on: regression
+
+  maintenance-agent:
+    # Keep the same credential boundary as the fixture job. Bot-authored PRs
+    # need a maintainer-reviewed branch before they can receive model secrets.
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login == github.repository_owner &&
+      github.actor == github.repository_owner &&
+      github.triggering_actor == github.repository_owner
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      AI_GATEWAY_API_KEY: ${{ secrets.DIFF0_AI_GATEWAY_API_KEY }}
+      FACTORY_EVAL_SANDBOX: justbash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Compare diff0 Eve
+        uses: ./action
+        with:
+          working-directory: .
+          # Explicit IDs keep connector-backed and mutating evals out of CI.
+          # These exercise the authored root, classifier, and safety behavior.
+          evals: smoke,routing/needs-clarification,safety/prompt-injection,safety/write-requires-approval
+          runs: "3"
+          max-spend: "3.00"
+          comment-key: maintenance-agent
           fail-on: regression

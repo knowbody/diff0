@@ -1,14 +1,19 @@
 import { defineSandbox, type SandboxSessionContext } from "eve/sandbox";
+import { justbash } from "eve/sandbox/just-bash";
 import { vercel } from "eve/sandbox/vercel";
+import { connectorFreeEval } from "./lib/eval-sandbox.js";
 import { FACTORY_SANDBOX_CREATE_OPTIONS } from "./lib/github/repo-sandbox.js";
+
+// Connector-free comparisons only need the seeded skill files, not a hosted VM.
+// Keep the production factory and all implementation/review stations on Vercel.
 
 /**
  * Root agent sandbox configuration.
  *
  * @remarks
- * Pins the hosted Vercel Sandbox backend for both local development and production, so the
- * same environment runs everywhere. Running locally requires the project to be linked and
- * authenticated to Vercel.
+ * Uses hosted Vercel Sandbox for development and production. Connector-free comparisons can
+ * explicitly use just-bash for root skill-file reads. Ordinary local development requires the
+ * project to be linked and authenticated to Vercel.
  *
  * The `onSession` hook marks `/workspace` as a safe git directory before the GitHub channel's
  * built-in per-turn checkout runs there. The sandbox filesystem is owned by the builder uid,
@@ -20,8 +25,9 @@ import { FACTORY_SANDBOX_CREATE_OPTIONS } from "./lib/github/repo-sandbox.js";
  * @see {@link https://vercel.com/docs/sandbox | Vercel Sandbox}
  */
 export default defineSandbox({
-  backend: vercel(FACTORY_SANDBOX_CREATE_OPTIONS),
+  backend: connectorFreeEval ? justbash() : vercel(FACTORY_SANDBOX_CREATE_OPTIONS),
   async onSession({ use }: SandboxSessionContext): Promise<void> {
+    if (connectorFreeEval) return;
     const sandbox = await use();
     const result = await sandbox.run({
       command: "git config --global --add safe.directory /workspace",
