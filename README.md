@@ -200,6 +200,20 @@ Unavailable cost is always shown as unavailable, never `$0`.
 threshold by one suite run. If Eve reports no attributable cost and the model is not priced in
 diff0's table, the threshold cannot be enforced.
 
+## Use as a library
+
+The library API is an unreleased preview; npm version `0.1.3` does not include these
+entrypoints. See the [source installation instructions](docs/library-api.md#try-the-preview)
+to try it before the next release.
+
+The package exposes a pure comparison engine, a Node.js execution runner, an Eve
+adapter, and report renderers. Use `compareRefs` from `@knowbody/diff0/runner` for
+the complete workflow, or `computeDelta` from `@knowbody/diff0` with records collected
+by your own host. The CLI uses the same comparison entrypoint.
+
+See [Library API](docs/library-api.md) for examples, input contracts, and publishing
+structured reports without exposing internal fingerprints.
+
 ## Eve compatibility
 
 The end-to-end suite targets Eve `0.47.5`; parsing fixtures also cover result identity from Eve
@@ -239,6 +253,7 @@ pnpm install --frozen-lockfile
 pnpm typecheck
 pnpm lint
 pnpm test
+pnpm test:package
 pnpm test:integration
 ```
 

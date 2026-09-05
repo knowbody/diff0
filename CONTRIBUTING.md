@@ -10,9 +10,14 @@ pnpm typecheck
 pnpm lint
 pnpm test
 pnpm test:integration
-pnpm build
+pnpm test:package
 pnpm agent:info
 ```
+
+`pnpm test:package` builds the distributable, installs its tarball and explicit TypeScript
+tooling into a temporary consumer project, then compiles and runs the fixture under
+`test/fixtures/library-consumer/`. This check needs registry access and is separate from
+unit tests. It does not link the repository's dependencies into the consumer.
 
 The integration tests spawn real `eve eval` runs with a mock model and no credentials.
 Everything Eve-specific lives behind [src/adapters/eve.ts](src/adapters/eve.ts). Unit tests cover

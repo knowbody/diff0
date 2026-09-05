@@ -42,8 +42,8 @@ jobs:
       - name: Integration tests
         run: pnpm test:integration
 
-      - name: Build distributable
-        run: pnpm build
+      - name: Build and test the library package in an isolated consumer
+        run: pnpm test:package
 
       - name: Build and verify the checked-in Action bundle
         run: |

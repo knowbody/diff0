@@ -12,10 +12,14 @@ from an unreviewed ref.
 ```sh
 pnpm install --frozen-lockfile
 pnpm test
+pnpm test:package
 pnpm test:integration
 ```
 
-The unit suite is the fast default. The integration suite creates temporary Git repositories and
+The unit suite is the fast default. The package suite builds an npm tarball and installs it
+in an isolated TypeScript consumer to check the published entrypoints, declarations, and report
+contract. It requires npm registry access, but does not run Eve or need model credentials.
+The integration suite creates temporary Git repositories and
 runs the fixture through real `eve eval` processes, so it is intentionally separate and slower.
 
 ## Demo model selection

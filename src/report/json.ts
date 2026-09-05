@@ -64,10 +64,17 @@ function sortKeysDeep(value: unknown): unknown {
   return value;
 }
 
-export function renderJson(report: DeltaReport): string {
-  const payload = sortKeysDeep({
+export type PublicReport = DeltaReport & { schemaVersion: typeof JSON_SCHEMA_VERSION };
+
+/** Copy a report for publication, replacing reusable hashes with opaque labels. */
+export function toPublicReport(report: DeltaReport): PublicReport {
+  return {
     schemaVersion: JSON_SCHEMA_VERSION,
     ...opaqueFingerprintLabels(report),
-  });
+  };
+}
+
+export function renderJson(report: DeltaReport): string {
+  const payload = sortKeysDeep(toPublicReport(report));
   return `${JSON.stringify(payload, null, 2)}\n`;
 }
