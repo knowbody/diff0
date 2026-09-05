@@ -1,11 +1,35 @@
 # Library API
 
-Install `@knowbody/diff0` as a dependency. The library is ESM and requires Node.js
+The library API is an unreleased preview. The published npm version `0.1.3` does not
+include the entrypoints documented here. The library is ESM and requires Node.js
 20 or newer; executing an Eve app also requires the Node version supported by that app.
 
 The CLI uses the same `compareRefs` function offered to library consumers. Library
 calls return values or reject with errors; callers own report destinations, logging,
 and process exit codes. Importing an entrypoint does not start evals or execute the CLI.
+
+## Try the preview
+
+From a checkout containing the library API changes in [PR #18](https://github.com/knowbody/diff0/pull/18):
+
+```sh
+corepack enable
+pnpm install --frozen-lockfile
+pnpm build
+npm pack --ignore-scripts
+```
+
+In your consuming project, install the generated tarball using its absolute path:
+
+```sh
+npm install /absolute/path/to/knowbody-diff0-0.1.3.tgz
+```
+
+This uses the local build, not the published `0.1.3` package. Use the filename printed
+by `npm pack` if the checkout's version differs. To verify the package itself, run
+`pnpm test:package` in the diff0 checkout: it builds and packs the package, installs it
+in an isolated consumer, then typechecks and executes imports from all four entrypoints.
+It requires npm registry access but no model credentials.
 
 ## Compare Git refs
 

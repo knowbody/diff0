@@ -196,6 +196,10 @@ diff0's table, the threshold cannot be enforced.
 
 ## Use as a library
 
+The library API is an unreleased preview; npm version `0.1.3` does not include these
+entrypoints. See the [source installation instructions](docs/library-api.md#try-the-preview)
+to try it before the next release.
+
 The package exposes a pure comparison engine, a Node.js execution runner, an Eve
 adapter, and report renderers. Use `compareRefs` from `@knowbody/diff0/runner` for
 the complete workflow, or `computeDelta` from `@knowbody/diff0` with records collected
@@ -243,6 +247,7 @@ pnpm install --frozen-lockfile
 pnpm typecheck
 pnpm lint
 pnpm test
+pnpm test:package
 pnpm test:integration
 ```
 

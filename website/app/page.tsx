@@ -354,6 +354,13 @@ export default function Home() {
               </div>
               <div className="overflow-x-auto rounded-xl border border-line bg-codebg"><pre className="min-w-max px-5 py-5 font-mono text-[12px] leading-6">{actionYaml}</pre></div>
             </div>
+            <div className="mt-12 border-t border-line pt-12">
+              <p className="mb-3 font-mono text-[11px] tracking-[0.16em] text-muted uppercase">Library API preview</p>
+              <h3 className="text-xl font-medium tracking-[-0.025em]">Build diff0 into your own tooling</h3>
+              <p className="mt-3 max-w-[680px] text-sm leading-6 text-muted">Compare records collected by your own host, or use the Node.js runner to compare Git refs through Eve. Separate comparison, adapter, and reporting entrypoints let you own the workflow and where the results go.</p>
+              <p className="mt-3 max-w-[680px] text-sm leading-6 text-muted">Available to try from source; not included in the published npm version 0.1.3.</p>
+              <a href={`${GITHUB}/pull/18`} className="mt-5 inline-flex items-center gap-2 text-sm font-medium underline underline-offset-4">Explore the library API preview <Arrow diagonal /></a>
+            </div>
           </div>
         </section>
 
