@@ -19,7 +19,7 @@ import {
  * branch. The analyst only reads; its instructions forbid modification.
  */
 export default connectorFreeEval
-  ? unavailableStationSandbox
+  ? unavailableStationSandbox()
   : defineSandbox({
       backend: vercel(FACTORY_SANDBOX_CREATE_OPTIONS),
       bootstrap: factoryBootstrap,

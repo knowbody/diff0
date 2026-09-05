@@ -19,7 +19,7 @@ import {
  * branch, then branches, implements, verifies, and pushes from here.
  */
 export default connectorFreeEval
-  ? unavailableStationSandbox
+  ? unavailableStationSandbox()
   : defineSandbox({
       backend: vercel(FACTORY_SANDBOX_CREATE_OPTIONS),
       bootstrap: factoryBootstrap,

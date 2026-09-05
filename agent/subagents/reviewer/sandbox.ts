@@ -20,7 +20,7 @@ import {
  * implementer's working state.
  */
 export default connectorFreeEval
-  ? unavailableStationSandbox
+  ? unavailableStationSandbox()
   : defineSandbox({
       backend: vercel(FACTORY_SANDBOX_CREATE_OPTIONS),
       bootstrap: factoryBootstrap,

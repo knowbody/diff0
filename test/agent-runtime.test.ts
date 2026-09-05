@@ -83,3 +83,46 @@ describe("required review checks", () => {
     expect(vm.run).not.toHaveBeenCalled();
   });
 });
+
+describe("hosted sandbox imports", () => {
+  it("does not construct a pruned local backend in production", async () => {
+    vi.resetModules();
+    vi.stubEnv("VERCEL", "1");
+    vi.stubEnv("FACTORY_REPO", "knowbody/diff0");
+    vi.stubEnv("GITHUB_CONNECTOR", "github/test");
+    vi.stubEnv("FACTORY_EVAL_SANDBOX", "");
+    const pruned = vi.fn(() => {
+      throw new Error("Local backends are pruned");
+    });
+    vi.doMock("eve/sandbox/just-bash", () => ({ justbash: pruned }));
+    try {
+      for (const path of [
+        "../agent/sandbox.js",
+        "../agent/subagents/analyst/sandbox.js",
+        "../agent/subagents/implementer/sandbox.js",
+        "../agent/subagents/reviewer/sandbox.js",
+      ]) {
+        expect((await import(path)).default).toBeDefined();
+      }
+      expect(pruned).not.toHaveBeenCalled();
+    } finally {
+      vi.doUnmock("eve/sandbox/just-bash");
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
+  });
+
+  it("still rejects explicitly enabling local eval mode on Vercel", async () => {
+    vi.resetModules();
+    vi.stubEnv("VERCEL", "1");
+    vi.stubEnv("FACTORY_REPO", "knowbody/diff0");
+    vi.stubEnv("GITHUB_CONNECTOR", "github/test");
+    vi.stubEnv("FACTORY_EVAL_SANDBOX", "justbash");
+    try {
+      await expect(import("../agent/lib/eval-sandbox.js")).rejects.toThrow("must not be enabled");
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
+  });
+});

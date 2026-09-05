@@ -7,9 +7,11 @@ if (connectorFreeEval && process.env.VERCEL === "1") {
 }
 
 /** Do not prewarm or clone live repositories for the connector-free suite. */
-export const unavailableStationSandbox = defineSandbox({
-  backend: justbash(),
-  onSession() {
-    throw new Error("Repository stations require a connected run without FACTORY_EVAL_SANDBOX.");
-  },
-});
+export function unavailableStationSandbox() {
+  return defineSandbox({
+    backend: justbash(),
+    onSession() {
+      throw new Error("Repository stations require a connected run without FACTORY_EVAL_SANDBOX.");
+    },
+  });
+}
