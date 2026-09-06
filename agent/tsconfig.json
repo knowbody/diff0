@@ -13,6 +13,7 @@
     "**/*.ts",
     "../evals/**/*.ts",
     "../test/agent-security.test.ts",
-    "../test/agent-publishing.test.ts"
+    "../test/agent-publishing.test.ts",
+    "../test/agent-runtime.test.ts"
   ]
 }
