@@ -79,6 +79,12 @@ Eve classifies the issue, plans and implements a change, has a separate station 
 then opens a draft PR linked from the issue. Answer clarification questions on the issue and
 reapply the label to retry. Mention the installed GitHub App's handle for attended follow-ups.
 
+Every PR, including Eve's drafts, automatically runs **diff0 deterministic** against its base
+and head using the demo fixture's mock model. Open the check's Actions run to read its summary
+or download the Markdown/JSON reports. This incurs no model charges and checks the deterministic
+fixture rather than the maintenance agent's real-model behavior. See
+[deterministic CI](../docs/credential-free-ci.md).
+
 To run ordinary CI without model charges, apply `skip-paid-evals` to the pull request before
 pushing a new commit. Both automatic paid comparison jobs skip while that label is present;
 required `ci` and `website` checks still run. Avoid `[skip ci]`, which suppresses those required
