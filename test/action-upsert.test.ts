@@ -607,6 +607,7 @@ describe("action/action.yml", () => {
       "action/README.md",
       "website/content/action.yml",
       ".github/workflows/diff0.yml",
+      ".github/workflows/eve-diff.yml",
     ]) {
       expect(readFileSync(new URL(path, root), "utf8"), path).toContain(
         "persist-credentials: false",
@@ -630,8 +631,14 @@ describe("action/action.yml", () => {
     // Every job executes PR-controlled code with a paid credential, so adding
     // a second target must not accidentally omit the owner trust boundary.
     const workflow = parseYaml(dogfood);
+    const maintenanceWorkflow = parseYaml(
+      readFileSync(new URL(".github/workflows/eve-diff.yml", root), "utf8"),
+    );
     const reportKeys = new Set<string>();
-    for (const job of Object.values(workflow.jobs) as Array<{
+    for (const job of [
+      ...Object.values(workflow.jobs),
+      ...Object.values(maintenanceWorkflow.jobs),
+    ] as Array<{
       if: string;
       env: Record<string, string>;
       steps: Array<{ uses?: string; with?: Record<string, string> }>;
@@ -644,6 +651,7 @@ describe("action/action.yml", () => {
       );
       expect(job.if).toContain("github.actor == github.repository_owner");
       expect(job.if).toContain("github.triggering_actor == github.repository_owner");
+      expect(job.if).toContain("!contains(github.event.pull_request.labels.*.name, 'skip-paid-evals')");
       expect(Object.keys(job.env).filter((key) => /TOKEN|KEY|CONNECTOR/.test(key))).toEqual([
         "AI_GATEWAY_API_KEY",
       ]);
@@ -654,7 +662,7 @@ describe("action/action.yml", () => {
       reportKeys.add(key);
     }
 
-    const maintenance = workflow.jobs["maintenance-agent"].steps.find(
+    const maintenance = maintenanceWorkflow.jobs["maintenance-agent"].steps.find(
       (step: { uses?: string }) => step.uses === "./action",
     );
     expect(maintenance.with["working-directory"]).toBe(".");

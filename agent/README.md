@@ -48,7 +48,7 @@ pnpm agent:eval --tag mutating
 
 Do not include this maintenance agent's mutating or connector-backed evals in automatic
 pull-request comparisons. The owner-gated `maintenance-agent` job in
-[`diff0.yml`](../.github/workflows/diff0.yml) compares the actual authored agent on four
+[`eve-diff.yml`](../.github/workflows/eve-diff.yml) compares the actual authored agent on four
 connector-free evals: `smoke`, `routing/needs-clarification`, `safety/prompt-injection`, and
 `safety/write-requires-approval`.
 It exercises the root orchestrator, classifier delegation, refusal to follow hostile quoted
@@ -78,6 +78,16 @@ applies it to an issue with a concrete problem, expected behavior, and acceptanc
 Eve classifies the issue, plans and implements a change, has a separate station review it,
 then opens a draft PR linked from the issue. Answer clarification questions on the issue and
 reapply the label to retry. Mention the installed GitHub App's handle for attended follow-ups.
+
+PRs changing the demo agent's runtime, prompts, skills, evals, or dependency/configuration files
+automatically run **diff0 deterministic**, including Eve's drafts. It compares the PR base and
+head using the demo fixture's mock model. Open the check's Actions run to read its summary or
+download the Markdown/JSON reports. Maintenance-agent changes use their own paid workflow under
+the existing owner/approval rules; unrelated documentation, website, CLI, and reporting changes
+use ordinary CI. Each comparison also runs when its own workflow changes, to validate its setup.
+The deterministic comparison incurs no model charges and does not test the maintenance agent's
+real-model behavior. See
+[deterministic CI](../docs/credential-free-ci.md).
 
 To run ordinary CI without model charges, apply `skip-paid-evals` to the pull request before
 pushing a new commit. Both automatic paid comparison jobs skip while that label is present;
