@@ -19,6 +19,8 @@ export interface EvalResult {
   durationMs?: number;
   /** Privacy-preserving identity of this eval's final response, when captured. */
   finalOutput?: FinalOutputFingerprint;
+  /** Eve explicitly reported no final response (for example a parked question). */
+  finalOutputAbsent?: boolean;
 }
 
 /** One tool invocation observed during a run, in call order. */

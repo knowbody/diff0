@@ -372,7 +372,7 @@ describe("computeDelta: soft scores", () => {
 });
 
 describe("computeDelta: behavioral drift", () => {
-  it("skill loaded in 3/3 base runs but 1/3 head runs -> drift entry with exact counts, verdict yellow", () => {
+  it("retains an inconclusive 3/3 to 1/3 skill observation without gating", () => {
     const base = repeatRuns("main", "aaa1111", 3, {
       evals: { e: true },
       skills: ["unit-conversion"],
@@ -394,9 +394,9 @@ describe("computeDelta: behavioral drift", () => {
         confidence: "inconclusive",
       }),
     ]);
-    expect(report.verdict).toBe("yellow");
-    expect(report.verdictReasons.join("\n")).toContain("1 of 3 head runs");
-    expect(violatesEnforcement(report, ["behavioral-drift"])).toBe(true);
+    expect(report.verdict).toBe("green");
+    expect(report.verdictReasons.join("\n")).not.toContain("1 of 3 head runs");
+    expect(violatesEnforcement(report, ["behavioral-drift"])).toBe(false);
   });
 
   it("no skill drift entry when proportions match", () => {
@@ -436,7 +436,7 @@ describe("computeDelta: behavioral drift", () => {
         confidence: "inconclusive",
       },
     ]);
-    expect(report.verdict).toBe("yellow");
+    expect(report.verdict).toBe("green");
   });
 
   it("subagent drift mirrors skill drift", () => {
@@ -449,7 +449,7 @@ describe("computeDelta: behavioral drift", () => {
         confidence: "inconclusive",
       }),
     ]);
-    expect(report.verdict).toBe("yellow");
+    expect(report.verdict).toBe("green");
   });
 
   it("detects skills and subagents moving between evals even when suite totals match", () => {
@@ -482,7 +482,7 @@ describe("computeDelta: behavioral drift", () => {
       { evalName: "beta", baseUsedRuns: 0, headUsedRuns: 3 },
     ]);
     expect(report.drift.hasInconclusive).toBe(true);
-    expect(report.verdict).toBe("yellow");
+    expect(report.verdict).toBe("green");
   });
 
   it("confirms a repeated 5/5 -> 0/5 skill change, but keeps one-sample changes inconclusive", () => {
@@ -591,7 +591,7 @@ describe("computeDelta: behavioral drift", () => {
         confidence: "inconclusive",
       }),
     ]);
-    expect(report.verdict).toBe("yellow");
+    expect(report.verdict).toBe("green");
   });
 
   it("compares final-output fingerprints without retaining raw output", () => {
@@ -607,6 +607,8 @@ describe("computeDelta: behavioral drift", () => {
     expect(report.drift.finalOutputs).toEqual([{
       evalName: "e",
       baseCapturedRuns: 2,
+      baseAbsentRuns: 0,
+      headAbsentRuns: 0,
       baseTotalRuns: 2,
       headCapturedRuns: 2,
       headTotalRuns: 2,
@@ -641,7 +643,7 @@ describe("computeDelta: behavioral drift", () => {
       ],
       confidence: "inconclusive",
     });
-    expect(report.verdict).toBe("yellow");
+    expect(report.verdict).toBe("green");
   });
 
   it("reports one-sided loss of final-output capture instead of silently ignoring it", () => {

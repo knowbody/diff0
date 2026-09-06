@@ -185,3 +185,10 @@ eval and runtime code can read credentials intentionally exposed to the eval job
   separate token path: without `persist-credentials: false`, it leaves the job token readable in
   Git config by evaluated head code. Fork comments are skipped because the ordinary
   `pull_request` token is read-only.
+
+## Inconclusive observations
+
+In the next release, ordinary inconclusive behavioral variation stays in the full report
+without making it yellow or violating drift enforcement. Supported drift and eval, validity,
+and performance findings still gate. Tagged v0.1.3 retains the earlier behavior. See the
+[calibration guide](https://github.com/knowbody/diff0/blob/main/docs/calibration.md).

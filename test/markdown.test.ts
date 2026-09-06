@@ -265,7 +265,7 @@ describe("renderMarkdown structure", () => {
     expect(md).toContain("+38%");
   });
 
-  it("deduplicates repeated evidence in the default view", () => {
+  it("keeps repeated inconclusive evidence in details", () => {
     const report = driftOnlyYellowReport();
     const skill = report.drift.skills[0];
     if (skill === undefined) throw new Error("expected skill drift fixture");
@@ -275,13 +275,12 @@ describe("renderMarkdown structure", () => {
     ];
 
     const defaultView = renderMarkdown(report).split("<details>")[0];
-    expect(defaultView).toContain(
-      "| Skill `unit-conversion` | 3/3 runs | 1/3 runs | 2 evals · inconclusive |",
-    );
-    expect(defaultView?.match(/Skill `unit-conversion`/g)).toHaveLength(1);
+    expect(defaultView).not.toContain("Skill `unit-conversion`");
+    expect(renderMarkdown(report).split("<details>")[1]).toContain("weather/forecast");
+    expect(renderMarkdown(report).split("<details>")[1]).toContain("weather/brooklyn");
   });
 
-  it("uses precise summary labels and puts agent changes before lower-level drift", () => {
+  it("keeps inconclusive agent changes out of the performance warning summary", () => {
     const md = renderMarkdown(driftOnlyYellowReport());
     const defaultView = md.split("<details>")[0];
 
@@ -289,12 +288,10 @@ describe("renderMarkdown structure", () => {
     expect(defaultView).toContain("Tool calls / run (agents excluded)");
     expect(md).toContain("Uncached input tokens");
     expect(md).toContain("Tool calls (agents excluded)");
-    expect(defaultView).toContain("### Observed behavioral differences");
-
-    const skillIndex = defaultView.indexOf("Skill `unit-conversion`");
-    const toolPathIndex = defaultView.indexOf("Tool path");
-    expect(skillIndex).toBeGreaterThan(-1);
-    expect(toolPathIndex).toBeGreaterThan(skillIndex);
+    expect(defaultView).toContain("performance regression");
+    expect(defaultView).not.toContain("### Supported behavioral differences");
+    expect(defaultView).not.toContain("Tool path");
+    expect(defaultView).toContain("Inconclusive behavioral observations are retained");
   });
 
   it("states confirmed behavioral drift directly in the warning", () => {
@@ -318,8 +315,8 @@ describe("renderMarkdown structure", () => {
     const report = computeDelta(base, head, { now: FIXED_NOW });
     const md = renderMarkdown(report);
     const defaultView = md.split("<details>")[0];
-    expect(md).toContain("Confirmed behavioral drift requires review.");
-    expect(report.verdictSummary).toContain("additional behavioral differences inconclusive");
+    expect(md).toContain("Supported behavioral differences require review.");
+    expect(report.verdictSummary).not.toContain("additional behavioral differences inconclusive");
     expect(defaultView).toContain("Subagent `reporter`");
     expect(defaultView).not.toContain("Final output changed");
     expect(defaultView).toContain(

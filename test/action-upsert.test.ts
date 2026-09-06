@@ -640,8 +640,8 @@ describe("action/action.yml", () => {
       ...Object.values(maintenanceWorkflow.jobs),
     ] as Array<{
       if: string;
-      env: Record<string, string>;
-      steps: Array<{ uses?: string; with?: Record<string, string> }>;
+      env?: Record<string, string>;
+      steps: Array<{ uses?: string; env?: Record<string, string>; with?: Record<string, string> }>;
     }>) {
       expect(job.if).toContain(
         "github.event.pull_request.head.repo.full_name == github.repository",
@@ -652,10 +652,10 @@ describe("action/action.yml", () => {
       expect(job.if).toContain("github.actor == github.repository_owner");
       expect(job.if).toContain("github.triggering_actor == github.repository_owner");
       expect(job.if).toContain("!contains(github.event.pull_request.labels.*.name, 'skip-paid-evals')");
-      expect(Object.keys(job.env).filter((key) => /TOKEN|KEY|CONNECTOR/.test(key))).toEqual([
+      const comparison = job.steps.find((step) => step.uses === "./action");
+      expect(Object.keys({ ...job.env, ...comparison?.env }).filter((key) => /TOKEN|KEY|CONNECTOR/.test(key))).toEqual([
         "AI_GATEWAY_API_KEY",
       ]);
-      const comparison = job.steps.find((step) => step.uses === "./action");
       expect(comparison).toBeDefined();
       const key = comparison?.with?.["comment-key"] ?? "";
       expect(reportKeys.has(key), "dogfood reports must not overwrite each other").toBe(false);
@@ -666,6 +666,15 @@ describe("action/action.yml", () => {
       (step: { uses?: string }) => step.uses === "./action",
     );
     expect(maintenance.with["working-directory"]).toBe(".");
+    expect(maintenanceWorkflow.jobs["maintenance-agent"].env).toBeUndefined();
+    expect(maintenance.if).toBe("steps.relevance.outputs.relevant == 'true'");
+    const preflight = maintenanceWorkflow.jobs["maintenance-agent"].steps.find(
+      (step: { id?: string }) => step.id === "relevance",
+    );
+    expect(preflight.env).toEqual({
+      BASE_SHA: "${{ github.event.pull_request.base.sha }}",
+      HEAD_SHA: "${{ github.event.pull_request.head.sha }}",
+    });
     const selected = maintenance.with.evals.split(",") as string[];
     expect(selected.length).toBeGreaterThan(0);
     for (const id of selected) {

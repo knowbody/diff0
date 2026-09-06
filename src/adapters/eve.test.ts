@@ -165,6 +165,26 @@ describe("summaryToRunRecord", () => {
     expect(record.eveVersion).toBe("0.29.5");
   });
 
+  it("distinguishes explicit no-message results from missing output artifacts", () => {
+    const summary: EveEvalRunSummary = {
+      results: [
+        { id: "parked", verdict: "passed", result: { finalMessage: null, output: null } },
+        { id: "unknown", verdict: "passed", result: {} },
+        {
+          id: "structured",
+          verdict: "passed",
+          result: { finalMessage: null, output: { value: 42 } },
+        },
+      ],
+    };
+    const record = summaryToRunRecord(summary, ctx);
+    expect(record.evalResults[0]?.finalOutputAbsent).toBe(true);
+    expect(record.evalResults[0]?.finalOutput).toBeUndefined();
+    expect(record.evalResults[1]?.finalOutputAbsent).toBeUndefined();
+    expect(record.evalResults[2]?.finalOutputAbsent).toBeUndefined();
+    expect(record.evalResults[2]?.finalOutput?.hash).toBeDefined();
+  });
+
   it("stores per-eval fingerprints plus a compatibility aggregate without raw outputs", () => {
     const summary = loadSummary();
     const outputs = ["secret answer alpha", "secret answer beta"];

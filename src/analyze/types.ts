@@ -232,6 +232,9 @@ export interface ToolInputDelta {
 export interface FinalOutputDelta {
   evalName: string | null;
   baseCapturedRuns: number;
+  /** Explicitly reported no response; separate from unknown/missing capture. */
+  baseAbsentRuns?: number;
+  headAbsentRuns?: number;
   baseTotalRuns: number;
   headCapturedRuns: number;
   headTotalRuns: number;
@@ -253,7 +256,7 @@ export interface DriftSection {
   finalOutputs: FinalOutputDelta[];
   /** True only for changes supported by repeated/stable or statistical evidence. */
   hasDrift: boolean;
-  /** True when a change was observed but the available samples do not support confident drift. */
+  /** Informational only: observations lack support for drift and never gate by themselves. */
   hasInconclusive: boolean;
 }
 
@@ -322,7 +325,7 @@ export interface EnforcementClassification {
  * red    = at least one statistically confirmed REGRESSED eval, or a complete all-pass base to
  *          all-fail head collapse across at least 3 runs per ref (an operational regression).
  * yellow = no confirmed regression, but a comparison-validity warning,
- *          removed/added/flaky/inconclusive eval, behavioral change, or a directional
+ *          removed/added/flaky/inconclusive eval, supported behavioral change, or a directional
  *          cost/duration/token budget regression requires review.
  * green  = no confirmed or reviewable change.
  */
