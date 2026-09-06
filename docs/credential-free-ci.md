@@ -9,8 +9,9 @@ from an unreviewed ref.
 
 ## Run the checks
 
-The **diff0 deterministic** workflow runs automatically when a pull request opens, reopens, or
-receives new commits, including Eve-authored PRs. It compares the actual PR base and head using
+The **diff0 deterministic** workflow runs when a PR opens, reopens, or receives new commits and
+its diff changes the demo agent's runtime, prompts, skills, evals, package/lockfile, or TypeScript
+configuration. This includes Eve-authored PRs. It compares the actual PR base and head using
 the demo fixture with `DIFF0_DEMO_MODEL=mock`, three runs per ref, and regression enforcement.
 The report appears in the Actions run summary and downloadable artifacts. It receives no model
 or connector credentials and cannot post PR comments. GitHub may require a maintainer to approve
@@ -20,6 +21,20 @@ This checks the deterministic fixture and diff0 pipeline. It does not measure th
 agent's real-model behavior; those paid comparisons retain their separate approval policy.
 The `skip-paid-evals` label does not skip this workflow. GitHub Actions usage still applies,
 but there are no model API charges.
+
+Comparison triggers follow the evaluated app:
+
+| Changed files | Automatic comparison |
+| --- | --- |
+| Demo-agent runtime, instructions, skills, evals, dependencies or config | Deterministic demo; paid demo only under its existing owner/budget policy |
+| Maintenance-agent runtime, prompts, skills, dependencies, config or selected evals | Paid maintenance comparison only under its existing owner/budget policy |
+| Website, ordinary documentation, CLI, reporting, Action bundle or unrelated tests | No agent comparison; ordinary CI still runs |
+| A comparison's own workflow | That comparison, to validate its setup; payment rules still apply |
+
+Prompt and skill Markdown are agent inputs and are intentionally included. Ordinary README,
+cost/run notes, and unselected maintenance evals are excluded. Changes to evaluators can make
+the comparison invalid rather than demonstrate a behavioral regression. The deterministic demo
+does not provide coverage of maintenance-agent changes or compare two versions of the diff0 CLI.
 
 ```sh
 pnpm install --frozen-lockfile

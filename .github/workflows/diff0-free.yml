@@ -2,6 +2,13 @@ name: diff0 deterministic
 
 on:
   pull_request:
+    paths:
+      - ".github/workflows/diff0-free.yml"
+      - "fixtures/demo-agent/agent/**"
+      - "fixtures/demo-agent/evals/**"
+      - "fixtures/demo-agent/package.json"
+      - "fixtures/demo-agent/pnpm-lock.yaml"
+      - "fixtures/demo-agent/tsconfig*.json"
 
 concurrency:
   group: diff0-free-${{ github.event.pull_request.number }}

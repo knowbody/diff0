@@ -1,0 +1,73 @@
+# Paid comparison of the maintenance agent; demo changes have their own workflow.
+name: diff0 maintenance agent
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/eve-diff.yml"
+      - "agent/agent.ts"
+      - "agent/instructions.*"
+      - "agent/sandbox.ts"
+      - "agent/tools/**"
+      - "agent/hooks/**"
+      - "agent/channels/**"
+      - "agent/connections/**"
+      - "agent/extensions/**"
+      - "agent/lib/**"
+      - "agent/subagents/**"
+      - "agent/skills/**"
+      - "agent/tsconfig.json"
+      - "evals/smoke.eval.ts"
+      - "evals/routing/needs-clarification.eval.ts"
+      - "evals/safety/prompt-injection.eval.ts"
+      - "evals/safety/write-requires-approval.eval.ts"
+      - "evals/evals.config.ts"
+      - "evals/helpers.ts"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "tsconfig.json"
+
+concurrency:
+  group: eve-diff-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  maintenance-agent:
+    # Keep the same credential boundary as the fixture job. Bot-authored PRs
+    # need a maintainer-reviewed branch before they can receive model secrets.
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login == github.repository_owner &&
+      github.actor == github.repository_owner &&
+      github.triggering_actor == github.repository_owner &&
+      !contains(github.event.pull_request.labels.*.name, 'skip-paid-evals')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      AI_GATEWAY_API_KEY: ${{ secrets.DIFF0_AI_GATEWAY_API_KEY }}
+      FACTORY_EVAL_SANDBOX: justbash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Compare diff0 Eve
+        uses: ./action
+        with:
+          working-directory: .
+          # Explicit IDs keep connector-backed and mutating evals out of CI.
+          # These exercise the authored root, classifier, and safety behavior.
+          evals: smoke,routing/needs-clarification,safety/prompt-injection,safety/write-requires-approval
+          runs: "3"
+          max-spend: "3.00"
+          comment-key: maintenance-agent
+          fail-on: regression
