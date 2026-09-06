@@ -34,11 +34,13 @@ jobs:
     # and eval code from both refs. Only owner-authored, owner-triggered branches
     # inside this repository cross that trust boundary. Fork and collaborator
     # PRs remain covered by ordinary CI without receiving the credential.
+    # The skip-paid-evals label skips model calls without suppressing required CI.
     if: >-
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.user.login == github.repository_owner &&
       github.actor == github.repository_owner &&
-      github.triggering_actor == github.repository_owner
+      github.triggering_actor == github.repository_owner &&
+      !contains(github.event.pull_request.labels.*.name, 'skip-paid-evals')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -75,7 +77,8 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.user.login == github.repository_owner &&
       github.actor == github.repository_owner &&
-      github.triggering_actor == github.repository_owner
+      github.triggering_actor == github.repository_owner &&
+      !contains(github.event.pull_request.labels.*.name, 'skip-paid-evals')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:

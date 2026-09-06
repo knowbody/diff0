@@ -19,7 +19,8 @@ the CLI. See [UPSTREAM.md](UPSTREAM.md) for provenance.
 | Update issues unattended | Only the stamped intake issue, and only labels/state fields or comments |
 | Open pull requests | Draft only, from the exact reviewed commit to the live default branch |
 | Persist repository notes | Authenticated private Blob storage; unattended runs cannot write it |
-| Merge or mark ready | Never; both remain human decisions |
+| Mark ready | Denied unattended; attended sessions require explicit human approval |
+| Merge | Unavailable; a person merges the pull request |
 
 The root orchestrator has no shell, file-write, or web-fetch tool. Station sandboxes deny general
 network egress after bootstrap. A GitHub installation token never enters a model-controlled
@@ -77,6 +78,13 @@ applies it to an issue with a concrete problem, expected behavior, and acceptanc
 Eve classifies the issue, plans and implements a change, has a separate station review it,
 then opens a draft PR linked from the issue. Answer clarification questions on the issue and
 reapply the label to retry. Mention the installed GitHub App's handle for attended follow-ups.
+
+To run ordinary CI without model charges, apply `skip-paid-evals` to the pull request before
+pushing a new commit. Both automatic paid comparison jobs skip while that label is present;
+required `ci` and `website` checks still run. Avoid `[skip ci]`, which suppresses those required
+checks too. Removing the label takes effect on the next push or newly triggered PR run; it does
+not start a comparison by itself or change an already running job. The explicit manual workflow
+below remains a separate way to request a paid comparison.
 
 Automatic paid comparisons accept only owner-authored, owner-triggered branches. For an
 Eve-authored PR, review the code and dispatch **Compare reviewed Eve PR** from the default branch,
