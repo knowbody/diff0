@@ -64,7 +64,7 @@ key limit remains the final spending control. The command exits nonzero for
 failed trial checks. Historical baseline models are frozen in the pilot script;
 candidates come from the current authored station configs.
 
-Keep the trial unmerged until representative scratch-repository pipeline runs
-verify actual implementation quality, reviewer findings, retries, and total
-cost. The researcher result gives no reason to assume xhigh is the cheapest or
+The original pilot recommended keeping the trial unmerged pending executable coding
+evidence. The subsequent [coding comparison](luna-coding-trial.md) supports an
+owner-approved controlled rollout; full pipeline quality and cost still need measurement. The researcher result gives no reason to assume xhigh is the cheapest or
 fastest choice for every role.

@@ -5,9 +5,9 @@ import { MODELS } from "../../lib/models.js";
  * Station 4: independent review.
  *
  * @remarks
- * Runs on a different model vendor than the implementer on purpose: fresh
- * eyes are the station's point, and a different model doesn't share the
- * implementer's idiom or blind spots. It fetches the pushed branch into its
+ * Runs in a fresh context on Terra. The Luna implementation trial relaxes
+ * provider diversity; separate models do not guarantee independent blind spots.
+ * It fetches the pushed branch into its
  * own checkout and judges the real diff against the analyst's acceptance
  * criteria; it never modifies code. Its verdict routes the pipeline: approve
  * ships a draft PR, request_changes loops back to the implementer (at most

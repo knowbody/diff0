@@ -11,6 +11,7 @@ import { z } from "zod";
 import implementer from "../agent/subagents/implementer/agent.js";
 import reviewer from "../agent/subagents/reviewer/agent.js";
 import { cases } from "./fixtures/coding-trial.mjs";
+import { codingAttemptPassed } from "./trial-checks.mjs";
 
 if (!process.allowedNodeEnvironmentFlags.has("--allow-net"))
   throw Error("Use Node with --permission and --allow-net support (tested on Node 26).");
@@ -125,6 +126,7 @@ for (const [caseIndex, c] of cases.entries()) {
         const start = Date.now(),
           before = spent;
         let output, error, usage, finishReason;
+        let responseCompleted = false;
         try {
           const r = await generateText({
             model: gateway(role === "implementer" ? result.model : config.model),
@@ -153,10 +155,13 @@ for (const [caseIndex, c] of cases.entries()) {
               save();
             },
           });
+          responseCompleted = true;
           usage = r.totalUsage;
           finishReason = r.finishReason;
           output = r.output;
         } catch (e) {
+          // A failed request may still be billed without delivering final cost metadata.
+          if (!responseCompleted) unknownCost = true;
           error = String(e.message).replaceAll(key, "<redacted>");
           usage ??= e.usage;
           finishReason ??= e.finishReason;
@@ -292,13 +297,7 @@ for (const [caseIndex, c] of cases.entries()) {
           spent,
         }),
       );
-      if (
-        verified.passed &&
-        !impl.error &&
-        !review.error &&
-        reviewed === "approve" &&
-        attestedSha === reviewSha
-      ) {
+      if (codingAttemptPassed(step)) {
         result.passed = true;
         break;
       }

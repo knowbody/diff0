@@ -5,6 +5,8 @@
       "src/**/*.ts",
       "scripts/trial-station-models.mjs",
       "scripts/trial-coding-models.mjs",
+      "scripts/trial-checks.mjs",
+      "test/trial-budget.test.mjs",
       "scripts/fixtures/coding-trial.mjs",
       "action/**/*.mjs",
       "agent/**/*.ts",

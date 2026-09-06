@@ -151,6 +151,7 @@ for (const role of ["analyst", "implementer", "researcher"]) {
     const start = Date.now();
     let output, error;
     let usage, finishReason;
+    let responseCompleted = false;
     try {
       const result = await generateText({
         model: gateway(model),
@@ -181,10 +182,13 @@ for (const role of ["analyst", "implementer", "researcher"]) {
           save();
         },
       });
+      responseCompleted = true;
       usage = result.totalUsage;
       finishReason = result.finishReason;
       output = result.output;
     } catch (e) {
+      // A failed request may still be billed without delivering final cost metadata.
+      if (!responseCompleted) unknownCost = true;
       error = String(e.message).replaceAll(key, "<redacted>");
       usage ??= e.usage;
       finishReason ??= e.finishReason;

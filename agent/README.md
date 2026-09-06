@@ -28,12 +28,12 @@ structured response. This is an experiment, not a production quality claim. The 
 restore Mini for analysis and research and focus the next trial on implementation.
 See the [coding trial](../docs/luna-coding-trial.md) for executable scratch-project checks.
 
-Before adopting this setup, compare against commit `c69f6b1` on the same work items in
+During this controlled rollout, compare against commit `c69f6b1` on the same work items in
 a disposable `FACTORY_REPO`, using the opt-in pipeline evals below. Compare acceptance
 criteria, verified tests, reviewer findings, retries, elapsed time, and total gateway
 charges including subagents and judges. Keep evaluator settings fixed. The four
 connector-free maintenance evals do not exercise the changed implementation station and
-cannot establish their quality. Do not treat unavailable diff0 cost as zero.
+cannot establish its quality. Do not treat unavailable diff0 cost as zero.
 
 ## Boundaries
 
