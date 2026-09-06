@@ -97,6 +97,27 @@ describe("warning calibration", () => {
     expect(violatesEnforcement(broken, ["comparison-validity"])).toBe(true);
   });
 
+  it.each([false, true])(
+    "reviews absent-versus-unknown capture in either direction (reverse=%s)",
+    (reverse) => {
+      const absent = repeatRuns("base", "a", 3, { evals: { answer: true } });
+      const unknown = repeatRuns("head", "b", 3, { evals: { answer: true } });
+      for (const run of absent) {
+        const result = run.evalResults[0];
+        assert(result);
+        result.finalOutputAbsent = true;
+      }
+      const report = reverse ? computeDelta(unknown, absent) : computeDelta(absent, unknown);
+      expect(report.verdict).toBe("yellow");
+      expect(violatesEnforcement(report, ["comparison-validity"])).toBe(true);
+      expect(violatesEnforcement(report, ["behavioral-drift"])).toBe(false);
+      const unchanged = computeDelta(absent, absent);
+      expect(unchanged.verdict).toBe("green");
+      expect(unchanged.drift.finalOutputs).toEqual([]);
+      expect(computeDelta(unknown, unknown).verdict).toBe("green");
+    },
+  );
+
   it("does not let inconclusive output variation hide a performance budget breach", () => {
     const base = variableRuns("base", 3);
     const head = variableRuns("head", 3);

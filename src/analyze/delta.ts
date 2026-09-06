@@ -1012,7 +1012,21 @@ function finalOutputDelta(
       : run.evalResults.find((result) => result.name === evalName)?.finalOutput;
   const baseFingerprints = baseRuns.map(fingerprint).filter((value) => value !== undefined);
   const headFingerprints = headRuns.map(fingerprint).filter((value) => value !== undefined);
-  if (baseFingerprints.length === 0 && headFingerprints.length === 0) return null;
+  const absentRuns = (runs: RunRecord[]) =>
+    evalName === null
+      ? 0
+      : runs.filter((run) => {
+          const result = run.evalResults.find((result) => result.name === evalName);
+          return result?.finalOutputAbsent === true && result.finalOutput === undefined;
+        }).length;
+  const baseAbsentRuns = absentRuns(baseRuns);
+  const headAbsentRuns = absentRuns(headRuns);
+  if (baseFingerprints.length === 0 && headFingerprints.length === 0) {
+    // Preserve legacy runs without capture support, but distinguish known absence
+    // from missing evidence when either side explicitly reports absence.
+    if (baseAbsentRuns === 0 && headAbsentRuns === 0) return null;
+    if (baseAbsentRuns === baseRuns.length && headAbsentRuns === headRuns.length) return null;
+  }
   const baseHashes = [...new Set(baseFingerprints.map((value) => value.hash))].sort();
   const headHashes = [...new Set(headFingerprints.map((value) => value.hash))].sort();
   const baseFrequencies = fingerprintFrequencies(baseFingerprints.map((value) => value.hash));
@@ -1030,15 +1044,6 @@ function finalOutputDelta(
   const headLengths = [...new Set(headFingerprints.flatMap((value) => value.length ?? []))].sort(
     (a, b) => a - b,
   );
-  const absentRuns = (runs: RunRecord[]) =>
-    evalName === null
-      ? 0
-      : runs.filter((run) => {
-          const result = run.evalResults.find((result) => result.name === evalName);
-          return result?.finalOutputAbsent === true && result.finalOutput === undefined;
-        }).length;
-  const baseAbsentRuns = absentRuns(baseRuns);
-  const headAbsentRuns = absentRuns(headRuns);
   const stableAndRepeated =
     baseFingerprints.length + baseAbsentRuns === baseRuns.length &&
     headFingerprints.length + headAbsentRuns === headRuns.length &&
@@ -1222,7 +1227,9 @@ function computeDrift(baseRuns: RunRecord[], headRuns: RunRecord[]): DriftSectio
   const outputScopes = evalNames.filter((evalName) =>
     [...baseRuns, ...headRuns].some((run) =>
       run.evalResults.some(
-        (result) => result.name === evalName && result.finalOutput !== undefined,
+        (result) =>
+          result.name === evalName &&
+          (result.finalOutput !== undefined || result.finalOutputAbsent === true),
       ),
     ),
   );
