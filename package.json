@@ -37,6 +37,7 @@
     "dist",
     "prices.json",
     "README.md",
+    "GETTING_STARTED.md",
     "docs/library-api.md",
     "LICENSE",
     "action"
