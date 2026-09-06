@@ -90,6 +90,7 @@
     "agent:info": "eve info",
     "agent:start": "eve start",
     "agent:test": "vitest run test/agent-security.test.ts test/agent-publishing.test.ts test/agent-runtime.test.ts",
+    "agent:trial:models": "tsx scripts/trial-station-models.mjs",
     "agent:test:runtime": "node scripts/check-station-retries.mjs",
     "agent:typecheck": "tsc -p agent/tsconfig.json",
     "agent:validate": "pnpm agent:check && pnpm agent:typecheck && pnpm agent:test && pnpm agent:info",

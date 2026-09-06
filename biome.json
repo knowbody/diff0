@@ -3,6 +3,7 @@
   "files": {
     "includes": [
       "src/**/*.ts",
+      "scripts/trial-station-models.mjs",
       "action/**/*.mjs",
       "agent/**/*.ts",
       "evals/**/*.ts",
