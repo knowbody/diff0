@@ -626,5 +626,46 @@ describe("action/action.yml", () => {
     expect(dogfood).toContain('runs: "10"');
     expect(dogfood).toContain('max-spend: "0.30"');
     expect(dogfood).toContain("cancel-in-progress: true");
+
+    // Every job executes PR-controlled code with a paid credential, so adding
+    // a second target must not accidentally omit the owner trust boundary.
+    const workflow = parseYaml(dogfood);
+    const reportKeys = new Set<string>();
+    for (const job of Object.values(workflow.jobs) as Array<{
+      if: string;
+      env: Record<string, string>;
+      steps: Array<{ uses?: string; with?: Record<string, string> }>;
+    }>) {
+      expect(job.if).toContain(
+        "github.event.pull_request.head.repo.full_name == github.repository",
+      );
+      expect(job.if).toContain(
+        "github.event.pull_request.user.login == github.repository_owner",
+      );
+      expect(job.if).toContain("github.actor == github.repository_owner");
+      expect(job.if).toContain("github.triggering_actor == github.repository_owner");
+      expect(Object.keys(job.env).filter((key) => /TOKEN|KEY|CONNECTOR/.test(key))).toEqual([
+        "AI_GATEWAY_API_KEY",
+      ]);
+      const comparison = job.steps.find((step) => step.uses === "./action");
+      expect(comparison).toBeDefined();
+      const key = comparison?.with?.["comment-key"] ?? "";
+      expect(reportKeys.has(key), "dogfood reports must not overwrite each other").toBe(false);
+      reportKeys.add(key);
+    }
+
+    const maintenance = workflow.jobs["maintenance-agent"].steps.find(
+      (step: { uses?: string }) => step.uses === "./action",
+    );
+    expect(maintenance.with["working-directory"]).toBe(".");
+    const selected = maintenance.with.evals.split(",") as string[];
+    expect(selected.length).toBeGreaterThan(0);
+    for (const id of selected) {
+      // Exact files only: a broad prefix could silently include a destructive eval.
+      const source = readFileSync(new URL(`evals/${id}.eval.ts`, root), "utf8");
+      const tags = source.match(/tags:\s*\[([^\]]*)\]/)?.[1];
+      expect(tags).toBeDefined();
+      expect(tags).not.toMatch(/needs-connect|mutating|pipeline/);
+    }
   });
 });

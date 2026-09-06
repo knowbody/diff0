@@ -1,0 +1,14 @@
+node_modules/
+fixtures/demo-agent/.eve/
+agent/.eve/
+.eve/
+.output/
+.vercel/
+*.log
+.env
+.env.*
+!agent/.env.example
+dist/
+!action/dist/
+!action/dist/cli.mjs
+.claude/

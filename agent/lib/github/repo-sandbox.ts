@@ -27,7 +27,16 @@ import { BASE_MARKER_PATH } from "./runtime-push.js";
 // unresumable sandboxes after 14 days anyway) stops a quiet stretch from
 // expiring the template and making the next session queue behind a full
 // clone-and-setup rebuild.
+export const FACTORY_CACHE_ENV = {
+  COREPACK_DEFAULT_TO_LATEST: "0",
+  COREPACK_HOME: "/workspace/.cache/corepack",
+  npm_config_store_dir: "/workspace/.cache/pnpm",
+  npm_config_prefer_offline: "true",
+  npm_config_fetch_retries: "0",
+};
+
 export const FACTORY_SANDBOX_CREATE_OPTIONS = {
+  env: FACTORY_CACHE_ENV,
   keepLastSnapshots: { count: 1, deleteEvicted: true },
   networkPolicy: "deny-all",
   resources: { vcpus: 4 },
@@ -77,7 +86,7 @@ async function mintTokenOrExplain(mint: () => Promise<string>): Promise<string> 
  * authored sandbox source is tracked by eve automatically.
  */
 export function factoryRevalidationKey(): string {
-  return `factory-repo-v1:${FACTORY_REPO}:${process.env.FACTORY_SETUP_COMMAND ?? ""}`;
+  return `factory-repo-v4:${FACTORY_REPO}:${process.env.FACTORY_SETUP_COMMAND ?? ""}`;
 }
 
 /**
@@ -106,7 +115,12 @@ export async function factoryBootstrap({ use }: SandboxBootstrapContext): Promis
   await sandbox.setNetworkPolicy(brokerPolicy(token));
   try {
     try {
-      await runOrThrow(sandbox, `git clone --depth 50 ${REMOTE_URL} repo`);
+      // A failed bootstrap may be replayed on a partially provisioned template.
+      // Only this disposable template checkout is reset; live sessions never run bootstrap.
+      await runOrThrow(
+        sandbox,
+        `rm -rf /workspace/repo && git clone --depth 50 ${REMOTE_URL} /workspace/repo`,
+      );
     } catch (error) {
       throw new Error(describeCloneFailure(FACTORY_REPO, safeErrorMessage(error)), {
         cause: error,
@@ -116,6 +130,22 @@ export async function factoryBootstrap({ use }: SandboxBootstrapContext): Promis
     if (setup) {
       await sandbox.setNetworkPolicy(BOOTSTRAP_INSTALL_NETWORK_POLICY);
       await runOrThrow(sandbox, `cd repo && ${setup}`);
+      await sandbox.setNetworkPolicy("deny-all");
+      // Prove the demo graph can install with the same HOME isolation as diff0.
+      // This happens once per snapshot, before spending model tokens on a station.
+      await runOrThrow(
+        sandbox,
+        `
+        if [ -f repo/fixtures/demo-agent/pnpm-lock.yaml ]; then
+          cache_probe=$(mktemp -d)
+          trap 'rm -rf "$cache_probe"' EXIT
+          mkdir "$cache_probe/home" "$cache_probe/app"
+          cp repo/fixtures/demo-agent/package.json repo/fixtures/demo-agent/pnpm-lock.yaml "$cache_probe/app/"
+          cd "$cache_probe/app"
+          HOME="$cache_probe/home" USERPROFILE="$cache_probe/home" pnpm install --offline --frozen-lockfile --ignore-scripts
+        fi
+      `,
+      );
     }
   } finally {
     await sandbox.setNetworkPolicy("deny-all");

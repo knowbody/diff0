@@ -9,7 +9,7 @@ import type { MessageStreamEvent } from "eve/client";
  * naming the one tool a bad run might reach for, so a new write tool added to
  * the extension is automatically forbidden in every read-only eval until
  * someone allows it deliberately. Keep in sync with the `include` list in
- * `agent/extensions/github.ts`.
+ * `agent/extensions/github/extension.ts`.
  */
 export const GITHUB_WRITE_TOOLS = [
   "github__addAssignees",
