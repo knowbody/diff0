@@ -43,6 +43,9 @@ five runs per ref; [PR #15](https://github.com/knowbody/diff0/pull/15) contains 
 
 ## Quick start
 
+New to agent evals? Follow [Getting started](GETTING_STARTED.md) to add a minimal
+suite, save a baseline, and compare your first change, with setup troubleshooting.
+
 Run a comparison:
 
 ```sh
