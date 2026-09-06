@@ -1,0 +1,63 @@
+name: diff0 deterministic
+
+on:
+  pull_request:
+
+concurrency:
+  group: diff0-free-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+# PR code executes in this job. Never supply model, connector, or write credentials.
+permissions:
+  contents: read
+
+jobs:
+  deterministic-diff0:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+      DIFF0_DEMO_MODEL: mock
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Install and build diff0
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile --ignore-scripts
+          pnpm build
+
+      - name: Compare the PR against its base without model calls
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          node dist/cli.js run --repo . --app-dir fixtures/demo-agent \
+            --base "$BASE_SHA" --head "$HEAD_SHA" --runs 3 \
+            --fail-on regression --install-mode scripts-off \
+            --report-md reports/diff0-free.md --report-json reports/diff0-free.json
+
+      - name: Add the report to the run summary
+        if: ${{ !cancelled() }}
+        run: |
+          if [ -f reports/diff0-free.md ]; then
+            cat reports/diff0-free.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Save comparison reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: diff0-free-pr-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: |
+            reports/diff0-free.md
+            reports/diff0-free.json
+          if-no-files-found: warn
+          retention-days: 14

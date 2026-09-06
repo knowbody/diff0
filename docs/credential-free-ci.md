@@ -9,6 +9,18 @@ from an unreviewed ref.
 
 ## Run the checks
 
+The **diff0 deterministic** workflow runs automatically when a pull request opens, reopens, or
+receives new commits, including Eve-authored PRs. It compares the actual PR base and head using
+the demo fixture with `DIFF0_DEMO_MODEL=mock`, three runs per ref, and regression enforcement.
+The report appears in the Actions run summary and downloadable artifacts. It receives no model
+or connector credentials and cannot post PR comments. GitHub may require a maintainer to approve
+workflow execution for a first-time fork contributor.
+
+This checks the deterministic fixture and diff0 pipeline. It does not measure the maintenance
+agent's real-model behavior; those paid comparisons retain their separate approval policy.
+The `skip-paid-evals` label does not skip this workflow. GitHub Actions usage still applies,
+but there are no model API charges.
+
 ```sh
 pnpm install --frozen-lockfile
 pnpm test
