@@ -39,6 +39,8 @@
     "README.md",
     "GETTING_STARTED.md",
     "docs/library-api.md",
+    "docs/calibration.md",
+    "docs/calibration",
     "LICENSE",
     "action"
   ],
@@ -79,6 +81,7 @@
     "action:build": "node scripts/build-action.mjs",
     "typecheck": "tsc --noEmit && pnpm agent:typecheck",
     "test": "pnpm test:unit",
+    "calibrate": "pnpm build && node scripts/calibrate.mjs",
     "test:unit": "vitest run --exclude '**/*.integration.test.ts' --exclude '**/*.package.test.ts'",
     "test:package": "pnpm build && vitest run test/library.package.test.ts",
     "test:integration": "vitest run integration.test.ts",

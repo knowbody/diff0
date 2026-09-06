@@ -415,6 +415,9 @@ export function summaryToRunRecord(summary: EveEvalRunSummary, ctx: SummaryConte
       };
       evalResult.finalOutput = { hash: fingerprint.hash, length: fingerprint.length };
       finalOutputs.push(fingerprint);
+    } else if (entry.result?.finalMessage === null && entry.result.output == null) {
+      // An explicit null is evidence of no final message, not a missing artifact.
+      evalResult.finalOutputAbsent = true;
     }
 
     // Global tool-call sequence: results[] order, then turnIndex, then array

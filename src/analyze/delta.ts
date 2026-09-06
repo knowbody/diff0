@@ -1012,7 +1012,21 @@ function finalOutputDelta(
       : run.evalResults.find((result) => result.name === evalName)?.finalOutput;
   const baseFingerprints = baseRuns.map(fingerprint).filter((value) => value !== undefined);
   const headFingerprints = headRuns.map(fingerprint).filter((value) => value !== undefined);
-  if (baseFingerprints.length === 0 && headFingerprints.length === 0) return null;
+  const absentRuns = (runs: RunRecord[]) =>
+    evalName === null
+      ? 0
+      : runs.filter((run) => {
+          const result = run.evalResults.find((result) => result.name === evalName);
+          return result?.finalOutputAbsent === true && result.finalOutput === undefined;
+        }).length;
+  const baseAbsentRuns = absentRuns(baseRuns);
+  const headAbsentRuns = absentRuns(headRuns);
+  if (baseFingerprints.length === 0 && headFingerprints.length === 0) {
+    // Preserve legacy runs without capture support, but distinguish known absence
+    // from missing evidence when either side explicitly reports absence.
+    if (baseAbsentRuns === 0 && headAbsentRuns === 0) return null;
+    if (baseAbsentRuns === baseRuns.length && headAbsentRuns === headRuns.length) return null;
+  }
   const baseHashes = [...new Set(baseFingerprints.map((value) => value.hash))].sort();
   const headHashes = [...new Set(headFingerprints.map((value) => value.hash))].sort();
   const baseFrequencies = fingerprintFrequencies(baseFingerprints.map((value) => value.hash));
@@ -1031,14 +1045,16 @@ function finalOutputDelta(
     (a, b) => a - b,
   );
   const stableAndRepeated =
-    baseFingerprints.length === baseRuns.length &&
-    headFingerprints.length === headRuns.length &&
+    baseFingerprints.length + baseAbsentRuns === baseRuns.length &&
+    headFingerprints.length + headAbsentRuns === headRuns.length &&
     baseRuns.length >= 2 &&
     headRuns.length >= 2 &&
-    baseHashes.length === 1 &&
-    headHashes.length === 1;
+    baseHashes.length + Number(baseAbsentRuns > 0) === 1 &&
+    headHashes.length + Number(headAbsentRuns > 0) === 1;
   return {
     evalName,
+    baseAbsentRuns,
+    headAbsentRuns,
     baseCapturedRuns: baseFingerprints.length,
     baseTotalRuns: baseRuns.length,
     headCapturedRuns: headFingerprints.length,
@@ -1211,7 +1227,9 @@ function computeDrift(baseRuns: RunRecord[], headRuns: RunRecord[]): DriftSectio
   const outputScopes = evalNames.filter((evalName) =>
     [...baseRuns, ...headRuns].some((run) =>
       run.evalResults.some(
-        (result) => result.name === evalName && result.finalOutput !== undefined,
+        (result) =>
+          result.name === evalName &&
+          (result.finalOutput !== undefined || result.finalOutputAbsent === true),
       ),
     ),
   );
@@ -1428,10 +1446,13 @@ function classifyEnforcement(
     add("performance-regression", performanceRegressionReason(regression));
   }
   if (drift.hasDrift) add("behavioral-drift", "behavioral drift detected");
-  if (drift.hasInconclusive) {
-    add("behavioral-drift", "behavioral differences detected with inconclusive confidence");
-  }
   for (const mismatch of mismatches) add("comparison-validity", mismatch);
+  if (hasOutputCaptureGap(drift)) {
+    add(
+      "comparison-validity",
+      "Final-output capture is incomplete; absence was not explicitly reported.",
+    );
+  }
   if ((costPerf.costUsd.base === null) !== (costPerf.costUsd.head === null)) {
     add(
       "comparison-validity",
@@ -1445,6 +1466,14 @@ function classifyEnforcement(
       return categoryReasons ? [{ category, reasons: categoryReasons }] : [];
     }),
   };
+}
+
+function hasOutputCaptureGap(drift: DriftSection): boolean {
+  return drift.finalOutputs.some(
+    (output) =>
+      output.baseCapturedRuns + (output.baseAbsentRuns ?? 0) < output.baseTotalRuns ||
+      output.headCapturedRuns + (output.headAbsentRuns ?? 0) < output.headTotalRuns,
+  );
 }
 
 /** True when a report violates any selected granular policy category. */
@@ -1465,6 +1494,9 @@ function computeVerdict(
   mismatches: string[],
 ): { verdict: Verdict; verdictSummary: string; verdictReasons: string[] } {
   const reasons: string[] = [];
+  const outputCaptureGap = hasOutputCaptureGap(drift);
+  if (outputCaptureGap)
+    reasons.push("Final-output capture is incomplete; absence was not explicitly reported.");
 
   for (const mismatch of mismatches) reasons.push(`comparison validity: ${mismatch}`);
 
@@ -1544,6 +1576,7 @@ function computeVerdict(
       : "";
 
   for (const s of drift.skills) {
+    if (s.confidence === "inconclusive") continue;
     reasons.push(
       `skill ${s.confidence === "statistically-confirmed" ? "drift" : "change (inconclusive)"}: ` +
         `${s.name} loaded in ${s.baseLoadedRuns} of ${s.baseTotalRuns} base runs vs ` +
@@ -1554,10 +1587,11 @@ function computeVerdict(
   }
   for (const sequence of drift.toolSequences) {
     const scope = sequence.evalName ? ` in eval ${sequence.evalName}` : " (unattributed)";
-    if (sequence.divergenceNote !== null) {
+    if (sequence.divergenceNote !== null && sequence.divergenceConfidence === "stable") {
       reasons.push(`tool sequence change${scope}: ${sequence.divergenceNote}`);
     }
     for (const t of sequence.callCountDeltas) {
+      if (t.confidence === "inconclusive") continue;
       reasons.push(
         `tool ${t.confidence === "stable" ? "drift" : "change (inconclusive)"}${scope}: ` +
           `${t.name} median calls/run ${t.baseMedianCalls} on base vs ` +
@@ -1566,6 +1600,7 @@ function computeVerdict(
     }
   }
   for (const s of drift.subagents) {
+    if (s.confidence === "inconclusive") continue;
     reasons.push(
       `subagent ${s.confidence === "statistically-confirmed" ? "drift" : "change (inconclusive)"}: ` +
         `${s.name} used in ${s.baseUsedRuns} of ${s.baseTotalRuns} base runs vs ` +
@@ -1575,6 +1610,7 @@ function computeVerdict(
     );
   }
   for (const input of drift.toolInputs) {
+    if (input.confidence === "inconclusive") continue;
     const scope = input.evalName ? ` in eval ${input.evalName}` : "";
     reasons.push(
       `tool input ${input.confidence === "stable" ? "drift" : "change (inconclusive)"}: ` +
@@ -1582,6 +1618,7 @@ function computeVerdict(
     );
   }
   for (const output of drift.finalOutputs) {
+    if (output.confidence === "inconclusive") continue;
     const scope = output.evalName ? ` in eval ${output.evalName}` : " (unattributed)";
     const incompleteCapture =
       output.baseCapturedRuns !== output.baseTotalRuns ||
@@ -1628,7 +1665,7 @@ function computeVerdict(
   const reviewEvals = [...otherInconclusive, ...removed, ...added, ...partial, ...flaky];
   if (
     drift.hasDrift ||
-    drift.hasInconclusive ||
+    outputCaptureGap ||
     hasPerformanceRegression ||
     costAvailabilityMismatch ||
     mismatches.length > 0 ||
@@ -1636,6 +1673,7 @@ function computeVerdict(
     materialScoreRegressions.length > 0
   ) {
     const summaryParts: string[] = [];
+    if (outputCaptureGap) summaryParts.push("final-output capture incomplete");
     if (removed.length > 0)
       summaryParts.push(`${removed.length} eval${removed.length === 1 ? "" : "s"} removed`);
     if (added.length > 0)
@@ -1664,13 +1702,6 @@ function computeVerdict(
       );
     }
     if (drift.hasDrift) summaryParts.push("behavioral drift detected");
-    if (drift.hasInconclusive) {
-      summaryParts.push(
-        drift.hasDrift
-          ? "additional behavioral differences inconclusive"
-          : "behavioral differences inconclusive",
-      );
-    }
     if (hasPerformanceRegression) {
       summaryParts.push(
         `${performanceRegressions.length} performance regression${performanceRegressions.length === 1 ? "" : "s"}`,
@@ -1686,8 +1717,11 @@ function computeVerdict(
   }
   return {
     verdict: "green",
-    verdictSummary: `No regressions or behavioral drift detected across ${phrase}${flakySuffix}`,
-    verdictReasons: reasons.length > 0 ? reasons : ["no regressions or behavioral drift detected"],
+    verdictSummary: drift.hasInconclusive
+      ? `No regressions or supported behavioral drift detected across ${phrase}; inconclusive observations retained in details`
+      : `No regressions or behavioral drift detected across ${phrase}${flakySuffix}`,
+    verdictReasons:
+      reasons.length > 0 ? reasons : ["no regressions or supported behavioral drift detected"],
   };
 }
 

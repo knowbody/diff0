@@ -23,8 +23,8 @@ const execFileAsync = promisify(execFile);
 
 /** Relative location in a normal (non-linked) checkout. */
 export const CACHE_DIR_NAME = join(".git", "diff0-cache");
-// v6 stops reusing records that labeled a host-default probe as the actual app sandbox.
-export const CACHE_SCHEMA_VERSION = 6;
+// v7 distinguishes explicitly absent final responses from unknown output capture.
+export const CACHE_SCHEMA_VERSION = 7;
 export const DEFAULT_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 export interface CacheKeyInput {
@@ -215,6 +215,8 @@ function isRunRecord(value: unknown): value is RunRecord {
       typeof result === "object" &&
       typeof result.name === "string" &&
       typeof result.passed === "boolean" &&
+      (result.finalOutputAbsent === undefined || typeof result.finalOutputAbsent === "boolean") &&
+      !(result.finalOutputAbsent === true && result.finalOutput !== undefined) &&
       (result.durationMs === undefined || isFiniteNonNegative(result.durationMs)) &&
       (result.finalOutput === undefined ||
         (result.finalOutput !== null &&

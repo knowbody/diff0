@@ -96,7 +96,7 @@ exports[`renderMarkdown snapshots > renders the drift-only-yellow scenario 1`] =
 ## diff0 report 🟡
 
 > [!WARNING]
-> **Review recommended.** No confirmed eval regressions across 3 runs per ref. Observed behavioral differences require review.
+> **Review recommended.** No confirmed eval regressions across 3 runs per ref — 1 performance regression.
 
 Comparing \`main (aaa1111)\` → \`feat/tighter-prompt (bbb2222)\` · 3 runs per ref · model \`mock-model\`
 
@@ -114,14 +114,7 @@ Comparing \`main (aaa1111)\` → \`feat/tighter-prompt (bbb2222)\` · 3 runs per
 
 - ⚠️ **Cost / session:** delta +38% exceeds +25% threshold.
 
-### Observed behavioral differences
-
-| Signal | Base | Head | Scope |
-| :- | :- | :- | :- |
-| Skill \`unit-conversion\` | 3/3 runs | 1/3 runs | overall · inconclusive |
-| Tool path | \`get_weather → convert_units → done\` (3/3) | \`get_weather → done\` (2/3) | overall · inconclusive |
-| \`convert_units\` calls | 1/run | 0/run | overall · inconclusive |
-| \`done\` input #1 changed | 3 captured | 3 captured | overall · inconclusive |
+Inconclusive behavioral observations are retained in the full comparison details; they do not affect the verdict or drift enforcement.
 
 ### Eval results
 
@@ -214,7 +207,7 @@ exports[`renderMarkdown snapshots > renders the flaky-mixed scenario 1`] = `
 ## diff0 report 🟡
 
 > [!WARNING]
-> **Review recommended.** No confirmed eval regressions across 3 runs per ref. Review the highlighted changes below.
+> **Review recommended.** No confirmed eval regressions across 3 runs per ref — 1 eval removed, 1 eval added, 2 eval changes inconclusive, 1 flaky eval, comparison validity warnings.
 
 Comparing \`main (aaa1111)\` → \`feat/model-swap (bbb2222)\` · 3 runs per ref · model \`gpt-5 → claude-opus-4\`
 
@@ -323,7 +316,7 @@ Comparing \`main (aaa1111)\` → \`feat/new-planner (bbb2222)\` · 4 runs per re
 | Output tokens / run | 200 | 200 | +0% |
 | Duration / run | 12.0s | 12.0s | +0% |
 
-### Observed behavioral differences
+### Supported behavioral differences
 
 | Signal | Base | Head | Scope |
 | :- | :- | :- | :- |

@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/eve-diff.yml"
+      - "scripts/maintenance-relevance.mjs"
       - "agent/agent.ts"
       - "agent/instructions.*"
       - "agent/sandbox.ts"
@@ -25,6 +26,14 @@ on:
       - "evals/helpers.ts"
       - "package.json"
       - "pnpm-lock.yaml"
+      - "package-lock.json"
+      - "npm-shrinkwrap.json"
+      - "yarn.lock"
+      - "bun.lock"
+      - "bun.lockb"
+      - "pnpm-workspace.yaml"
+      - ".npmrc"
+      - ".yarnrc.yml"
       - "tsconfig.json"
 
 concurrency:
@@ -47,9 +56,6 @@ jobs:
       !contains(github.event.pull_request.labels.*.name, 'skip-paid-evals')
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      AI_GATEWAY_API_KEY: ${{ secrets.DIFF0_AI_GATEWAY_API_KEY }}
-      FACTORY_EVAL_SANDBOX: justbash
     steps:
       - uses: actions/checkout@v7
         with:
@@ -60,8 +66,19 @@ jobs:
         with:
           node-version: 24
 
+      - name: Check maintenance-agent relevance
+        id: relevance
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/maintenance-relevance.mjs
+
       - name: Compare diff0 Eve
+        if: steps.relevance.outputs.relevant == 'true'
         uses: ./action
+        env:
+          AI_GATEWAY_API_KEY: ${{ secrets.DIFF0_AI_GATEWAY_API_KEY }}
+          FACTORY_EVAL_SANDBOX: justbash
         with:
           working-directory: .
           # Explicit IDs keep connector-backed and mutating evals out of CI.

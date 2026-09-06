@@ -134,7 +134,7 @@ diff0 checks both refs out into temporary worktrees and counterbalances repeated
 to reduce systematic run-order bias. It then separates three outcomes:
 
 - **Green:** no regression or review-worthy drift was found.
-- **Yellow:** behavior changed, results were flaky or incomplete, or the evidence is inconclusive.
+- **Yellow:** supported behavioral changes, flaky/incomplete evals, or validity and performance findings need review.
 - **Red:** an eval regression crossed the release gate.
 
 The report includes:
@@ -144,6 +144,10 @@ The report includes:
 - tokens, attributable cost, and duration;
 - the model, Eve version, run counts, actual sandbox as unknown, and the separately labeled host-default sandbox candidate; and
 - uncertainty instead of treating one nondeterministic run as proof.
+
+In the next release, inconclusive behavioral observations remain in report details without
+triggering yellow or drift enforcement on their own. This differs from v0.1.3. Eval uncertainty
+and incomplete evidence still need review. See [warning calibration](docs/calibration.md).
 
 Tool inputs and final outputs are fingerprinted. Raw values and reusable hashes are not included in
 public reports.

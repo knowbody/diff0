@@ -38,7 +38,7 @@ diff0 run --base <ref> [--head <ref>] [options]
 
 Compatibility: `safe` and `trusted` are deprecated aliases for `scripts-off` and `scripts-on`.
 
-Legacy `--fail-on regression|drift|never` semantics are unchanged. Granular mode accepts any
+Legacy `--fail-on regression|drift|never` policies remain available. Granular mode accepts any
 comma-separated selection of `eval-regression`, `score-regression`, `performance-regression`,
 `behavioral-drift`, and `comparison-validity`; mixing legacy and granular names is invalid.
 Performance budgets are increase-only, so improvements never violate them. Explicit budget flags
@@ -72,6 +72,14 @@ Behavior:
   the expected runs is `partial-base`, `partial-head`, or `partial-both`: a yellow, inconclusive
   coverage warning with no like-for-like Fisher claim. An eval absent from every run on one side
   remains `missing-base` or `missing-head`.
+- Inconclusive behavioral observations (skills, subagents, tool paths/counts, input/output
+  fingerprints) remain in report details and JSON. They do not independently make the verdict
+  yellow or create a `behavioral-drift` violation. Supported drift still gates. This policy
+  changes in the next release; v0.1.3 gated inconclusive observations too.
+- Incomplete final-output capture remains a yellow `comparison-validity` finding, but does not
+  confound otherwise complete eval pass/fail evidence. Explicitly absent responses, including
+  parked questions reported with a null final message and no output, are tracked separately
+  from unknown capture. Optional `baseAbsentRuns` / `headAbsentRuns` accompany captured counts.
 - Treats scorer-only movement separately from pass-rate evidence. Reports include base/head score
   medians, their delta, an absolute materiality threshold of 0.1, and a classification. A median
   drop of at least 0.1 is a material score regression and makes the verdict yellow; it is not
@@ -93,7 +101,7 @@ Behavior:
 - The actual sandbox selected by Eve is not observable and is reported as `unknown`. The separate
   host-default candidate is a capability probe, not evidence that either ref used that backend.
 - With `--cache`, base-ref results are cached under the repository's resolved Git common directory, normally
-  `.git/diff0-cache/`. Cache schema 6's versioned key covers the commit, diff0/Eve versions, model,
+  `.git/diff0-cache/`. Cache schema 7's versioned key covers the commit, diff0/Eve versions, model,
   sorted eval filter, timeout, concurrency, install mode, and host-default candidate. Entries expire after
   24 hours; expired, incompatible, or malformed entries are safe misses. Cached reports warn that
   environment variables and external service state are outside the key; omit `--cache` for release gates.

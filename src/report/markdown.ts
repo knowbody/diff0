@@ -115,10 +115,15 @@ export function renderMarkdown(report: DeltaReport): string {
     lines.push("");
   }
 
-  if (report.drift.hasDrift || report.drift.hasInconclusive) {
-    lines.push("### Observed behavioral differences");
+  if (report.drift.hasDrift) {
+    lines.push("### Supported behavioral differences");
     lines.push("");
     renderDriftSummary(report, lines);
+  } else if (report.drift.hasInconclusive) {
+    lines.push(
+      "Inconclusive behavioral observations are retained in the full comparison details; they do not affect the verdict or drift enforcement.",
+    );
+    lines.push("");
   }
 
   lines.push("### Eval results");
@@ -242,11 +247,8 @@ export function renderMarkdown(report: DeltaReport): string {
 function calloutSummary(report: DeltaReport): string {
   if (report.verdict !== "yellow") return `${safeText(report.verdictSummary)}.`;
   const prefix = `No confirmed eval regressions across ${runsPhrase(report.meta)}.`;
-  if (report.drift.hasDrift) return `${prefix} Confirmed behavioral drift requires review.`;
-  if (report.drift.hasInconclusive) {
-    return `${prefix} Observed behavioral differences require review.`;
-  }
-  return `${prefix} Review the highlighted changes below.`;
+  if (report.drift.hasDrift) return `${prefix} Supported behavioral differences require review.`;
+  return `${safeText(report.verdictSummary)}.`;
 }
 
 function comparisonLine(report: DeltaReport): string {
@@ -669,7 +671,10 @@ function renderDrift(report: DeltaReport, lines: string[]): void {
       lines.push(
         `- output ${captureChanged ? "capture/fingerprint evidence changed" : "fingerprint changed"}${scope} — ` +
           `**${output.confidence}**; captured in ${output.baseCapturedRuns}/${output.baseTotalRuns} base ` +
-          `and ${output.headCapturedRuns}/${output.headTotalRuns} head runs${lengths} ` +
+          `and ${output.headCapturedRuns}/${output.headTotalRuns} head runs${lengths}` +
+          ((output.baseAbsentRuns ?? 0) + (output.headAbsentRuns ?? 0) > 0
+            ? `; explicitly no final response in ${output.baseAbsentRuns ?? 0} base / ${output.headAbsentRuns ?? 0} head runs `
+            : " ") +
           "(raw output is never stored)",
       );
     }

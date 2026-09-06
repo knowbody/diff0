@@ -240,7 +240,13 @@ export function renderTerminal(report: DeltaReport, opts: TerminalOptions = {}):
 
   // Drift
   lines.push("");
-  lines.push(pc.bold("BEHAVIORAL DRIFT"));
+  lines.push(
+    pc.bold(
+      report.drift.hasInconclusive && !report.drift.hasDrift
+        ? "INCONCLUSIVE BEHAVIORAL OBSERVATIONS (not gated)"
+        : "BEHAVIORAL DRIFT",
+    ),
+  );
   if (!report.drift.hasDrift && !report.drift.hasInconclusive) {
     lines.push(`  No behavioral drift detected across ${phrase}.`);
   } else {
@@ -501,7 +507,11 @@ function renderDrift(report: DeltaReport, lines: string[], pc: Colors): void {
       ...wrapText(
         `final output${scope}: ${captureChanged ? "capture/fingerprint evidence changed" : "fingerprint changed"} ` +
           `[${output.confidence}; captured ${output.baseCapturedRuns}/${output.baseTotalRuns} base, ` +
-          `${output.headCapturedRuns}/${output.headTotalRuns} head${lengths}; raw output not stored]`,
+          `${output.headCapturedRuns}/${output.headTotalRuns} head${lengths}` +
+          ((output.baseAbsentRuns ?? 0) + (output.headAbsentRuns ?? 0) > 0
+            ? `; explicitly absent ${output.baseAbsentRuns ?? 0} base / ${output.headAbsentRuns ?? 0} head`
+            : "") +
+          "; raw output not stored]",
         "  ",
         "    ",
       ),

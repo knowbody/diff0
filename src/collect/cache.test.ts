@@ -131,6 +131,35 @@ describe("readCache / writeCache", () => {
     expect(await readCache(repo, "0".repeat(64))).toBeNull();
   });
 
+  it("preserves known output absence and rejects conflicting capture evidence", async () => {
+    const record = makeRecord(0);
+    record.evalResults = [
+      {
+        name: "e/one",
+        passed: true,
+        checks: [],
+        finalOutputAbsent: true,
+      },
+    ];
+    await writeCache(repo, "absence", [record]);
+    expect(await readCache(repo, "absence")).toEqual([record]);
+    record.evalResults = [
+      {
+        name: "e/one",
+        passed: true,
+        checks: [],
+        finalOutputAbsent: true,
+        finalOutput: { hash: "conflict" },
+      },
+    ];
+    await expect(writeCache(repo, "conflict", [record])).rejects.toThrow("malformed run records");
+    const path = join(await getCacheDirectory(repo), "absence.json");
+    const raw = JSON.parse(await readFile(path, "utf8"));
+    raw.records = [record];
+    await writeFile(path, JSON.stringify(raw));
+    expect(await readCache(repo, "absence")).toBeNull();
+  });
+
   it("returns null on corrupt or malformed cache files", async () => {
     await mkdir(join(repo, CACHE_DIR_NAME), { recursive: true });
     await writeFile(join(repo, CACHE_DIR_NAME, "corrupt.json"), "{not json", "utf8");

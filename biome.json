@@ -3,6 +3,10 @@
   "files": {
     "includes": [
       "src/**/*.ts",
+      "scripts/calibrate.mjs",
+      "scripts/maintenance-relevance.mjs",
+      "test/calibration*.ts",
+      "test/maintenance-relevance.test.ts",
       "scripts/trial-station-models.mjs",
       "scripts/trial-coding-models.mjs",
       "scripts/trial-checks.mjs",
