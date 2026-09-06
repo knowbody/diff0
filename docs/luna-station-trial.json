@@ -1,0 +1,265 @@
+{
+  "date": "2026-09-06",
+  "kind": "controlled-station-model-pilot",
+  "baselineCommit": "c69f6b1e31e4f3a30d1dda22c66bb5ddf7098528",
+  "modelCallCostUsd": 0.05111220000000001,
+  "records": [
+    {
+      "role": "analyst",
+      "variant": "baseline",
+      "model": "openai/gpt-5.4-mini",
+      "reasoning": "provider-default",
+      "durationMs": 5901,
+      "costUsd": 0.0035916,
+      "usage": {
+        "inputTokens": 3470,
+        "inputTokenDetails": {
+          "noCacheTokens": 1422,
+          "cacheReadTokens": 2048,
+          "cacheWriteTokens": 0
+        },
+        "outputTokens": 527,
+        "outputTokenDetails": {
+          "textTokens": 527,
+          "reasoningTokens": 0
+        },
+        "totalTokens": 3997
+      },
+      "checks": {
+        "readFiles": true,
+        "namesReadme": true,
+        "hasCriteria": true
+      },
+      "passed": true,
+      "calls": [
+        "read_file",
+        "read_file",
+        "read_file"
+      ],
+      "attempt": "initial",
+      "maxOutputTokens": 2048
+    },
+    {
+      "role": "analyst",
+      "variant": "candidate",
+      "model": "openai/gpt-5.6-luna",
+      "reasoning": "xhigh",
+      "durationMs": 31498,
+      "costUsd": 0.0024704799999999997,
+      "usage": {
+        "inputTokens": 5587,
+        "inputTokenDetails": {
+          "noCacheTokens": 12,
+          "cacheReadTokens": 3729,
+          "cacheWriteTokens": 1846
+        },
+        "outputTokens": 1610,
+        "outputTokenDetails": {
+          "textTokens": 777,
+          "reasoningTokens": 833
+        },
+        "totalTokens": 7197
+      },
+      "checks": {
+        "readFiles": true,
+        "namesReadme": true,
+        "hasCriteria": true
+      },
+      "passed": true,
+      "calls": [
+        "read_file",
+        "read_file",
+        "read_file",
+        "read_file",
+        "read_file",
+        "read_file",
+        "read_file",
+        "read_file"
+      ],
+      "attempt": "initial",
+      "maxOutputTokens": 2048
+    },
+    {
+      "role": "implementer",
+      "variant": "candidate",
+      "model": "openai/gpt-5.6-luna",
+      "reasoning": "xhigh",
+      "durationMs": 10296,
+      "costUsd": 0.00107674,
+      "usage": {
+        "inputTokens": 5785,
+        "inputTokenDetails": {
+          "noCacheTokens": 12,
+          "cacheReadTokens": 4197,
+          "cacheWriteTokens": 1576
+        },
+        "outputTokens": 497,
+        "outputTokenDetails": {
+          "textTokens": 225,
+          "reasoningTokens": 272
+        },
+        "totalTokens": 6282
+      },
+      "checks": {
+        "readFiles": true,
+        "readmeChecksPassed": true,
+        "publishingHonest": true
+      },
+      "passed": true,
+      "calls": [
+        "read_file",
+        "write_file",
+        "run_checks"
+      ],
+      "attempt": "initial",
+      "maxOutputTokens": 2048
+    },
+    {
+      "role": "implementer",
+      "variant": "baseline",
+      "model": "anthropic/claude-sonnet-5",
+      "reasoning": "provider-default",
+      "durationMs": 17686,
+      "costUsd": 0.03126,
+      "usage": {
+        "inputTokens": 12365,
+        "inputTokenDetails": {
+          "noCacheTokens": 12365,
+          "cacheReadTokens": 0,
+          "cacheWriteTokens": 0
+        },
+        "outputTokens": 653,
+        "outputTokenDetails": {
+          "textTokens": 581,
+          "reasoningTokens": 72
+        },
+        "totalTokens": 13018
+      },
+      "checks": {
+        "readFiles": true,
+        "readmeChecksPassed": true,
+        "publishingHonest": true
+      },
+      "passed": true,
+      "calls": [
+        "read_file",
+        "write_file",
+        "run_checks"
+      ],
+      "attempt": "initial",
+      "maxOutputTokens": 2048
+    },
+    {
+      "role": "researcher",
+      "variant": "baseline",
+      "model": "openai/gpt-5.4-mini",
+      "reasoning": "provider-default",
+      "durationMs": 7427,
+      "costUsd": 0.00603255,
+      "usage": {
+        "inputTokens": 3541,
+        "inputTokenDetails": {
+          "noCacheTokens": 2517,
+          "cacheReadTokens": 1024,
+          "cacheWriteTokens": 0
+        },
+        "outputTokens": 904,
+        "outputTokenDetails": {
+          "textTokens": 904,
+          "reasoningTokens": 0
+        },
+        "totalTokens": 4445
+      },
+      "checks": {
+        "readBothSources": true,
+        "citationsFetched": true,
+        "hasPriceComparison": true
+      },
+      "passed": true,
+      "calls": [
+        "web_search",
+        "web_search",
+        "web_fetch",
+        "web_fetch"
+      ],
+      "attempt": "initial",
+      "maxOutputTokens": 2048
+    },
+    {
+      "role": "researcher",
+      "variant": "candidate",
+      "model": "openai/gpt-5.6-luna",
+      "reasoning": "xhigh",
+      "durationMs": 28974,
+      "costUsd": 0.0034084199999999997,
+      "checks": {
+        "readBothSources": true,
+        "citationsFetched": false,
+        "hasPriceComparison": false
+      },
+      "passed": false,
+      "calls": [
+        "web_search",
+        "web_search",
+        "web_search",
+        "web_search",
+        "web_fetch",
+        "web_fetch"
+      ],
+      "error": "No object generated: could not parse the response.",
+      "attempt": "initial",
+      "maxOutputTokens": 2048
+    },
+    {
+      "role": "researcher",
+      "variant": "candidate",
+      "model": "openai/gpt-5.6-luna",
+      "reasoning": "xhigh",
+      "durationMs": 27729,
+      "costUsd": 0.00327241,
+      "usage": {
+        "inputTokens": 6207,
+        "inputTokenDetails": {
+          "noCacheTokens": 1012,
+          "cacheReadTokens": 2958,
+          "cacheWriteTokens": 2237
+        },
+        "outputTokens": 2043,
+        "outputTokenDetails": {
+          "textTokens": 1063,
+          "reasoningTokens": 980
+        },
+        "totalTokens": 8250
+      },
+      "finishReason": "stop",
+      "checks": {
+        "readBothSources": true,
+        "citationsFetched": true,
+        "hasPriceComparison": true
+      },
+      "passed": true,
+      "calls": [
+        "web_search",
+        "web_search",
+        "web_search",
+        "web_search",
+        "web_fetch",
+        "web_fetch",
+        "web_search",
+        "web_search",
+        "web_search"
+      ],
+      "attempt": "researcher-followup",
+      "maxOutputTokens": 4096
+    }
+  ],
+  "limitations": [
+    "One task per role, one run per model; no statistical claim.",
+    "Actual station prompts and output schemas; AI SDK model calls with local tool substitutes, not full Eve execution.",
+    "Planning and implementation task only adds README bug-reporting guidance; no coding capability benchmark.",
+    "Research uses two supplied official documentation snapshots; no live web-search quality measurement.",
+    "Reviewer, evaluator, publication, Vercel Sandbox and GitHub Connect are not exercised.",
+    "Costs include the failed researcher attempt and follow-up; exclude the tiny 19-token connectivity probe.",
+    "Changing token allowance and rerunning does not isolate the cause of the first failure."
+  ]
+}

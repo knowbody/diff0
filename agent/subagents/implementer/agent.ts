@@ -1,5 +1,5 @@
 import { defineAgent } from "eve";
-import { MODELS } from "../../lib/models.js";
+import { MODELS, STATION_REASONING } from "../../lib/models.js";
 
 /**
  * Station 3: implementation.
@@ -22,6 +22,7 @@ export default defineAgent({
     "as one; on a revision run it also passes the existing branch and the reviewer's " +
     "findings.",
   model: MODELS.implementer,
+  reasoning: STATION_REASONING,
   outputSchema: {
     additionalProperties: false,
     properties: {

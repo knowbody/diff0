@@ -26,7 +26,8 @@ evals cost money. The `pipeline` evals can modify `FACTORY_REPO` and are opt-in 
   and independent reviewer stations.
 - Filesystem paths define tool, skill, channel, extension, and subagent identities.
 - Model assignments live only in `agent/lib/models.ts`. Keep implementer and reviewer on different
-  provider families.
+  provider families. The user-approved Luna trial is an explicit exception: Luna implements
+  and Terra reviews in its own context. Revisit provider diversity after quality measurements.
 - `agent/lib/trust.ts` is the single trust authority. Repository writes use policies from
   `agent/lib/github/approval.ts`.
 - Task-mode subagents cannot wait for approval. Keep approvable tools on the root agent and make
