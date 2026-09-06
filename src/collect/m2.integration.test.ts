@@ -17,8 +17,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runCli } from "../cli.js";
 import { CACHE_DIR_NAME } from "./cache.js";
 
-// Eve performs four complete eval-suite runs in the first comparison. Under
-// Under parallel CI load, current Eve needs the same timeout as the adapter integration test.
+// Allow the same per-comparison timeout as the adapter integration test under parallel CI load.
 const INTEGRATION_TIMEOUT_MS = 240_000;
 
 const repoRoot = join(fileURLToPath(new URL(".", import.meta.url)), "..", "..");
@@ -95,8 +94,8 @@ afterAll(async () => {
 });
 
 describe("diff0 run end to end", () => {
-  it("runs the full comparison, renders reports, and writes the base cache", {
-    timeout: INTEGRATION_TIMEOUT_MS,
+  it("renders reports, writes the base cache, and reuses it on the next comparison", {
+    timeout: 2 * INTEGRATION_TIMEOUT_MS,
   }, async () => {
     const mdPath = join(scratch, "reports", "report.md");
     const jsonPath = join(scratch, "reports", "report.json");
@@ -118,7 +117,7 @@ describe("diff0 run end to end", () => {
       jsonPath,
     ]);
 
-    expect(result.code).toBe(0);
+    expect(result.code, result.stderr).toBe(0);
 
     // Terminal render on stdout: title + validity header.
     expect(result.stdout).toContain("diff0 base...head");
@@ -160,12 +159,10 @@ describe("diff0 run end to end", () => {
     const entries = await readdir(cacheDir);
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatch(/^[0-9a-f]{64}\.json$/);
-  });
 
-  it("hits the base cache on the second invocation and runs head only", {
-    timeout: INTEGRATION_TIMEOUT_MS,
-  }, async () => {
-    const result = await cli([
+    // Cache reuse is the second half of this scenario, not a separate test
+    // that can run before (or after a failed) cache population.
+    const cachedResult = await cli([
       "run",
       "--base",
       "base",
@@ -178,12 +175,12 @@ describe("diff0 run end to end", () => {
       "--cache",
     ]);
 
-    expect(result.code).toBe(0);
-    expect(result.stderr).toContain("base cache hit");
-    expect(result.stderr).toContain("[1/2] head run 1");
-    expect(result.stderr).toContain("[2/2] head run 2");
-    expect(result.stderr).not.toContain("base run 1");
-    expect(result.stdout).toContain("diff0 base...head");
+    expect(cachedResult.code, cachedResult.stderr).toBe(0);
+    expect(cachedResult.stderr).toContain("base cache hit");
+    expect(cachedResult.stderr).toContain("[1/2] head run 1");
+    expect(cachedResult.stderr).toContain("[2/2] head run 2");
+    expect(cachedResult.stderr).not.toContain("base run 1");
+    expect(cachedResult.stdout).toContain("diff0 base...head");
   });
 
   it("exits 2 on an unknown ref without touching worktrees", async () => {
