@@ -1,5 +1,5 @@
 import { defineAgent } from "eve";
-import { MODELS, STATION_REASONING } from "../../lib/models.js";
+import { MODELS } from "../../lib/models.js";
 
 /**
  * Station 2: analysis and planning.
@@ -20,7 +20,6 @@ export default defineAgent({
     "message, plus a research artifact id when the researcher saved a full memo. May " +
     "save its own deep supporting detail as an analysis artifact and return the id.",
   model: MODELS.analyst,
-  reasoning: STATION_REASONING,
   outputSchema: {
     additionalProperties: false,
     properties: {

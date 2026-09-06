@@ -1,8 +1,12 @@
 # Luna station trial — September 6, 2026
 
-The trial assigns Luna xhigh to the analyst, implementer, and researcher. The root
+This historical pilot assigned Luna xhigh to the analyst, implementer, and researcher. The root
 and classifier retain Luna with provider-default reasoning, the reviewer remains
 Terra, and the eval judge remains Gemini Flash. Standard processing is used.
+
+The current PR now keeps Mini for analysis and research and trials Luna only for
+implementation. The table below preserves the original three-station experiment;
+use commit `a108fc0` for its original model configuration.
 
 ## What we measured
 

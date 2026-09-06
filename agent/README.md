@@ -8,11 +8,11 @@ the app opens a reviewed draft pull request.
 The agent lives in this repository so its prompts, policies, tests, and evals are reviewed with
 the CLI. See [UPSTREAM.md](UPSTREAM.md) for provenance.
 
-## Luna station trial
+## Luna implementation trial
 
-The analyst, researcher, and implementer use `openai/gpt-5.6-luna` with explicit
-`xhigh` reasoning. The orchestrator and classifier retain Luna with provider-default
-reasoning. The reviewer remains `openai/gpt-5.6-terra`, and the eval judge remains
+Only the implementer uses `openai/gpt-5.6-luna` with explicit `xhigh` reasoning.
+The analyst and researcher retain `openai/gpt-5.4-mini` with provider-default
+reasoning. The orchestrator and classifier retain their existing Luna settings. The reviewer remains `openai/gpt-5.6-terra`, and the eval judge remains
 `google/gemini-3.6-flash`. All use standard processing; no Fast/priority tier is requested.
 Model assignments and the trial reasoning setting live in `agent/lib/models.ts`.
 
@@ -24,13 +24,15 @@ fallback to Sonnet when Luna fails.
 The [September 6 model pilot](../docs/luna-station-trial.md) used the real gateway,
 authored station prompts and schemas, and controlled local tool substitutes. Luna
 passed planning and README-edit checks; research needed a follow-up after an invalid
-structured response. This is an experiment, not a production quality claim.
+structured response. This is an experiment, not a production quality claim. The initial results led us to
+restore Mini for analysis and research and focus the next trial on implementation.
+See the [coding trial](../docs/luna-coding-trial.md) for executable scratch-project checks.
 
 Before adopting this setup, compare against commit `c69f6b1` on the same work items in
 a disposable `FACTORY_REPO`, using the opt-in pipeline evals below. Compare acceptance
 criteria, verified tests, reviewer findings, retries, elapsed time, and total gateway
 charges including subagents and judges. Keep evaluator settings fixed. The four
-connector-free maintenance evals do not exercise these three changed stations and
+connector-free maintenance evals do not exercise the changed implementation station and
 cannot establish their quality. Do not treat unavailable diff0 cost as zero.
 
 ## Boundaries

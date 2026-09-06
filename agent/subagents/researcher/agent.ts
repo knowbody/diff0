@@ -1,5 +1,5 @@
 import { defineAgent } from "eve";
-import { MODELS, STATION_REASONING } from "../../lib/models.js";
+import { MODELS } from "../../lib/models.js";
 
 /**
  * Fresh-context web-research subagent.
@@ -25,7 +25,6 @@ export default defineAgent({
     "long research memo as an artifact and return its id for later stations. The caller " +
     "passes the question and any known context in the message.",
   model: MODELS.researcher,
-  reasoning: STATION_REASONING,
   outputSchema: {
     additionalProperties: false,
     properties: {

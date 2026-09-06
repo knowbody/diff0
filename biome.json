@@ -4,6 +4,8 @@
     "includes": [
       "src/**/*.ts",
       "scripts/trial-station-models.mjs",
+      "scripts/trial-coding-models.mjs",
+      "scripts/fixtures/coding-trial.mjs",
       "action/**/*.mjs",
       "agent/**/*.ts",
       "evals/**/*.ts",
