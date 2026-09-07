@@ -65,3 +65,17 @@ it("honors explicit cache reuse and propagates execution errors to its caller", 
   await expect(compareRefs({ ...options, noCache: false })).rejects.toBe(failure);
   expect(runComparison).toHaveBeenCalledWith(expect.objectContaining({ noCache: false }));
 });
+
+it.each([
+  { runs: Number.MAX_SAFE_INTEGER + 1 },
+  { timeoutMs: 0 },
+  { timeoutMs: 2_147_483_648 },
+  { maxConcurrency: 1.5 },
+  { maxSpendUsd: NaN },
+  { maxSpendUsd: -1 },
+  { performanceThresholds: { durationMs: -1 } },
+  { validityPatterns: ["../outside"] },
+])("rejects invalid library options before collection: %j", async (invalid) => {
+  await expect(compareRefs({ ...options, ...invalid })).rejects.toThrow();
+  expect(runComparison).not.toHaveBeenCalled();
+});

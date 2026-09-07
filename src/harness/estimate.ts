@@ -17,28 +17,20 @@
  * and head may genuinely differ in cost and duration.
  */
 
-import { join } from "node:path";
-import { EveCliAdapter, getAgentInfo } from "../adapters/eve.js";
 import type { CostSource } from "../analyze/types.js";
-import { computeCacheKey, readCache } from "../collect/cache.js";
 import { applyPricing } from "../collect/pricing.js";
-import type {
-  AgentInfo,
-  DependencyInstallMode,
-  EveAdapter,
-  RunOptions,
-  RunRecord,
-} from "../types.js";
-import { type HostDefaultSandboxCandidate, probeHostDefaultSandboxCandidate } from "./sandbox.js";
-import {
-  type CreateWorktreeOptions,
-  createWorktree,
-  normalizeAppDirectory,
-  resolveRef,
-  type WorktreeHandle,
-} from "./worktree.js";
+import { usableCosts } from "../cost.js";
+import { median } from "../numeric.js";
+import { validateCollectionOptions } from "../options.js";
+import type { DependencyInstallMode, RunOptions, RunRecord } from "../types.js";
+import { cleanupResources } from "./cleanup.js";
+import { harnessDependencies, type InjectableHarness } from "./dependencies.js";
+import { appCacheKey, prepareApp } from "./preparation.js";
+import { normalizeAppDirectory } from "./worktree.js";
 
-export interface EstimateOptions {
+export interface EstimateOptions extends InjectableHarness {
+  /** Planned comparison cache reuse; false/omitted matches the default run. Evidence may still come from cache. */
+  cache?: boolean;
   repoPath: string;
   /** Path of the eve app within the repo ("." for the repo root). */
   appDir: string;
@@ -55,18 +47,6 @@ export interface EstimateOptions {
   installMode?: DependencyInstallMode;
   onProgress?: (message: string) => void;
 
-  // -- dependency-injection seams (tests only; defaults are the real thing) --
-  adapter?: EveAdapter;
-  createWorktree?: (
-    repoPath: string,
-    ref: string,
-    opts?: CreateWorktreeOptions,
-  ) => Promise<WorktreeHandle>;
-  inferSandbox?: () => Promise<HostDefaultSandboxCandidate>;
-  getAgentInfo?: (cwd: string) => Promise<AgentInfo | null>;
-  /** Git/cache seams keep orchestration tests free of subprocess and filesystem timing. */
-  resolveRef?: typeof resolveRef;
-  readCache?: typeof readCache;
   /** Override the prices.json path (tests). */
   pricesPath?: string;
 }
@@ -95,6 +75,8 @@ export interface Estimate {
   totalRuns: number;
   /** Base runs already covered by a fresh cache (0 or runsPerRef). */
   cachedBaseRuns: number;
+  /** Cache policy assumed for the planned comparison, separate from sample source. */
+  plannedCacheReuse: boolean;
   /** Suite runs the full comparison would actually execute and pay for. */
   chargeableRuns: number;
   /** perRunCostUsd x chargeableRuns; null when cost is unavailable. */
@@ -107,22 +89,8 @@ function shortSha(sha: string): string {
   return sha.slice(0, 7);
 }
 
-function median(values: number[]): number {
-  if (values.length === 0) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  const lower = sorted[mid - 1];
-  const upper = sorted[mid];
-  if (sorted.length % 2 === 0 && lower !== undefined && upper !== undefined) {
-    return (lower + upper) / 2;
-  }
-  return upper ?? 0;
-}
-
 export async function runEstimate(opts: EstimateOptions): Promise<Estimate> {
-  if (!Number.isInteger(opts.runs) || opts.runs < 1) {
-    throw new Error(`runs must be a positive integer (got ${opts.runs})`);
-  }
+  validateCollectionOptions(opts);
   const appDir = normalizeAppDirectory(opts.appDir);
   const progress = opts.onProgress ?? (() => {});
   if (opts.installMode === "scripts-on") {
@@ -131,61 +99,39 @@ export async function runEstimate(opts: EstimateOptions): Promise<Estimate> {
         "from the sampled ref; non-registry credentials are scrubbed, but package-registry auth remains available",
     );
   }
-  const adapter = opts.adapter ?? new EveCliAdapter();
-  const worktreeFactory = opts.createWorktree ?? createWorktree;
-  const makeWorktree = (repoPath: string, ref: string, resolvedCommitSha: string) =>
-    worktreeFactory(repoPath, ref, {
-      installDirs: appDir === "." ? [] : [appDir],
-      installMode: opts.installMode ?? "scripts-off",
-      resolvedCommitSha,
-    });
-  const inferSandbox = opts.inferSandbox ?? probeHostDefaultSandboxCandidate;
-  const probeAgentInfo = opts.getAgentInfo ?? getAgentInfo;
-  const resolveGitRef = opts.resolveRef ?? resolveRef;
-  const loadCache = opts.readCache ?? readCache;
+  const dependencies = harnessDependencies(opts);
+  const { adapter, resolveRef: resolveGitRef, readCache: loadCache, inferSandbox } = dependencies;
 
   // Fail fast on unknown refs BEFORE paying for any worktree install.
   const baseSha = await resolveGitRef(opts.repoPath, opts.baseRef);
   const headSha = await resolveGitRef(opts.repoPath, opts.headRef);
 
   progress(`preparing head worktree (${opts.headRef} @ ${shortSha(headSha)})…`);
-  const headWorktree = await makeWorktree(opts.repoPath, opts.headRef, headSha);
-  if (headWorktree.commitSha !== headSha) {
-    await headWorktree.cleanup().catch(() => {});
-    throw new Error(
-      `head worktree commit mismatch: resolved ${headSha}, checked out ${headWorktree.commitSha}`,
-    );
-  }
+  const headApp = await prepareApp(
+    { ...opts, appDir },
+    opts.headRef,
+    headSha,
+    dependencies,
+    opts.onProgress,
+  );
   try {
-    const headCwd = join(headWorktree.path, appDir);
-
-    // Probe validates eve + eval presence (NoEvalsError propagates → exit 2).
-    const headProbe = await adapter.probe(headCwd);
+    const headCwd = headApp.cwd;
+    const headProbe = headApp.probe;
     progress(`probed eve ${headProbe.eveVersion} (${headProbe.evalIds.length} evals)`);
 
     // Base-cache consultation with the runner's key logic. The estimate never
     // builds a base worktree, so the eve version and model inputs come from
     // the head worktree — identical to the runner's base-probed values
-    // whenever both refs agree on eve + model (which a valid comparison
-    // requires anyway). When they differ, the key simply misses: conservative
-    // (one measured run) rather than ever reusing a stale sample.
-    const info = await probeAgentInfo(headCwd);
+    // whenever both refs agree on Eve + model. This provides estimation
+    // evidence, not a guarantee of reuse: runComparison probes the base and
+    // checks its actual metadata before accepting the cache.
+    const info = headApp.agentInfo;
     const model = info?.model ?? "unknown";
     // Host default capability affects execution semantics when an app does
     // not override it, so it remains a conservative cache-key input. It is
     // not evidence of the actual sandbox selected by this app.
     const sandbox = await inferSandbox();
-    const cacheKey = computeCacheKey({
-      appDir,
-      commitSha: baseSha,
-      eveVersion: headProbe.eveVersion,
-      model,
-      evalFilter: opts.evalFilter,
-      sandboxBackend: sandbox.backend,
-      installMode: opts.installMode ?? "scripts-off",
-      ...(opts.timeoutMs !== undefined ? { timeoutMs: opts.timeoutMs } : {}),
-      ...(opts.maxConcurrency !== undefined ? { maxConcurrency: opts.maxConcurrency } : {}),
-    });
+    const cacheKey = appCacheKey({ ...opts, appDir }, headApp, baseSha, sandbox.backend);
     const cached = await loadCache(opts.repoPath, cacheKey);
 
     let sample: RunRecord[];
@@ -226,14 +172,11 @@ export async function runEstimate(opts: EstimateOptions): Promise<Estimate> {
       sample,
       opts.pricesPath !== undefined ? { pricesPath: opts.pricesPath } : {},
     );
-    const costs = priced.records
-      .map((r) => r.costUsd)
-      .filter((c): c is number => c !== null && c > 0);
-    const perRunCostUsd =
-      priced.costSource !== "unavailable" && costs.length === sample.length ? median(costs) : null;
+    const costs = usableCosts(priced.records);
+    const perRunCostUsd = costs === null ? null : median(costs);
     const perRunDurationMs = median(sample.map((r) => r.durationMs));
 
-    const cachedBaseRuns = sampleSource === "base-cache" ? opts.runs : 0;
+    const cachedBaseRuns = opts.cache === true && sampleSource === "base-cache" ? opts.runs : 0;
     const totalRuns = opts.runs * 2;
     const chargeableRuns = totalRuns - cachedBaseRuns;
 
@@ -260,15 +203,12 @@ export async function runEstimate(opts: EstimateOptions): Promise<Estimate> {
       runsPerRef: opts.runs,
       totalRuns,
       cachedBaseRuns,
+      plannedCacheReuse: opts.cache === true,
       chargeableRuns,
       projectedCostUsd: perRunCostUsd !== null ? perRunCostUsd * chargeableRuns : null,
       projectedDurationMs: perRunDurationMs * chargeableRuns,
     };
   } finally {
-    try {
-      await headWorktree.cleanup();
-    } catch {
-      // Best-effort: never mask the primary error with a cleanup failure.
-    }
+    await cleanupResources([headApp.worktree], opts.onProgress);
   }
 }

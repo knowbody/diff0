@@ -18,7 +18,9 @@ function sampleReport() {
 
 function assertKeysSortedDeep(value: unknown, path: string): void {
   if (Array.isArray(value)) {
-    value.forEach((entry, i) => assertKeysSortedDeep(entry, `${path}[${i}]`));
+    value.forEach((entry, i) => {
+      assertKeysSortedDeep(entry, `${path}[${i}]`);
+    });
     return;
   }
   if (value !== null && typeof value === "object") {
@@ -43,16 +45,16 @@ describe("renderJson", () => {
     assertKeysSortedDeep(parsed, "$");
   });
 
-  it("carries schemaVersion 4", () => {
+  it("carries schemaVersion 5", () => {
     const parsed = JSON.parse(renderJson(sampleReport())) as { schemaVersion: number };
     expect(parsed.schemaVersion).toBe(JSON_SCHEMA_VERSION);
-    expect(parsed.schemaVersion).toBe(4);
+    expect(parsed.schemaVersion).toBe(5);
   });
 
   it("is pretty-printed and newline-terminated", () => {
     const out = renderJson(sampleReport());
     expect(out.endsWith("\n")).toBe(true);
-    expect(out).toContain('\n  "schemaVersion": 4');
+    expect(out).toContain('\n  "schemaVersion": 5');
   });
 
   it("round-trips the full report content", () => {
@@ -132,4 +134,20 @@ describe("renderJson", () => {
     expect(input?.baseFrequencies).toHaveLength(2);
     expect(input?.baseFrequencies.map((item) => item.runs)).toEqual([1, 1]);
   });
+});
+
+it("represents an enforced zero-baseline increase with null percentage and finite amounts", () => {
+  const report = computeDelta(
+    repeatRuns("main", "aaa", 3, { costUsd: 0, costSource: "gateway" }),
+    repeatRuns("head", "bbb", 3, { costUsd: 0.01, costSource: "gateway" }),
+  );
+  const json = renderJson(report);
+  const parsed = JSON.parse(json);
+  expect(parsed.costPerf.regressions[0]).toMatchObject({
+    baseMedian: 0,
+    headMedian: 0.01,
+    deltaPct: null,
+  });
+  expect(json).not.toMatch(/Infinity|NaN/);
+  expect(parsed.enforcement.violations[0].category).toBe("performance-regression");
 });

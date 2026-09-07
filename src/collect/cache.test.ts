@@ -229,3 +229,37 @@ describe("readCache / writeCache", () => {
     }
   });
 });
+
+it("preserves cost provenance and unrelated extension fields through the validated cache", async () => {
+  const record = {
+    ...makeRecord(0),
+    costUsd: 0,
+    costSource: "gateway" as const,
+    futureHostField: { enabled: true },
+  };
+  await writeCache(repo, "provenance", [record]);
+  expect(await readCache(repo, "provenance")).toEqual([record]);
+});
+
+it("treats malformed numeric and provenance fields as cache corruption", async () => {
+  const mutations = [
+    { tokens: null },
+    { costUsd: "0.01" },
+    { costSource: "fabricated" },
+    { durationMs: -1 },
+    {
+      evalResults: [
+        { name: "e", passed: true, checks: [{ name: "check", passed: true, score: 2 }] },
+      ],
+    },
+  ];
+  for (const [index, mutation] of mutations.entries()) {
+    const key = `malformed-shape-${index}`;
+    await writeCache(repo, key, [makeRecord(0)]);
+    const path = join(await getCacheDirectory(repo), `${key}.json`);
+    const envelope = JSON.parse(await readFile(path, "utf8"));
+    envelope.records[0] = { ...envelope.records[0], ...mutation };
+    await writeFile(path, JSON.stringify(envelope));
+    expect(await readCache(repo, key)).toBeNull();
+  }
+});

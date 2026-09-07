@@ -111,14 +111,38 @@ function regressionRedReport(): DeltaReport {
 
 function flakyMixedReport(): DeltaReport {
   const base = buildRuns("main", "aaa1111222233334444", [
-    { evals: { "flaky/head": true, "flaky/both": true, "was/failing": false, "old/eval": true }, costUsd: null, model: "gpt-5" },
-    { evals: { "flaky/head": true, "flaky/both": false, "was/failing": false, "old/eval": true }, costUsd: null, model: "gpt-5" },
-    { evals: { "flaky/head": true, "flaky/both": true, "was/failing": false, "old/eval": true }, costUsd: null, model: "gpt-5" },
+    {
+      evals: { "flaky/head": true, "flaky/both": true, "was/failing": false, "old/eval": true },
+      costUsd: null,
+      model: "gpt-5",
+    },
+    {
+      evals: { "flaky/head": true, "flaky/both": false, "was/failing": false, "old/eval": true },
+      costUsd: null,
+      model: "gpt-5",
+    },
+    {
+      evals: { "flaky/head": true, "flaky/both": true, "was/failing": false, "old/eval": true },
+      costUsd: null,
+      model: "gpt-5",
+    },
   ]);
   const head = buildRuns("feat/model-swap", "bbb2222333344445555", [
-    { evals: { "flaky/head": true, "flaky/both": false, "was/failing": true, "new/eval": true }, costUsd: null, model: "claude-opus-4" },
-    { evals: { "flaky/head": false, "flaky/both": true, "was/failing": true, "new/eval": true }, costUsd: null, model: "claude-opus-4" },
-    { evals: { "flaky/head": false, "flaky/both": true, "was/failing": true, "new/eval": true }, costUsd: null, model: "claude-opus-4" },
+    {
+      evals: { "flaky/head": true, "flaky/both": false, "was/failing": true, "new/eval": true },
+      costUsd: null,
+      model: "claude-opus-4",
+    },
+    {
+      evals: { "flaky/head": false, "flaky/both": true, "was/failing": true, "new/eval": true },
+      costUsd: null,
+      model: "claude-opus-4",
+    },
+    {
+      evals: { "flaky/head": false, "flaky/both": true, "was/failing": true, "new/eval": true },
+      costUsd: null,
+      model: "claude-opus-4",
+    },
   ]);
   return computeDelta(base, head, { now: FIXED_NOW });
 }
@@ -225,11 +249,15 @@ describe("renderMarkdown structure", () => {
       evals: { e: true },
       sandboxBackend: "unknown",
     });
-    const report = computeDelta(runs, runs.map((run) => ({ ...run, ref: "feat" })), {
-      now: FIXED_NOW,
-      sandboxInferred: false,
-      hostDefaultSandboxCandidate: "docker",
-    });
+    const report = computeDelta(
+      runs,
+      runs.map((run) => ({ ...run, ref: "feat" })),
+      {
+        now: FIXED_NOW,
+        sandboxInferred: false,
+        hostDefaultSandboxCandidate: "docker",
+      },
+    );
     const md = renderMarkdown(report);
 
     expect(md).toContain("actual sandbox unknown");
@@ -250,7 +278,11 @@ describe("renderMarkdown structure", () => {
     });
     const exceeded = renderMarkdown(computeDelta(base, head, { now: FIXED_NOW }));
     const unchanged = renderMarkdown(
-      computeDelta(base, base.map((run) => ({ ...run, ref: "feat" })), { now: FIXED_NOW }),
+      computeDelta(
+        base,
+        base.map((run) => ({ ...run, ref: "feat" })),
+        { now: FIXED_NOW },
+      ),
     );
 
     expect(exceeded).toContain("### Exceeded performance budgets");
@@ -356,4 +388,12 @@ describe("renderMarkdown structure", () => {
     expect(md).toContain("\\[");
     expect(md).toContain("&lt;&gt;");
   });
+});
+
+it("does not describe partial passing coverage as passing every run", () => {
+  const base = buildRuns("main", "aaa", [{ evals: { smoke: true } }, { evals: {} }]);
+  const head = repeatRuns("head", "bbb", 2, { evals: { smoke: true } });
+  const markdown = renderMarkdown(computeDelta(base, head, { now: FIXED_NOW }));
+  expect(markdown).toContain("| Evals passing every run | 0/1 | 1/1 | +1 |");
+  expect(markdown).toContain("coverage base 1/2 runs");
 });

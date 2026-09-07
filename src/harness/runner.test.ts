@@ -5,35 +5,17 @@
  * are fakes; their concrete implementations have dedicated tests.
  */
 import { beforeEach, describe, expect, it } from "vitest";
+import { fakeWorktrees, harnessRecord } from "../../test/helpers/harness.js";
 import { CommandInterruptedError } from "../adapters/eve.js";
 import { computeCacheKey } from "../collect/cache.js";
 import type { AgentInfo, EveAdapter, RunOptions, RunRecord } from "../types.js";
 import { EvalRunError, runComparison } from "./runner.js";
-import type { CreateWorktreeOptions, WorktreeHandle } from "./worktree.js";
 
 const FAKE_EVE_VERSION = "0.29.5-fake";
 const FAKE_MODEL = "fake/model";
 
 function fakeRecord(ref: string, commitSha: string, runIndex: number): RunRecord {
-  return {
-    ref,
-    commitSha,
-    runIndex,
-    evalResults: [{ name: "e/one", passed: true, checks: [{ name: "c", passed: true }] }],
-    toolCalls: [],
-    skillLoads: [],
-    skillsLoaded: [],
-    subagentCalls: [],
-    tokens: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0 },
-    costUsd: null,
-    durationMs: 1500,
-    sandboxBackend: "docker",
-    model: FAKE_MODEL,
-    pricingModel: FAKE_MODEL,
-    eveVersion: FAKE_EVE_VERSION,
-    dataSources: { evalJson: true, spans: false, logs: false },
-    startedAt: "2026-08-03T10:00:00.000Z",
-  };
+  return harnessRecord(ref, commitSha, runIndex, { model: FAKE_MODEL });
 }
 
 /** Records every suite invocation; optionally fails one specific run. */
@@ -58,31 +40,6 @@ class InterruptedAdapter extends FakeAdapter {
   override async runEvalSuite(): Promise<RunRecord> {
     throw new CommandInterruptedError("eve", ["eval"], "SIGINT");
   }
-}
-
-interface FakeWorktrees {
-  factory: (repoPath: string, ref: string, opts?: CreateWorktreeOptions) => Promise<WorktreeHandle>;
-  cleanups: string[];
-  options: CreateWorktreeOptions[];
-}
-
-function fakeWorktrees(sha: string): FakeWorktrees {
-  const cleanups: string[] = [];
-  const options: CreateWorktreeOptions[] = [];
-  return {
-    cleanups,
-    options,
-    factory: async (_repoPath: string, ref: string, opts = {}) => {
-      options.push(opts);
-      return {
-        path: `/fake-worktree/${ref}`,
-        commitSha: sha,
-        cleanup: async () => {
-          cleanups.push(ref);
-        },
-      };
-    },
-  };
 }
 
 const fakeSandbox = async () => ({ backend: "docker" as const, inferred: true as const });
@@ -112,6 +69,8 @@ const fakeWriteCache = async (
 };
 
 const fakeGitAndCache = {
+  getEvalHarnessChanges: async () => [],
+  getSandboxConfigChanges: async () => [],
   resolveRef: fakeResolveRef,
   readCache: fakeReadCache,
   writeCache: fakeWriteCache,
@@ -139,6 +98,7 @@ describe("runComparison", () => {
     const progress: string[] = [];
 
     const result = await runComparison({
+      ...fakeGitAndCache,
       repoPath: repo,
       appDir: ".",
       baseRef: "main",
@@ -153,7 +113,6 @@ describe("runComparison", () => {
       createWorktree: worktrees.factory,
       inferSandbox: fakeSandbox,
       getAgentInfo: fakeAgentInfo,
-      ...fakeGitAndCache,
     });
 
     // AB/BA counterbalancing: neither side always gets the first slot.
@@ -197,6 +156,7 @@ describe("runComparison", () => {
     const progress: string[] = [];
     let receivedValidityPatterns: readonly string[] | undefined;
     const result = await runComparison({
+      ...fakeGitAndCache,
       repoPath: repo,
       appDir: "apps/agent",
       baseRef: "main",
@@ -214,7 +174,6 @@ describe("runComparison", () => {
         receivedValidityPatterns = patterns;
         return ["apps/agent/evals/quality.eval.ts", "packages/eval-utils/scorer.ts"];
       },
-      ...fakeGitAndCache,
     });
 
     expect(result.meta.validityMismatches).toEqual([
@@ -226,6 +185,7 @@ describe("runComparison", () => {
 
   it("flags authored sandbox configuration changes without claiming a backend", async () => {
     const result = await runComparison({
+      ...fakeGitAndCache,
       repoPath: repo,
       appDir: "apps/agent",
       baseRef: "main",
@@ -239,7 +199,6 @@ describe("runComparison", () => {
       getAgentInfo: fakeAgentInfo,
       getEvalHarnessChanges: async () => [],
       getSandboxConfigChanges: async () => ["apps/agent/agent/sandbox.ts"],
-      ...fakeGitAndCache,
     });
 
     expect(result.meta.sandboxBackend).toBe("unknown");
@@ -253,6 +212,7 @@ describe("runComparison", () => {
   it("passes scripts-on install mode to both worktrees", async () => {
     const worktrees = fakeWorktrees(sha);
     await runComparison({
+      ...fakeGitAndCache,
       repoPath: repo,
       appDir: ".",
       baseRef: "main",
@@ -265,7 +225,6 @@ describe("runComparison", () => {
       createWorktree: worktrees.factory,
       inferSandbox: fakeSandbox,
       getAgentInfo: fakeAgentInfo,
-      ...fakeGitAndCache,
     });
     expect(worktrees.options).toEqual([
       { installDirs: [], installMode: "scripts-on", resolvedCommitSha: sha },
@@ -277,6 +236,7 @@ describe("runComparison", () => {
     const worktrees = fakeWorktrees("b".repeat(40));
     await expect(
       runComparison({
+        ...fakeGitAndCache,
         repoPath: repo,
         appDir: ".",
         baseRef: "main",
@@ -287,9 +247,8 @@ describe("runComparison", () => {
         createWorktree: worktrees.factory,
         inferSandbox: fakeSandbox,
         getAgentInfo: fakeAgentInfo,
-        ...fakeGitAndCache,
       }),
-    ).rejects.toThrow(/base worktree commit mismatch/);
+    ).rejects.toThrow(/worktree commit mismatch/);
     expect(worktrees.cleanups).toEqual(["main"]);
   });
 
@@ -307,6 +266,7 @@ describe("runComparison", () => {
     const progress: string[] = [];
 
     const result = await runComparison({
+      ...fakeGitAndCache,
       repoPath: repo,
       appDir: ".",
       baseRef: "main",
@@ -318,7 +278,6 @@ describe("runComparison", () => {
       createWorktree: worktrees.factory,
       inferSandbox: fakeSandbox,
       getAgentInfo: fakeAgentInfo,
-      ...fakeGitAndCache,
     });
 
     expect(result.meta.baseCacheHit).toBe(true);
@@ -341,6 +300,7 @@ describe("runComparison", () => {
     const worktrees = fakeWorktrees(cachedSha);
 
     const result = await runComparison({
+      ...fakeGitAndCache,
       repoPath: repo,
       appDir: ".",
       baseRef: "main",
@@ -351,7 +311,6 @@ describe("runComparison", () => {
       createWorktree: worktrees.factory,
       inferSandbox: fakeSandbox,
       getAgentInfo: fakeAgentInfo,
-      ...fakeGitAndCache,
     });
 
     expect(result.meta.baseCacheHit).toBe(false);
@@ -367,6 +326,7 @@ describe("runComparison", () => {
     const worktrees = fakeWorktrees(cachedSha);
 
     const result = await runComparison({
+      ...fakeGitAndCache,
       repoPath: repo,
       appDir: ".",
       baseRef: "main",
@@ -377,7 +337,6 @@ describe("runComparison", () => {
       createWorktree: worktrees.factory,
       inferSandbox: fakeSandbox,
       getAgentInfo: fakeAgentInfo,
-      ...fakeGitAndCache,
     });
 
     const key = baseCacheKey();
@@ -397,6 +356,7 @@ describe("runComparison", () => {
     const adapter = new FakeAdapter();
     const worktrees = fakeWorktrees(cachedSha);
     await runComparison({
+      ...fakeGitAndCache,
       repoPath: repo,
       appDir: ".",
       baseRef: "main",
@@ -408,7 +368,6 @@ describe("runComparison", () => {
       createWorktree: worktrees.factory,
       inferSandbox: fakeSandbox,
       getAgentInfo: fakeAgentInfo,
-      ...fakeGitAndCache,
     });
 
     // Base runs executed despite the seeded cache; the file is untouched.
@@ -422,6 +381,7 @@ describe("runComparison", () => {
     const worktrees = fakeWorktrees(sha);
 
     const promise = runComparison({
+      ...fakeGitAndCache,
       repoPath: repo,
       appDir: ".",
       baseRef: "main",
@@ -433,7 +393,6 @@ describe("runComparison", () => {
       createWorktree: worktrees.factory,
       inferSandbox: fakeSandbox,
       getAgentInfo: fakeAgentInfo,
-      ...fakeGitAndCache,
     });
 
     let caught: unknown;
@@ -457,6 +416,7 @@ describe("runComparison", () => {
     const worktrees = fakeWorktrees(sha);
     await expect(
       runComparison({
+        ...fakeGitAndCache,
         repoPath: repo,
         appDir: ".",
         baseRef: "main",
@@ -468,7 +428,6 @@ describe("runComparison", () => {
         createWorktree: worktrees.factory,
         inferSandbox: fakeSandbox,
         getAgentInfo: fakeAgentInfo,
-        ...fakeGitAndCache,
       }),
     ).rejects.toBeInstanceOf(CommandInterruptedError);
     expect(worktrees.cleanups.sort()).toEqual(["HEAD", "main"]);
@@ -477,6 +436,7 @@ describe("runComparison", () => {
   it("rejects a non-positive runs count", async () => {
     await expect(
       runComparison({
+        ...fakeGitAndCache,
         repoPath: repo,
         appDir: ".",
         baseRef: "main",
@@ -491,6 +451,7 @@ describe("runComparison", () => {
     const worktrees = fakeWorktrees(sha);
     await expect(
       runComparison({
+        ...fakeGitAndCache,
         repoPath: repo,
         appDir: ".",
         baseRef: "does-not-exist",
@@ -501,7 +462,6 @@ describe("runComparison", () => {
         createWorktree: worktrees.factory,
         inferSandbox: fakeSandbox,
         getAgentInfo: fakeAgentInfo,
-        ...fakeGitAndCache,
       }),
     ).rejects.toThrow(/was not found in/);
     expect(worktrees.cleanups).toEqual([]);

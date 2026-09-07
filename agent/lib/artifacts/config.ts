@@ -82,7 +82,7 @@ const slugify = (title: string): string =>
  *
  * @remarks
  * Readable rather than opaque, because these ids show up in station messages and in logs, and
- * `analysis-dedupe-reset-emails-k3f9qz` is far easier to reason about than a bare UUID. The
+ * `analysis-dedupe-reset-emails-<uuid>` is far easier to reason about than a bare UUID. The
  * random suffix keeps two analyses of the same work item from colliding.
  *
  * @param kind - One of {@link ARTIFACT_KINDS}.

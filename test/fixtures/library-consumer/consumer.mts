@@ -21,6 +21,11 @@ const report = computeDelta(records.base, records.head, {
 const before = structuredClone(report);
 const published: PublicReport = toPublicReport(report);
 
+// Internal fingerprints cannot be passed off as a published report by adding a version.
+// @ts-expect-error Public fingerprint labels must come through toPublicReport.
+const unredacted: PublicReport = { ...report, schemaVersion: published.schemaVersion };
+void unredacted;
+
 deepStrictEqual(report, before, "Publication must not mutate the internal evidence");
 equal(JSON.stringify(published).includes("private-"), false, "Fingerprint leaked");
 deepStrictEqual(published, JSON.parse(renderJson(report)));
@@ -29,6 +34,8 @@ match(JSON.stringify(report), /private-base/, "Internal evidence should retain f
 equal(violatesEnforcement(report, ["behavioral-drift"]), true);
 match(renderMarkdown(report), /lookup/);
 match(renderTerminal(report, { color: false }), /lookup/);
+match(renderMarkdown(published), /lookup/);
+match(renderTerminal(published, { color: false }), /lookup/);
 
 const normalized = summaryToRunRecord(
   { results: [{ id: "smoke", verdict: "passed" }] },

@@ -126,3 +126,43 @@ for reconstructing `RunRecord` evidence or running another comparison.
 Only the four package entrypoints are supported imports. Deep imports into `dist/`
 remain private. The library is currently 0.x; consumers should pin a compatible
 version and review release notes when upgrading.
+
+### Collection dependencies and validation
+
+`compareRefs`, `runComparison`, and `runEstimate` validate numeric execution options,
+app containment, install policy, eval filters, and validity patterns before resolving refs
+or installing dependencies. `compareRefs` also validates performance budgets before
+collection. Configuration errors have a stable `ConfigurationError` class; ref failures
+use its `RefError` subclass. Command timeouts use `CommandTimeoutError`.
+
+Execution collaborators can be provided through `dependencies: Partial<HarnessDependencies>`.
+The existing top-level injection fields remain supported during the preview migration;
+grouped dependencies take precedence. An adapter's optional `probe().agentInfo` result
+is reused; `null` means metadata was checked but unavailable, while omission preserves
+compatibility with adapters that rely on the separate metadata probe.
+
+`runEstimate({ cache: true, ... })` projects a comparison that reuses the base cache.
+Omitting `cache` projects the default comparison, which executes both refs. A cached
+sample may still provide free estimation evidence in either mode. The returned
+`plannedCacheReuse` states that assumption explicitly. Head-derived cache metadata is
+only an estimate of eligibility; the comparison always checks the base ref itself.
+
+Required Git validity inspection failures produce explicit comparison-validity
+mismatches and prevent an unqualified green report. Cleanup failures are diagnostics
+through `onProgress`; they do not replace the primary execution failure.
+
+### Cost provenance and public report types
+
+`RunRecord.costSource` can be `gateway`, `priced-tokens`, or `unavailable`. An explicitly
+sourced zero is a measured cost; a legacy zero without provenance remains unavailable.
+Pricing preserves record provenance across repeated calls, and totals, estimates, and
+budgets use the same availability rules.
+
+Performance decisions use full-precision amounts. A measured zero baseline followed by
+a positive amount exceeds any percentage budget, because the allowed increase from zero
+is zero. `PerformanceRegression.deltaPct` is nullable for that case; reporters explain the
+amount increase instead of inventing an infinite percentage.
+
+`PublicReport` now distinguishes opaque public fingerprints from internal fingerprints
+at the type level. Create it through `toPublicReport`; both human renderers also accept
+the resulting public projection.

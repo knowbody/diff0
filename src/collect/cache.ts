@@ -16,6 +16,8 @@ import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { z } from "zod";
+import { isRunRecord } from "../schema/run-record.js";
 import type { DependencyInstallMode, RunRecord, SandboxBackend } from "../types.js";
 import { findFileUpward } from "./find-up.js";
 
@@ -124,119 +126,6 @@ async function cachePath(repoPath: string, key: string): Promise<string> {
   return join(await getCacheDirectory(repoPath), `${key}.json`);
 }
 
-function isFiniteNonNegative(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value) && value >= 0;
-}
-
-function isRunRecord(value: unknown): value is RunRecord {
-  if (value === null || typeof value !== "object") return false;
-  const record = value as Partial<RunRecord>;
-  if (
-    typeof record.ref !== "string" ||
-    typeof record.commitSha !== "string" ||
-    !Number.isInteger(record.runIndex) ||
-    (record.runIndex ?? -1) < 0 ||
-    !Array.isArray(record.evalResults) ||
-    !Array.isArray(record.toolCalls) ||
-    !Array.isArray(record.skillLoads) ||
-    !Array.isArray(record.skillsLoaded) ||
-    !Array.isArray(record.subagentCalls) ||
-    !isFiniteNonNegative(record.durationMs) ||
-    typeof record.model !== "string" ||
-    (record.pricingModel !== null && typeof record.pricingModel !== "string") ||
-    typeof record.eveVersion !== "string" ||
-    typeof record.startedAt !== "string" ||
-    Number.isNaN(Date.parse(record.startedAt))
-  ) {
-    return false;
-  }
-  if (
-    record.tokens === undefined ||
-    !isFiniteNonNegative(record.tokens.input) ||
-    !isFiniteNonNegative(record.tokens.output) ||
-    !isFiniteNonNegative(record.tokens.cacheRead) ||
-    !isFiniteNonNegative(record.tokens.cacheWrite)
-  ) {
-    return false;
-  }
-  if (record.costUsd !== null && !isFiniteNonNegative(record.costUsd)) return false;
-  if (
-    !["docker", "microsandbox", "just-bash", "unknown"].includes(record.sandboxBackend ?? "") ||
-    !record.skillsLoaded.every((skill) => typeof skill === "string") ||
-    !record.skillLoads.every(
-      (load) =>
-        load !== null &&
-        typeof load === "object" &&
-        typeof load.name === "string" &&
-        (load.evalName === undefined || typeof load.evalName === "string"),
-    ) ||
-    !record.toolCalls.every(
-      (call) =>
-        call !== null &&
-        typeof call === "object" &&
-        typeof call.name === "string" &&
-        Number.isInteger(call.order) &&
-        call.order >= 0 &&
-        typeof call.inputsHash === "string" &&
-        (call.evalName === undefined || typeof call.evalName === "string"),
-    ) ||
-    !record.subagentCalls.every(
-      (call) =>
-        call !== null &&
-        typeof call === "object" &&
-        typeof call.name === "string" &&
-        Number.isInteger(call.order) &&
-        call.order >= 0 &&
-        (call.evalName === undefined || typeof call.evalName === "string"),
-    )
-  ) {
-    return false;
-  }
-  if (
-    record.finalOutput !== undefined &&
-    (record.finalOutput === null ||
-      typeof record.finalOutput !== "object" ||
-      typeof record.finalOutput.hash !== "string" ||
-      (record.finalOutput.length !== undefined && !isFiniteNonNegative(record.finalOutput.length)))
-  ) {
-    return false;
-  }
-  if (
-    record.dataSources === undefined ||
-    typeof record.dataSources.evalJson !== "boolean" ||
-    typeof record.dataSources.spans !== "boolean" ||
-    typeof record.dataSources.logs !== "boolean"
-  ) {
-    return false;
-  }
-  return record.evalResults.every(
-    (result) =>
-      result !== null &&
-      typeof result === "object" &&
-      typeof result.name === "string" &&
-      typeof result.passed === "boolean" &&
-      (result.finalOutputAbsent === undefined || typeof result.finalOutputAbsent === "boolean") &&
-      !(result.finalOutputAbsent === true && result.finalOutput !== undefined) &&
-      (result.durationMs === undefined || isFiniteNonNegative(result.durationMs)) &&
-      (result.finalOutput === undefined ||
-        (result.finalOutput !== null &&
-          typeof result.finalOutput === "object" &&
-          typeof result.finalOutput.hash === "string" &&
-          (result.finalOutput.length === undefined ||
-            isFiniteNonNegative(result.finalOutput.length)))) &&
-      Array.isArray(result.checks) &&
-      result.checks.every(
-        (check) =>
-          check !== null &&
-          typeof check === "object" &&
-          typeof check.name === "string" &&
-          typeof check.passed === "boolean" &&
-          (check.score === undefined ||
-            (typeof check.score === "number" && check.score >= 0 && check.score <= 1)),
-      ),
-  );
-}
-
 /** Cached base-ref records, or null on miss/expiry/incompatibility/corruption. */
 export async function readCache(
   repoPath: string,
@@ -250,17 +139,17 @@ export async function readCache(
     return null;
   }
   try {
-    const parsed = JSON.parse(raw) as Partial<CacheFile>;
-    if (
-      parsed.schemaVersion !== CACHE_SCHEMA_VERSION ||
-      parsed.key !== key ||
-      parsed.diff0Version !== getDiff0Version() ||
-      typeof parsed.createdAt !== "string" ||
-      !Array.isArray(parsed.records) ||
-      !parsed.records.every(isRunRecord)
-    ) {
-      return null;
-    }
+    const result = z
+      .object({
+        schemaVersion: z.literal(CACHE_SCHEMA_VERSION),
+        key: z.literal(key),
+        diff0Version: z.literal(getDiff0Version()),
+        createdAt: z.string(),
+        records: z.array(z.custom<RunRecord>(isRunRecord)),
+      })
+      .safeParse(JSON.parse(raw));
+    if (!result.success) return null;
+    const parsed = result.data;
     const createdAtMs = Date.parse(parsed.createdAt);
     const nowMs = options.nowMs ?? Date.now();
     const maxAgeMs = options.maxAgeMs ?? DEFAULT_CACHE_MAX_AGE_MS;
@@ -272,7 +161,7 @@ export async function readCache(
     ) {
       return null;
     }
-    return parsed.records as RunRecord[];
+    return parsed.records;
   } catch {
     return null;
   }

@@ -1,47 +1,10 @@
 import type { MessageStreamEvent } from "eve/client";
 
-/**
- * Every write tool the `github` extension mounts, namespaced as the model
- * sees them.
- *
- * @remarks
- * Read-only evals assert `notCalledTool` over this whole list rather than
- * naming the one tool a bad run might reach for, so a new write tool added to
- * the extension is automatically forbidden in every read-only eval until
- * someone allows it deliberately. Keep in sync with the `include` list in
- * `agent/extensions/github/extension.ts`.
- */
-export const GITHUB_WRITE_TOOLS = [
-  "github__addAssignees",
-  "github__addIssueComment",
-  "github__addLabels",
-  "github__addPullRequestComment",
-  "github__closeIssue",
-  "github__createIssue",
-  "github__createPullRequest",
-  "github__removeAssignees",
-  "github__removeLabel",
-  "github__requestReviewers",
-  "github__updateIssue",
-  "github__updatePullRequest",
-] as const;
+import { MOUNTED_GITHUB_WRITES, ROOT_WRITE_TOOLS } from "../agent/lib/github/capabilities.js";
 
-/**
- * Root-mounted write tools (not part of the `github` extension).
- *
- * @remarks
- * Read-only evals assert `notCalledTool` over this list alongside
- * {@link GITHUB_WRITE_TOOLS}, so a read-only turn that reaches for the shared
- * factory brain fails. `read_factory_brain` and `read_artifact` are
- * deliberately absent: reading the brain or a handoff artifact is always
- * allowed. The station-side `save_artifact` never mounts on the root, so it
- * does not belong here either.
- */
-export const ROOT_WRITE_TOOLS = ["update_factory_brain"] as const;
-
-/**
- * Every write tool the model can reach, extension and root alike.
- */
+/** Derived from the mounted extension inventory and the SDK's write classification. */
+export const GITHUB_WRITE_TOOLS = MOUNTED_GITHUB_WRITES.map((name) => `github__${name}` as const);
+export { ROOT_WRITE_TOOLS };
 export const WRITE_TOOLS = [...GITHUB_WRITE_TOOLS, ...ROOT_WRITE_TOOLS] as const;
 
 /**

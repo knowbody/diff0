@@ -1,7 +1,14 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { minimatch } from "minimatch";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
+import {
+  BEHAVIOR_COMPARISON_PATTERNS,
+  CI_ONLY_CHECK_IDS,
+  HOSTED_INTEGRATION_SCENARIOS,
+  VERIFICATION_CHECKS,
+  verificationPlan,
+} from "../agent/lib/verification.js";
 
 const workflows = {
   free: "diff0-free.yml",
@@ -13,9 +20,8 @@ const workflows = {
 // extglobs or negation. Read the real YAML so drift in a trigger is caught.
 const routes = Object.entries(workflows).map(([target, file]) => ({
   target,
-  paths: parse(
-    readFileSync(new URL(`../.github/workflows/${file}`, import.meta.url), "utf8"),
-  ).on.pull_request.paths as string[],
+  paths: parse(readFileSync(new URL(`../.github/workflows/${file}`, import.meta.url), "utf8")).on
+    .pull_request.paths as string[],
 }));
 
 function comparisonsFor(paths: string[]): string[] {
@@ -40,8 +46,8 @@ describe("comparison workflow routing", () => {
     ["agent/extensions/github/tools/github.ts", ["maintenance"]],
     ["evals/safety/prompt-injection.eval.ts", ["maintenance"]],
     ["evals/helpers.ts", ["maintenance"]],
-    ["package.json", ["maintenance"]],
-    ["pnpm-lock.yaml", ["maintenance"]],
+    ["package.json", ["free", "maintenance"]],
+    ["pnpm-lock.yaml", ["free", "maintenance"]],
     ["package-lock.json", ["maintenance"]],
     ["yarn.lock", ["maintenance"]],
     ["bun.lock", ["maintenance"]],
@@ -58,9 +64,9 @@ describe("comparison workflow routing", () => {
     ["fixtures/demo-agent/README.md", []],
     ["docs/credential-free-ci.md", []],
     ["website/app/page.tsx", []],
-    ["src/report/format.ts", []],
-    ["src/cli.ts", []],
-    ["action/dist/cli.mjs", []],
+    ["src/report/format.ts", ["free"]],
+    ["src/cli.ts", ["free"]],
+    ["action/dist/cli.mjs", ["free"]],
     ["test/format.test.ts", []],
     ["evals/pipeline/tiny-cost.eval.ts", []],
     [".github/workflows/diff0-free.yml", ["free"]],
@@ -72,10 +78,61 @@ describe("comparison workflow routing", () => {
   });
 
   it("routes mixed PRs to both apps without letting docs suppress an agent change", () => {
-    expect(comparisonsFor([
-      "README.md",
-      "fixtures/demo-agent/agent/instructions.md",
-      "agent/instructions.ts",
-    ])).toEqual(["free", "demo", "maintenance"]);
+    expect(
+      comparisonsFor([
+        "README.md",
+        "fixtures/demo-agent/agent/instructions.md",
+        "agent/instructions.ts",
+      ]),
+    ).toEqual(["free", "demo", "maintenance"]);
   });
+});
+
+describe("verification policy matches CI", () => {
+  it("runs deterministic comparisons for every app-owned behavioral scope", () => {
+    const free = routes.find((route) => route.target === "free");
+    for (const pattern of BEHAVIOR_COMPARISON_PATTERNS) expect(free?.paths).toContain(pattern);
+  });
+  it("executes the named verification checks, including the CI-only runtime proof", () => {
+    const workflow = parse(
+      readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"),
+    );
+    const commands = workflow.jobs.ci.steps
+      .flatMap((step: { run?: string }) => (step.run ?? "").split("\n"))
+      .map((command: string) => command.trim());
+    for (const id of [
+      "typecheck",
+      "lint",
+      "unit",
+      "integration",
+      "package",
+      ...CI_ONLY_CHECK_IDS,
+    ] as const) {
+      expect(commands).toContain(VERIFICATION_CHECKS[id]);
+    }
+    expect(commands).toContain("pnpm action:build");
+    expect(commands).toContain("git diff --exit-code -- action/dist");
+    expect(
+      commands.some((command: string) => command.includes("npm install --engine-strict")),
+    ).toBe(true);
+  });
+});
+
+it("covers every integration scenario in separate bounded hosted steps while CI runs the full suite", () => {
+  const files = ["src", "test"].flatMap((directory) =>
+    readdirSync(new URL(`../${directory}/`, import.meta.url), { recursive: true })
+      .filter((file): file is string => typeof file === "string")
+      .filter((file) => /integration\.test\.[cm]?[jt]sx?$/.test(file))
+      .filter(
+        (file) => !file.split(/[\\/]/).some((part) => ["node_modules", ".claude"].includes(part)),
+      )
+      .map((file) => `${directory}/${file}`),
+  );
+  expect(Object.values(HOSTED_INTEGRATION_SCENARIOS).sort()).toEqual(files.sort());
+  const plan = verificationPlan([], "a".repeat(40));
+  const hosted = plan.filter(({ id }) => id.startsWith("integration-"));
+  expect(hosted).toHaveLength(files.length);
+  for (const file of files)
+    expect(hosted.map(({ command }) => command)).toContain(`pnpm exec vitest run ${file}`);
+  expect(plan.map(({ command }) => command)).not.toContain(VERIFICATION_CHECKS.integration);
 });

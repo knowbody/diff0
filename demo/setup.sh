@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # demo/setup.sh — prepare everything the vhs demo tape needs. Idempotent:
-# safe to re-run; it rebuilds the demo repo at /tmp/diff0-demo from scratch
+# safe to re-run; it creates a unique retained scratch checkout
 # and pre-warms diff0's base-ref cache so the recorded run is head-only.
 #
 # The demo runs against the REAL model (anthropic/claude-haiku-4.5 via the
@@ -14,7 +14,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-DEMO_REPO=/tmp/diff0-demo
+DEMO_REPO="$(mktemp -d "${TMPDIR:-/tmp}/diff0-demo.XXXXXX")"
+source "${SCRIPT_DIR}/fixture.sh"
+trap 'if [ $? -ne 0 ]; then rm -rf "$DEMO_REPO"; fi' EXIT
 FIXTURE="${REPO_ROOT}/fixtures/demo-agent"
 
 step() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
@@ -43,14 +45,7 @@ step "Building current diff0 (${REPO_ROOT})"
 
 # ------------------------------------------------------ 2. demo repo files
 step "Creating demo repo at ${DEMO_REPO}"
-rm -rf "${DEMO_REPO}"
-mkdir -p "${DEMO_REPO}"
-rsync -a --exclude node_modules --exclude .eve "${FIXTURE}/" "${DEMO_REPO}/"
-
-cat > "${DEMO_REPO}/.gitignore" <<'EOF'
-node_modules/
-.eve/
-EOF
+copy_demo_fixture "${FIXTURE}" "${DEMO_REPO}"
 
 # ------------------------------------------------- 3. git history (2 refs)
 step "Committing baseline on main"
@@ -101,3 +96,5 @@ node "${REPO_ROOT}/dist/cli.js" run \
 step "Done"
 echo "Demo repo ready at ${DEMO_REPO} (on simplify-pipeline, base cache warm)."
 echo "Record with: cd ${REPO_ROOT} && vhs demo/demo.tape"
+
+printf '\nRetained demo checkout: %s\nRecord with: DIFF0_DEMO_REPO=%q vhs demo/demo.tape\nRemove the checkout after recording.\n' "$DEMO_REPO" "$DEMO_REPO"

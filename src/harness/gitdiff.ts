@@ -10,6 +10,7 @@ import { isAbsolute, posix, win32 } from "node:path";
 import { promisify } from "node:util";
 import { minimatch } from "minimatch";
 import type { GitDiffFileStat, GitDiffStat } from "../analyze/types.js";
+import { ConfigurationError } from "../errors.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -42,7 +43,9 @@ export function normalizeValidityPattern(pattern: string): string {
     win32.isAbsolute(pattern) ||
     normalized.split("/").includes("..")
   ) {
-    throw new Error(`validity pattern must be a contained repo-relative glob (got ${pattern})`);
+    throw new ConfigurationError(
+      `validity pattern must be a contained repo-relative glob (got ${pattern})`,
+    );
   }
   return normalized;
 }
@@ -76,6 +79,35 @@ function matchingPaths(paths: string[], patterns: readonly string[]): string[] {
       ),
     )
     .sort();
+}
+
+export type ValidityInspection =
+  | { status: "checked"; evalHarnessChanges: string[]; sandboxConfigChanges: string[] }
+  | { status: "unavailable"; reason: string };
+
+/** One Git snapshot feeds both required validity policies. */
+export async function inspectValidity(
+  repoPath: string,
+  baseSha: string,
+  headSha: string,
+  appDir: string,
+  validityPatterns: readonly string[] = [],
+): Promise<ValidityInspection> {
+  const patterns = [
+    appRelativeGlob(appDir, "evals/**"),
+    ...validityPatterns.map(normalizeValidityPattern),
+  ];
+  const paths = await getChangedPaths(repoPath, baseSha, headSha);
+  if (paths === null)
+    return { status: "unavailable", reason: "Git changed-path inspection failed" };
+  return {
+    status: "checked",
+    evalHarnessChanges: matchingPaths(paths, patterns),
+    sandboxConfigChanges: matchingPaths(
+      paths,
+      EVE_SANDBOX_CONFIG_GLOBS.map((pattern) => appRelativeGlob(appDir, pattern)),
+    ),
+  };
 }
 
 /**

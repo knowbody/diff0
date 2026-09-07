@@ -421,7 +421,7 @@ else process.exit(2);
 
     try {
       const adapter = new EveCliAdapter();
-      await expect(adapter.probe(cwd)).resolves.toEqual({
+      await expect(adapter.probe(cwd)).resolves.toMatchObject({
         eveVersion: "0.47.5",
         evalIds: ["compat/eval"],
       });

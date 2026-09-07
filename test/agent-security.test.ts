@@ -1,6 +1,6 @@
 import type { SessionAuthContext } from "eve/context";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { isTrustedCommenter } from "../agent/channels/github.js";
+import { isTrustedCommenter, type RepositoryRoleContext } from "../agent/channels/github.js";
 import { artifactId, artifactKey, artifactScope } from "../agent/lib/artifacts/config.js";
 import { DOCUMENT_ACCESS } from "../agent/lib/blob.js";
 import { FACTORY_BRANCH_PREFIX, FACTORY_REPO, factoryRepo } from "../agent/lib/constants.js";
@@ -9,6 +9,7 @@ import {
   commentPolicy,
   isReviewedRemoteCommit,
   labelPolicy,
+  type RepositoryApprovalContext,
   updateIssuePolicy,
   writePolicy,
 } from "../agent/lib/github/approval.js";
@@ -67,16 +68,12 @@ const approvalContext = (
   toolInput?: Record<string, unknown>,
 ) =>
   ({
-    approvedTools: new Set<string>(),
-    callId: "call-1",
     session: {
       auth: { current, initiator },
       id: "session-1",
-      turn: { id: "turn-1", sequence: 1 },
     },
     toolInput,
-    toolName: "test",
-  }) as never;
+  }) satisfies RepositoryApprovalContext;
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -150,7 +147,7 @@ describe("GitHub comment dispatch trust", () => {
       },
       repository: { name: "diff0", owner: "knowbody" },
       sender: { login: "maintainer" },
-    }) as never;
+    }) satisfies RepositoryRoleContext;
 
   it.each([
     ["admin", true],
@@ -164,11 +161,9 @@ describe("GitHub comment dispatch trust", () => {
   });
 
   it("propagates permission API failures instead of granting trust", async () => {
-    const ctx = contextWithRole("write") as {
-      github: { request: ReturnType<typeof vi.fn> };
-    };
+    const ctx = contextWithRole("write");
     ctx.github.request.mockRejectedValueOnce(new Error("permission lookup failed"));
-    await expect(isTrustedCommenter(ctx as never)).rejects.toThrow("permission lookup failed");
+    await expect(isTrustedCommenter(ctx)).rejects.toThrow("permission lookup failed");
   });
 });
 
@@ -358,7 +353,7 @@ describe("private scoped storage", () => {
     expect(write).toHaveBeenCalledWith(
       intakeLatchKey(17),
       expect.stringContaining('"deliveryId":"delivery-1"'),
-      { allowOverwrite: false },
+      { allowOverwrite: false, contentType: "application/json" },
     );
     await clearIntakeLatch(17, storage);
     expect(remove).toHaveBeenCalledWith(intakeLatchKey(17));
@@ -375,4 +370,25 @@ describe("private scoped storage", () => {
     };
     await expect(claimIntakeLatch(18, "delivery-2", racedStorage)).resolves.toBe(false);
   });
+});
+
+describe("read-only eval capability inventory", () => {
+  it("classifies mounted writes from the SDK and requires an explicit approval policy for each", async () => {
+    const { githubOptions } = await import("../agent/extensions/github/extension.js");
+    const { GITHUB_WRITE_TOOLS: sdkWrites } = await import("@github-tools/sdk");
+    const { GITHUB_WRITE_TOOLS, WRITE_TOOLS } = await import("../evals/helpers.js");
+    const mountedWrites = githubOptions.include.filter((name) => name in sdkWrites).sort();
+    expect(Object.keys(githubOptions.requireApproval).sort()).toEqual(mountedWrites);
+    expect([...GITHUB_WRITE_TOOLS].sort()).toEqual(
+      mountedWrites.map((name) => `github__${name}`).sort(),
+    );
+    expect(WRITE_TOOLS).toContain("update_factory_brain");
+  });
+
+  it.each(["eve/a.lock", "eve/.hidden", "eve/a.lock/child"])(
+    "rejects Git-invalid branch %s before interpolation",
+    (branch) => {
+      expect(validateBranchName(branch)).not.toBeNull();
+    },
+  );
 });

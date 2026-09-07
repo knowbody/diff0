@@ -6,10 +6,10 @@
 #      (YELLOW: reporter used in 5 of 5 base runs -> 0 of 5 head runs,
 #       while all eval observations stay green)
 #
-# Prerequisites: bash demo/setup.sh   (builds diff0, creates /tmp/diff0-demo
+# Prerequisites: bash demo/setup.sh   (builds diff0, creates a retained scratch checkout
 # on branch simplify-pipeline, sources AI_GATEWAY_API_KEY from the repo .env,
 # warms eve and diff0's base cache so beat 3 runs head-only).
-# Record FROM THE REPO ROOT: vhs demo/demo.tape   (the hidden setup below
+# Record FROM THE REPO ROOT: DIFF0_DEMO_REPO=<printed-path> vhs demo/demo.tape (the hidden setup below
 # resolves the repo .env and dist/cli.js relative to the invocation
 # directory). Real-model beats take real time: beat 2 ~25-40s, beat 3 ~2-3m.
 #
@@ -44,7 +44,7 @@ Type "export GIT_PAGER=cat"
 Enter
 Type "export PS1='$ '"
 Enter
-Type "cd /tmp/diff0-demo && clear"
+Type 'cd "${DIFF0_DEMO_REPO:?run demo/setup.sh and set its printed checkout path}" && clear'
 Enter
 Show
 

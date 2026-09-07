@@ -5,12 +5,12 @@
  * code 4 surfaces through runCli with the "how far it got" message.
  */
 import { beforeEach, describe, expect, it } from "vitest";
+import { fakeWorktrees, harnessRecord } from "../../test/helpers/harness.js";
 import { EvalFilterNoMatchError } from "../adapters/eve.js";
 import { runCli } from "../cli.js";
 import { computeCacheKey } from "../collect/cache.js";
 import type { AgentInfo, EveAdapter, RunOptions, RunRecord } from "../types.js";
 import { MaxSpendExceededError, runComparison, type SpendUpdate } from "./runner.js";
-import type { WorktreeHandle } from "./worktree.js";
 
 const FAKE_EVE_VERSION = "0.29.5-fake";
 const FAKE_MODEL = "fake/unpriced-model";
@@ -21,25 +21,7 @@ function costedRecord(
   runIndex: number,
   costUsd: number | null,
 ): RunRecord {
-  return {
-    ref,
-    commitSha,
-    runIndex,
-    evalResults: [{ name: "e/one", passed: true, checks: [{ name: "c", passed: true }] }],
-    toolCalls: [],
-    skillLoads: [],
-    skillsLoaded: [],
-    subagentCalls: [],
-    tokens: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0 },
-    costUsd,
-    durationMs: 1500,
-    sandboxBackend: "docker",
-    model: FAKE_MODEL,
-    pricingModel: FAKE_MODEL,
-    eveVersion: FAKE_EVE_VERSION,
-    dataSources: { evalJson: true, spans: false, logs: false },
-    startedAt: "2026-08-03T10:00:00.000Z",
-  };
+  return harnessRecord(ref, commitSha, runIndex, { model: FAKE_MODEL, costUsd });
 }
 
 /** Every suite run reports the same (gateway) cost; null = unmeasurable. */
@@ -65,31 +47,6 @@ class FilterMissAdapter extends CostedAdapter {
   ): Promise<RunRecord> {
     throw new EvalFilterNoMatchError(["missing"], ["e/one"]);
   }
-}
-
-interface FakeWorktrees {
-  factory: (repoPath: string, ref: string) => Promise<WorktreeHandle>;
-  created: string[];
-  cleanups: string[];
-}
-
-function fakeWorktrees(sha: string): FakeWorktrees {
-  const created: string[] = [];
-  const cleanups: string[] = [];
-  return {
-    created,
-    cleanups,
-    factory: async (_repoPath: string, ref: string) => {
-      created.push(ref);
-      return {
-        path: `/fake-worktree/${ref}`,
-        commitSha: sha,
-        cleanup: async () => {
-          cleanups.push(ref);
-        },
-      };
-    },
-  };
 }
 
 const fakeSandbox = async () => ({ backend: "docker" as const, inferred: true as const });

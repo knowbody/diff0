@@ -12,19 +12,22 @@ export default defineTool({
   description:
     "Run the next required repository check for the reviewed commit. Call sequentially until complete is true, then call attest_review. Each call runs one bounded check and saves its result durably. Do not repeat the full suite manually.",
   inputSchema: z.object({ branch: z.string().min(1) }),
-  outputSchema: z.object({
-    success: z.boolean(),
-    complete: z.boolean(),
-    checks: z.array(z.string()).optional(),
-    nextCheck: z.string().optional(),
-    error: z.string().optional(),
-  }),
+  outputSchema: z.union([
+    z.object({ success: z.literal(false), complete: z.literal(false), error: z.string() }),
+    z.object({ success: z.literal(true), complete: z.literal(true), checks: z.array(z.string()) }),
+    z.object({
+      success: z.literal(true),
+      complete: z.literal(false),
+      checks: z.array(z.string()),
+      nextCheck: z.string(),
+    }),
+  ]),
   async execute({ branch }, ctx) {
     const root = ctx.session.parent?.rootSessionId ?? ctx.session.id;
     if (!isOwnedBranch(branch, root) || validateBranch(branch))
       return {
-        success: false,
-        complete: false,
+        success: false as const,
+        complete: false as const,
         error: "That branch is not owned by this agent session.",
       };
     try {
@@ -33,11 +36,13 @@ export default defineTool({
       reviewChecks.update(() => next);
       const plan = await reviewCheckPlan(sandbox);
       const nextCheck = plan.checks[next.passed.length];
-      return { success: true, complete: nextCheck === undefined, checks: next.passed, nextCheck };
+      return nextCheck === undefined
+        ? { success: true as const, complete: true as const, checks: next.passed }
+        : { success: true as const, complete: false as const, checks: next.passed, nextCheck };
     } catch (error) {
       return {
-        success: false,
-        complete: false,
+        success: false as const,
+        complete: false as const,
         error: error instanceof Error ? error.message : "Required review check failed.",
       };
     }

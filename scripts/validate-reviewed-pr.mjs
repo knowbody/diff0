@@ -1,5 +1,6 @@
 import { appendFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { requestGitHub } from "../action/github-request.mjs";
 
 /** Bind a paid comparison to the exact same-repository commit the owner reviewed. */
 export function validateReviewedPullRequest(pr, repository, reviewedSha, expectedBaseSha) {
@@ -28,15 +29,10 @@ async function main() {
   if (!GITHUB_REPOSITORY || !GH_TOKEN || !/^[1-9][0-9]*$/.test(PR_NUMBER ?? "")) {
     throw new Error("Repository, GitHub token, and a positive PR number are required.");
   }
-  const response = await fetch(
+  const response = await requestGitHub(
+    fetch,
     `https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}`,
-    {
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${GH_TOKEN}`,
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
-    },
+    { token: GH_TOKEN },
   );
   if (!response.ok) throw new Error(`Could not inspect PR #${PR_NUMBER}: HTTP ${response.status}`);
   const refs = validateReviewedPullRequest(
@@ -46,7 +42,10 @@ async function main() {
     EXPECTED_BASE_SHA,
   );
   if (process.env.GITHUB_OUTPUT) {
-    appendFileSync(process.env.GITHUB_OUTPUT, `base-sha=${refs.baseSha}\nhead-sha=${refs.headSha}\n`);
+    appendFileSync(
+      process.env.GITHUB_OUTPUT,
+      `base-sha=${refs.baseSha}\nhead-sha=${refs.headSha}\n`,
+    );
   }
   console.log(`Verified PR #${PR_NUMBER}: ${refs.baseSha}...${refs.headSha}`);
 }

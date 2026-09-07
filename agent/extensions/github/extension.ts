@@ -1,5 +1,6 @@
 import githubExtension from "@github-tools/eve-extension";
 import { factoryRepo } from "../../lib/constants.js";
+import { GITHUB_MOUNTED_TOOLS } from "../../lib/github/capabilities.js";
 import { GITHUB_CONNECTOR } from "../../lib/github/credentials.js";
 import { githubApproval, githubModelOutput } from "../../lib/github/runtime-callbacks.js";
 
@@ -36,39 +37,7 @@ export const githubOptions = {
     getPullRequestContext: { toModelOutput: githubModelOutput },
     listPullRequestFiles: { toModelOutput: githubModelOutput },
   },
-  include: [
-    "getRepository",
-    "getRepositoryTree",
-    "getFileContent",
-    "searchCode",
-    "listBranches",
-    "listCommits",
-    "getCommit",
-    "compareCommits",
-    "searchIssues",
-    "listIssues",
-    "getIssueContext",
-    "listIssueComments",
-    "createIssue",
-    "updateIssue",
-    "closeIssue",
-    "addIssueComment",
-    "listLabels",
-    "addLabels",
-    "removeLabel",
-    "addAssignees",
-    "removeAssignees",
-    "listPullRequests",
-    "getPullRequestContext",
-    "listPullRequestFiles",
-    "listPullRequestReviews",
-    "createPullRequest",
-    "updatePullRequest",
-    "addPullRequestComment",
-    "requestReviewers",
-    "listCheckRuns",
-    "getCiFailureContext",
-  ],
+  include: [...GITHUB_MOUNTED_TOOLS],
   requireApproval: {
     addAssignees: githubApproval("write"),
     addIssueComment: githubApproval("comment"),

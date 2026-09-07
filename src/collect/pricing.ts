@@ -14,20 +14,25 @@
 import { readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { z } from "zod";
 import type { CostSource } from "../analyze/types.js";
+import { availableCost, summarizeCostSource } from "../cost.js";
 import type { RunRecord } from "../types.js";
 import { findFileUpward } from "./find-up.js";
 
-export interface ModelPrice {
-  inputPerToken: number;
-  outputPerToken: number;
-  cacheReadPerToken?: number;
-  cacheWritePerToken?: number;
-}
-
-interface PricesTable {
-  models: Record<string, ModelPrice>;
-}
+const rate = z.number().finite().nonnegative();
+export const pricesTableSchema = z.object({
+  models: z.record(
+    z.string(),
+    z.object({
+      inputPerToken: rate,
+      outputPerToken: rate,
+      cacheReadPerToken: rate.optional(),
+      cacheWritePerToken: rate.optional(),
+    }),
+  ),
+});
+export type ModelPrice = z.infer<typeof pricesTableSchema>["models"][string];
 
 export interface ApplyPricingOptions {
   /** Override the prices.json path (tests). Default: walk up from this module. */
@@ -50,11 +55,10 @@ function loadPrices(pricesPath: string | undefined): Record<string, ModelPrice> 
   const path = pricesPath ?? defaultPricesPath();
   if (path === null) return {};
   try {
-    const parsed = JSON.parse(readFileSync(path, "utf8")) as Partial<PricesTable>;
-    if (parsed.models === undefined || typeof parsed.models !== "object") return {};
-    return parsed.models;
-  } catch {
-    // Unreadable/corrupt table -> no fallback pricing; records stay unpriced.
+    return pricesTableSchema.parse(JSON.parse(readFileSync(path, "utf8"))).models;
+  } catch (cause) {
+    if (pricesPath !== undefined) throw new Error(`Invalid prices table at ${path}.`, { cause });
+    // Missing/corrupt bundled fallback is unavailable; explicit configuration errors are actionable.
     return {};
   }
 }
@@ -67,19 +71,20 @@ export function applyPricing(
     return { records: [], costSource: "unavailable" };
   }
 
-  if (records.every((r) => r.costUsd !== null)) {
-    return { records, costSource: "gateway" };
+  if (records.every((r) => availableCost(r) !== null)) {
+    return {
+      records: records.map((record) => ({ ...record })),
+      costSource: summarizeCostSource(records),
+    };
   }
 
   const models = loadPrices(opts.pricesPath);
-  let anyUnpriced = false;
 
   const priced = records.map((record): RunRecord => {
-    if (record.costUsd !== null) return record; // gateway cost wins per record
+    if (record.costUsd !== null) return { ...record }; // Do not turn legacy mock zero into token pricing.
     const price = record.pricingModel === null ? undefined : models[record.pricingModel];
     if (price === undefined) {
-      anyUnpriced = true;
-      return record;
+      return { ...record };
     }
     if (
       (record.tokens.cacheRead > 0 && price.cacheReadPerToken === undefined) ||
@@ -87,18 +92,16 @@ export function applyPricing(
     ) {
       // Never silently price cached tokens as ordinary input. Providers use materially different
       // read/write rates, and the gateway catalog does not always publish both.
-      anyUnpriced = true;
-      return record;
+      return { ...record };
     }
-    return {
-      ...record,
-      costUsd:
-        record.tokens.input * price.inputPerToken +
-        record.tokens.output * price.outputPerToken +
-        record.tokens.cacheRead * (price.cacheReadPerToken ?? 0) +
-        record.tokens.cacheWrite * (price.cacheWritePerToken ?? 0),
-    };
+    const costUsd =
+      record.tokens.input * price.inputPerToken +
+      record.tokens.output * price.outputPerToken +
+      record.tokens.cacheRead * (price.cacheReadPerToken ?? 0) +
+      record.tokens.cacheWrite * (price.cacheWritePerToken ?? 0);
+    if (!Number.isFinite(costUsd) || costUsd < 0) return { ...record };
+    return { ...record, costSource: "priced-tokens", costUsd };
   });
 
-  return { records: priced, costSource: anyUnpriced ? "unavailable" : "priced-tokens" };
+  return { records: priced, costSource: summarizeCostSource(priced) };
 }

@@ -16,6 +16,10 @@ import {
 import { readReviewAttestation } from "./review-attestation.js";
 import { isOwnedBranch } from "./runtime-push.js";
 
+export type RepositoryApprovalContext = Pick<ApprovalContext, "toolInput"> & {
+  session: Pick<ApprovalContext["session"], "auth" | "id">;
+};
+
 type IssueTargetInput = { issueNumber?: unknown } | undefined;
 
 /** Both records must exist and name the same immutable commit. */
@@ -56,7 +60,7 @@ function autonomousIssueTargetPolicy(
  * dev TUI included, parks on a card, which is also how the approval flow
  * stays demoable.
  */
-export function writePolicy(ctx: ApprovalContext): ApprovalStatus {
+export function writePolicy(ctx: RepositoryApprovalContext): ApprovalStatus {
   const auth = ctx.session.auth;
   if (isAutonomousSession(auth)) {
     return {
@@ -85,7 +89,7 @@ export function writePolicy(ctx: ApprovalContext): ApprovalStatus {
  * comment anywhere else in the repository. Attended callers follow
  * {@link writePolicy} unchanged.
  */
-export function commentPolicy(ctx: ApprovalContext): ApprovalStatus {
+export function commentPolicy(ctx: RepositoryApprovalContext): ApprovalStatus {
   const auth = ctx.session.auth;
   if (!isAutonomousSession(auth)) {
     return writePolicy(ctx);
@@ -105,7 +109,7 @@ export function commentPolicy(ctx: ApprovalContext): ApprovalStatus {
  * the shared brain). Trusted callers write without a card; every other human
  * caller, the dev TUI included, parks on one.
  */
-export function factoryBrainPolicy(ctx: ApprovalContext): ApprovalStatus {
+export function factoryBrainPolicy(ctx: RepositoryApprovalContext): ApprovalStatus {
   const auth = ctx.session.auth;
   if (isAutonomousSession(auth)) {
     return {
@@ -123,7 +127,7 @@ export function factoryBrainPolicy(ctx: ApprovalContext): ApprovalStatus {
  * Label writes: the one reversible write an unattended run also needs, so it
  * can mark the work item as picked up.
  */
-export function labelPolicy(ctx: ApprovalContext): ApprovalStatus {
+export function labelPolicy(ctx: RepositoryApprovalContext): ApprovalStatus {
   return isAutonomousSession(ctx.session.auth)
     ? autonomousIssueTargetPolicy(
         ctx.session.auth,
@@ -140,7 +144,7 @@ export function labelPolicy(ctx: ApprovalContext): ApprovalStatus {
  * This parks for every human caller, trusted or not; shipping is the factory's
  * human gate. Unattended runs are denied outright.
  */
-export function shipPolicy(ctx: ApprovalContext): ApprovalStatus {
+export function shipPolicy(ctx: RepositoryApprovalContext): ApprovalStatus {
   if (isAutonomousSession(ctx.session.auth)) {
     return {
       reason: "Unattended factory runs stop at a draft pull request; a person marks it ready.",
@@ -160,7 +164,7 @@ export function shipPolicy(ctx: ApprovalContext): ApprovalStatus {
  * gate. Unattended issue-label runs can only update the issue that was stamped
  * into their session at dispatch.
  */
-export function closeIssuePolicy(ctx: ApprovalContext): ApprovalStatus {
+export function closeIssuePolicy(ctx: RepositoryApprovalContext): ApprovalStatus {
   return isAutonomousSession(ctx.session.auth)
     ? autonomousIssueTargetPolicy(ctx.session.auth, ctx.toolInput as IssueTargetInput, "close")
     : writePolicy(ctx);
@@ -174,7 +178,9 @@ export function closeIssuePolicy(ctx: ApprovalContext): ApprovalStatus {
  * A draft cannot merge, so an unattended run can deliver its finished work
  * without a card while marking the PR ready stays a human act.
  */
-export async function createPullRequestPolicy(ctx: ApprovalContext): Promise<ApprovalStatus> {
+export async function createPullRequestPolicy(
+  ctx: RepositoryApprovalContext,
+): Promise<ApprovalStatus> {
   const input = ctx.toolInput as DraftPullRequestInput | undefined;
   if (input?.draft !== true) {
     return shipPolicy(ctx);
@@ -222,7 +228,7 @@ export async function createPullRequestPolicy(ctx: ApprovalContext): Promise<App
  * same way, while a stateless edit (title, body, labels) stays under the
  * baseline write policy.
  */
-export function updateIssuePolicy(ctx: ApprovalContext): ApprovalStatus {
+export function updateIssuePolicy(ctx: RepositoryApprovalContext): ApprovalStatus {
   if (isAutonomousSession(ctx.session.auth)) {
     const targetStatus = autonomousIssueTargetPolicy(
       ctx.session.auth,

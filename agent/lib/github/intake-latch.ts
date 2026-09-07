@@ -7,7 +7,11 @@ const INTAKE_LATCH_PREFIX = "intake-latches/";
 export interface IntakeLatchStorage {
   delete(key: string): Promise<unknown>;
   read(key: string): Promise<{ found: boolean }>;
-  write(key: string, contents: string, options: { allowOverwrite: boolean }): Promise<unknown>;
+  write(
+    key: string,
+    contents: string,
+    options: { allowOverwrite: boolean; contentType?: "text/markdown" | "application/json" },
+  ): Promise<unknown>;
 }
 
 const documentStorage: IntakeLatchStorage = {
@@ -38,7 +42,7 @@ export async function claimIntakeLatch(
     await storage.write(
       key,
       JSON.stringify({ claimedAt: new Date().toISOString(), deliveryId, issueNumber }),
-      { allowOverwrite: false },
+      { allowOverwrite: false, contentType: "application/json" },
     );
     return true;
   } catch (error) {

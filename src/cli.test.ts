@@ -1,6 +1,10 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { runCli } from "./cli.js";
 import { getDiff0Version } from "./collect/cache.js";
+import { resolveContainedDirectory } from "./harness/paths.js";
 import type { EveAdapter, RunOptions, RunRecord } from "./types.js";
 
 describe("diff0 CLI metadata", () => {
@@ -55,12 +59,18 @@ describe("diff0 CLI app-dir usage errors", () => {
     ["is not a directory", 'app-dir must identify a directory (got "not-a-directory")'],
   ])("classifies an app dir that %s as usage exit 2", async (_case, message) => {
     const appDir = message.includes("does not exist") ? "missing" : "not-a-directory";
-    const result = await cli(["estimate", "--base", "main", "--app-dir", appDir], async () => {
-      throw new Error(message);
-    });
-
-    expect(result.code).toBe(2);
-    expect(result.stderr).toContain(message);
+    const root = await mkdtemp(join(tmpdir(), "diff0-path-"));
+    try {
+      if (appDir === "not-a-directory") await writeFile(join(root, appDir), "file");
+      const result = await cli(["estimate", "--base", "main", "--app-dir", appDir], async () => {
+        await resolveContainedDirectory(root, appDir);
+        throw new Error("invalid app path unexpectedly resolved");
+      });
+      expect(result.code).toBe(2);
+      expect(result.stderr).toContain(message);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it("classifies a missing --app-dir value as usage exit 2", async () => {
@@ -235,7 +245,13 @@ describe("diff0 CLI granular enforcement and performance budgets", () => {
 
     expect(result.code).toBe(0);
     expect(report.costPerf.regressions).toEqual([
-      { baseMedian: 0.1, deltaPct: 200, headMedian: 0.3, metric: "costUsd", thresholdPct: 50 },
+      {
+        baseMedian: expect.closeTo(0.1, 10),
+        deltaPct: expect.closeTo(200, 10),
+        headMedian: expect.closeTo(0.3, 10),
+        metric: "costUsd",
+        thresholdPct: 50,
+      },
       { baseMedian: 100, deltaPct: 200, headMedian: 300, metric: "tokensIn", thresholdPct: 50 },
       { baseMedian: 100, deltaPct: 200, headMedian: 300, metric: "tokensOut", thresholdPct: 50 },
       { baseMedian: 1000, deltaPct: 200, headMedian: 3000, metric: "durationMs", thresholdPct: 50 },

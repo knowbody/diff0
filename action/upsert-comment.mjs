@@ -20,6 +20,7 @@
 
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { requestGitHub as request } from "./github-request.mjs";
 
 /**
  * Upsert anchor. Source of truth: `REPORT_MARKER` in src/report/markdown.ts —
@@ -105,37 +106,6 @@ export function parseNextLink(linkHeader) {
 
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
-}
-
-/** Fetch with auth headers; idempotent requests retry one transient failure. */
-async function request(fetchImpl, url, { token, method = "GET", body }) {
-  const options = {
-    method,
-    headers: {
-      accept: "application/vnd.github+json",
-      authorization: `Bearer ${token}`,
-      "user-agent": "diff0-action",
-      "x-github-api-version": "2022-11-28",
-      ...(body === undefined ? {} : { "content-type": "application/json" }),
-    },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  };
-  const mayRetry = method === "GET" || method === "HEAD" || method === "PATCH";
-  for (let attempt = 0; attempt < (mayRetry ? 2 : 1); attempt += 1) {
-    try {
-      const response = await fetchImpl(url, options);
-      if (mayRetry && attempt === 0 && (response.status === 429 || response.status >= 500)) {
-        continue;
-      }
-      return response;
-    } catch (error) {
-      if (mayRetry && attempt === 0) continue;
-      throw new Error(
-        `Network error calling ${method} ${url}${mayRetry ? " (after one retry)" : ""}: ${errorMessage(error)}`,
-      );
-    }
-  }
-  throw new Error(`Request failed unexpectedly: ${method} ${url}`);
 }
 
 async function ensureOk(response, what) {

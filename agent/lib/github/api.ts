@@ -1,18 +1,12 @@
 import { FACTORY_REPO } from "../constants.js";
 import { githubCredentials } from "./credentials.js";
+import { GitHubApiError, githubRequest } from "./transport.js";
+
+export { GitHubApiError } from "./transport.js";
+
 import { mintInstallationToken } from "./git-remote.js";
 
 const API_ROOT = `https://api.github.com/repos/${FACTORY_REPO}`;
-
-export class GitHubApiError extends Error {
-  readonly status: number;
-
-  constructor(status: number, message: string) {
-    super(`GitHub API ${status}: ${message}`);
-    this.name = "GitHubApiError";
-    this.status = status;
-  }
-}
 
 /**
  * Call the target repository through GitHub's REST API from trusted app code.
@@ -23,26 +17,15 @@ export async function githubApi<T>(
   path: string,
   options: { body?: unknown; signal?: AbortSignal; token?: string } = {},
 ): Promise<T> {
-  const token = options.token ?? (await mintInstallationToken(githubCredentials));
-  const response = await fetch(`${API_ROOT}${path}`, {
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      "User-Agent": "diff0-eve-agent",
-      "X-GitHub-Api-Version": "2022-11-28",
-    },
-    method,
-    signal: options.signal,
-  });
-
-  const body = (await response.json().catch(() => null)) as { message?: unknown } | null;
-  if (!response.ok) {
-    const message = typeof body?.message === "string" ? body.message : response.statusText;
-    throw new GitHubApiError(response.status, message);
+  const url = new URL(`${API_ROOT}${path}`);
+  if (
+    url.origin !== "https://api.github.com" ||
+    !url.pathname.startsWith(new URL(API_ROOT).pathname + (path ? "/" : ""))
+  ) {
+    throw new Error("GitHub requests must remain within the factory repository.");
   }
-  return body as T;
+  const token = options.token ?? (await mintInstallationToken(githubCredentials));
+  return githubRequest<T>(url.href, method, token, options);
 }
 
 /** Return `null` for an absent ref while preserving every other API failure. */

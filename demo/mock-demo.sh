@@ -2,7 +2,7 @@
 # demo/mock-demo.sh: run the diff0 drift demo on eve's deterministic mock.
 #
 # Zero credentials, zero cost, ~1 minute. Idempotent: safe to re-run; it
-# rebuilds the demo repo at /tmp/diff0-mock-demo from scratch every time.
+# uses a unique scratch checkout, removed when the script exits.
 #
 # What it shows: a branch that deletes the "You MUST load the
 # `revenue-definitions` skill" rule from agent/instructions.md. The mock
@@ -19,7 +19,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-DEMO_REPO=/tmp/diff0-mock-demo
+DEMO_REPO="$(mktemp -d "${TMPDIR:-/tmp}/diff0-mock-demo.XXXXXX")"
+trap 'rm -rf "$DEMO_REPO"' EXIT
+source "${SCRIPT_DIR}/fixture.sh"
 FIXTURE="${REPO_ROOT}/fixtures/demo-agent"
 
 step() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
@@ -43,24 +45,11 @@ echo "node $(node -v), pnpm $(pnpm -v)"
 
 # --------------------------------------------------------------- 2. diff0
 step "Building diff0 (${REPO_ROOT})"
-if [ ! -f "${REPO_ROOT}/dist/cli.js" ]; then
-  (cd "${REPO_ROOT}" && pnpm install && pnpm build)
-else
-  echo "dist/cli.js already present, skipping install+build"
-  echo "(delete ${REPO_ROOT}/dist to force a rebuild)"
-fi
+(cd "${REPO_ROOT}" && pnpm install --frozen-lockfile && pnpm build)
 
 # ------------------------------------------------------ 3. demo repo files
 step "Creating demo repo at ${DEMO_REPO}"
-rm -rf "${DEMO_REPO}"
-mkdir -p "${DEMO_REPO}"
-cp -R "${FIXTURE}/." "${DEMO_REPO}/"
-rm -rf "${DEMO_REPO}/node_modules" "${DEMO_REPO}/.eve"
-
-cat > "${DEMO_REPO}/.gitignore" <<'EOF'
-node_modules/
-.eve/
-EOF
+copy_demo_fixture "${FIXTURE}" "${DEMO_REPO}"
 
 # ------------------------------------------------- 4. git history (2 refs)
 step "Committing baseline on main"

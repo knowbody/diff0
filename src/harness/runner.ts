@@ -9,33 +9,16 @@
  * without eve or real worktrees.
  */
 
-import { join } from "node:path";
-import {
-  CommandInterruptedError,
-  EvalFilterNoMatchError,
-  EveCliAdapter,
-  getAgentInfo,
-} from "../adapters/eve.js";
-import { computeCacheKey, readCache, writeCache } from "../collect/cache.js";
+import { CommandInterruptedError, EvalFilterNoMatchError } from "../adapters/eve.js";
 import { applyPricing } from "../collect/pricing.js";
+import { availableCost } from "../cost.js";
+import { validateCollectionOptions } from "../options.js";
 import { formatUsd } from "../report/format.js";
-import type {
-  AgentInfo,
-  DependencyInstallMode,
-  EveAdapter,
-  RunOptions,
-  RunRecord,
-  SandboxBackend,
-} from "../types.js";
-import { getEvalHarnessChanges, getSandboxConfigChanges } from "./gitdiff.js";
-import { type HostDefaultSandboxCandidate, probeHostDefaultSandboxCandidate } from "./sandbox.js";
-import {
-  type CreateWorktreeOptions,
-  createWorktree,
-  normalizeAppDirectory,
-  resolveRef,
-  type WorktreeHandle,
-} from "./worktree.js";
+import type { DependencyInstallMode, RunOptions, RunRecord, SandboxBackend } from "../types.js";
+import { cleanupResources } from "./cleanup.js";
+import { harnessDependencies, type InjectableHarness } from "./dependencies.js";
+import { appCacheKey, prepareApp } from "./preparation.js";
+import { normalizeAppDirectory, type WorktreeHandle } from "./worktree.js";
 
 /** A single eval-suite invocation crashed; carries which ref and which run. */
 export class EvalRunError extends Error {
@@ -99,7 +82,7 @@ export interface SpendUpdate {
   totalRuns: number;
 }
 
-export interface RunComparisonOptions {
+export interface RunComparisonOptions extends InjectableHarness {
   repoPath: string;
   /** Path of the eve app within the repo ("." for the repo root). */
   appDir: string;
@@ -127,22 +110,6 @@ export interface RunComparisonOptions {
   /** Observability hook: cumulative measured spend after every executed run. */
   onSpend?: (update: SpendUpdate) => void;
   onProgress?: (message: string) => void;
-
-  // -- dependency-injection seams (tests only; defaults are the real thing) --
-  adapter?: EveAdapter;
-  createWorktree?: (
-    repoPath: string,
-    ref: string,
-    opts?: CreateWorktreeOptions,
-  ) => Promise<WorktreeHandle>;
-  inferSandbox?: () => Promise<HostDefaultSandboxCandidate>;
-  getAgentInfo?: (cwd: string) => Promise<AgentInfo | null>;
-  /** Git/cache seams keep orchestration tests free of subprocess and filesystem timing. */
-  resolveRef?: typeof resolveRef;
-  readCache?: typeof readCache;
-  writeCache?: typeof writeCache;
-  getEvalHarnessChanges?: typeof getEvalHarnessChanges;
-  getSandboxConfigChanges?: typeof getSandboxConfigChanges;
 }
 
 export interface ComparisonRunMeta {
@@ -181,9 +148,7 @@ function runSummaryPhrase(record: RunRecord): string {
 }
 
 export async function runComparison(opts: RunComparisonOptions): Promise<ComparisonResult> {
-  if (!Number.isInteger(opts.runs) || opts.runs < 1) {
-    throw new Error(`runs must be a positive integer (got ${opts.runs})`);
-  }
+  validateCollectionOptions(opts);
   const appDir = normalizeAppDirectory(opts.appDir);
   const progress = opts.onProgress ?? (() => {});
   if (opts.installMode === "scripts-on") {
@@ -192,29 +157,47 @@ export async function runComparison(opts: RunComparisonOptions): Promise<Compari
         "from both refs; non-registry credentials are scrubbed, but package-registry auth remains available",
     );
   }
-  const adapter = opts.adapter ?? new EveCliAdapter();
-  const worktreeFactory = opts.createWorktree ?? createWorktree;
-  const makeWorktree = (repoPath: string, ref: string, resolvedCommitSha: string) =>
-    worktreeFactory(repoPath, ref, {
-      installDirs: appDir === "." ? [] : [appDir],
-      installMode: opts.installMode ?? "scripts-off",
-      resolvedCommitSha,
-    });
-  const inferSandbox = opts.inferSandbox ?? probeHostDefaultSandboxCandidate;
-  const probeAgentInfo = opts.getAgentInfo ?? getAgentInfo;
-  const resolveGitRef = opts.resolveRef ?? resolveRef;
-  const loadCache = opts.readCache ?? readCache;
-  const saveCache = opts.writeCache ?? writeCache;
-  const inspectEvalHarness = opts.getEvalHarnessChanges ?? getEvalHarnessChanges;
-  const inspectSandboxConfig = opts.getSandboxConfigChanges ?? getSandboxConfigChanges;
+  const dependencies = harnessDependencies(opts);
+  const {
+    adapter,
+    resolveRef: resolveGitRef,
+    readCache: loadCache,
+    writeCache: saveCache,
+    inferSandbox,
+  } = dependencies;
 
   // Fail fast on unknown refs BEFORE paying for any worktree install.
   const baseSha = await resolveGitRef(opts.repoPath, opts.baseRef);
   const headSha = await resolveGitRef(opts.repoPath, opts.headRef);
-  const [evalHarnessChanges, sandboxConfigChanges] = await Promise.all([
-    inspectEvalHarness(opts.repoPath, baseSha, headSha, appDir, opts.validityPatterns),
-    inspectSandboxConfig(opts.repoPath, baseSha, headSha, appDir),
-  ]);
+  // Legacy inspectors remain injectable; a null result now explicitly caps validity.
+  const legacyInspectors =
+    opts.getEvalHarnessChanges !== undefined ||
+    opts.getSandboxConfigChanges !== undefined ||
+    opts.dependencies?.getEvalHarnessChanges !== undefined ||
+    opts.dependencies?.getSandboxConfigChanges !== undefined;
+  const inspection = legacyInspectors
+    ? null
+    : await dependencies.inspectValidity(
+        opts.repoPath,
+        baseSha,
+        headSha,
+        appDir,
+        opts.validityPatterns,
+      );
+  const [evalHarnessChanges, sandboxConfigChanges] = legacyInspectors
+    ? await Promise.all([
+        dependencies.getEvalHarnessChanges(
+          opts.repoPath,
+          baseSha,
+          headSha,
+          appDir,
+          opts.validityPatterns,
+        ),
+        dependencies.getSandboxConfigChanges(opts.repoPath, baseSha, headSha, appDir),
+      ])
+    : inspection?.status === "checked"
+      ? [inspection.evalHarnessChanges, inspection.sandboxConfigChanges]
+      : [null, null];
   const displayedEvalChanges = evalHarnessChanges?.slice(0, 5) ?? [];
   const omittedEvalChanges = (evalHarnessChanges?.length ?? 0) - displayedEvalChanges.length;
   const validityMismatches: string[] =
@@ -225,6 +208,14 @@ export async function runComparison(opts: RunComparisonOptions): Promise<Compari
             "Outcome changes may come from evaluator changes rather than agent behavior.",
         ]
       : [];
+  if (evalHarnessChanges === null)
+    validityMismatches.push(
+      "eval harness validity inspection unavailable; evaluator comparability could not be established",
+    );
+  if (sandboxConfigChanges === null)
+    validityMismatches.push(
+      "sandbox configuration validity inspection unavailable; sandbox comparability could not be established",
+    );
   if (sandboxConfigChanges !== null && sandboxConfigChanges.length > 0) {
     const displayed = sandboxConfigChanges.slice(0, 5);
     const omitted = sandboxConfigChanges.length - displayed.length;
@@ -239,30 +230,27 @@ export async function runComparison(opts: RunComparisonOptions): Promise<Compari
   const worktrees: WorktreeHandle[] = [];
   try {
     progress(`preparing base worktree (${opts.baseRef} @ ${shortSha(baseSha)})…`);
-    const baseWorktree = await makeWorktree(opts.repoPath, opts.baseRef, baseSha);
-    if (baseWorktree.commitSha !== baseSha) {
-      await baseWorktree.cleanup().catch(() => {});
-      throw new Error(
-        `base worktree commit mismatch: resolved ${baseSha}, checked out ${baseWorktree.commitSha}`,
-      );
-    }
-    worktrees.push(baseWorktree);
+    const baseApp = await prepareApp(
+      { ...opts, appDir },
+      opts.baseRef,
+      baseSha,
+      dependencies,
+      opts.onProgress,
+    );
+    worktrees.push(baseApp.worktree);
     progress(`preparing head worktree (${opts.headRef} @ ${shortSha(headSha)})…`);
-    const headWorktree = await makeWorktree(opts.repoPath, opts.headRef, headSha);
-    if (headWorktree.commitSha !== headSha) {
-      await headWorktree.cleanup().catch(() => {});
-      throw new Error(
-        `head worktree commit mismatch: resolved ${headSha}, checked out ${headWorktree.commitSha}`,
-      );
-    }
-    worktrees.push(headWorktree);
-
-    const baseCwd = join(baseWorktree.path, appDir);
-    const headCwd = join(headWorktree.path, appDir);
-
-    // Probe both refs: eve version + eval presence (NoEvalsError propagates).
-    const baseProbe = await adapter.probe(baseCwd);
-    const headProbe = await adapter.probe(headCwd);
+    const headApp = await prepareApp(
+      { ...opts, appDir },
+      opts.headRef,
+      headSha,
+      dependencies,
+      opts.onProgress,
+    );
+    worktrees.push(headApp.worktree);
+    const baseCwd = baseApp.cwd;
+    const headCwd = headApp.cwd;
+    const baseProbe = baseApp.probe;
+    const headProbe = headApp.probe;
     progress(
       `probed eve: base ${baseProbe.eveVersion} (${baseProbe.evalIds.length} evals), ` +
         `head ${headProbe.eveVersion} (${headProbe.evalIds.length} evals)`,
@@ -281,7 +269,7 @@ export async function runComparison(opts: RunComparisonOptions): Promise<Compari
     let baseCacheHit = false;
     let cacheKey: string | null = null;
     if (opts.noCache !== true) {
-      const info = await probeAgentInfo(baseCwd);
+      const info = baseApp.agentInfo;
       const model = info?.model ?? "unknown";
       if (model === "unknown") {
         progress(
@@ -289,17 +277,7 @@ export async function runComparison(opts: RunComparisonOptions): Promise<Compari
             "which is marginally less safe against model changes",
         );
       }
-      cacheKey = computeCacheKey({
-        appDir,
-        commitSha: baseSha,
-        eveVersion: baseProbe.eveVersion,
-        model,
-        evalFilter: opts.evalFilter,
-        sandboxBackend: sandbox.backend,
-        installMode: opts.installMode ?? "scripts-off",
-        ...(opts.timeoutMs !== undefined ? { timeoutMs: opts.timeoutMs } : {}),
-        ...(opts.maxConcurrency !== undefined ? { maxConcurrency: opts.maxConcurrency } : {}),
-      });
+      cacheKey = appCacheKey({ ...opts, appDir }, baseApp, baseSha, sandbox.backend);
       const cached = await loadCache(opts.repoPath, cacheKey);
       if (cached !== null && cached.length >= opts.runs) {
         baseRuns = cached.slice(0, opts.runs);
@@ -341,9 +319,8 @@ export async function runComparison(opts: RunComparisonOptions): Promise<Compari
     const checkSpend = (): void => {
       if (!trackSpend) return;
       const { records } = applyPricing(executedRecords);
-      const measured = records.filter((r) => r.costUsd !== null);
-      const spentUsd =
-        measured.length > 0 ? measured.reduce((sum, r) => sum + (r.costUsd ?? 0), 0) : null;
+      const measured = records.map(availableCost).filter((cost): cost is number => cost !== null);
+      const spentUsd = measured.length > 0 ? measured.reduce((sum, cost) => sum + cost, 0) : null;
       opts.onSpend?.({ spentUsd, completedRuns: completed, totalRuns });
       if (opts.maxSpendUsd !== undefined && spentUsd !== null && spentUsd > opts.maxSpendUsd) {
         throw new MaxSpendExceededError({
@@ -418,12 +395,6 @@ export async function runComparison(opts: RunComparisonOptions): Promise<Compari
       },
     };
   } finally {
-    for (const worktree of worktrees) {
-      try {
-        await worktree.cleanup();
-      } catch {
-        // Best-effort: never mask the primary error with a cleanup failure.
-      }
-    }
+    await cleanupResources(worktrees, opts.onProgress);
   }
 }

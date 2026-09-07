@@ -1,8 +1,3 @@
-/**
- * Terminal renderer — same content as the markdown report, compact and
- * column-aligned. Colors via picocolors; pass { color: false } for CI logs
- * and tests (no ANSI codes emitted).
- */
 import picocolors from "picocolors";
 import type {
   DeltaReport,
@@ -12,6 +7,12 @@ import type {
   PerformanceRegression,
   RunSummary,
 } from "../analyze/types.js";
+/**
+ * Terminal renderer — same content as the markdown report, compact and
+ * column-aligned. Colors via picocolors; pass { color: false } for CI logs
+ * and tests (no ANSI codes emitted).
+ */
+import { evalFacts, formatPValue, performanceBudgetFacts } from "./facts.js";
 import {
   formatDuration,
   formatInt,
@@ -22,20 +23,20 @@ import {
   runsPhrase,
   shortSha,
 } from "./format.js";
+import {
+  displayWidth,
+  MAX_LINE_WIDTH,
+  packSegments,
+  padColumns,
+  wrapText,
+  wrapTokens,
+} from "./terminal-layout.js";
 
 type Colors = ReturnType<typeof picocolors.createColors>;
 
 export interface TerminalOptions {
   color?: boolean;
 }
-
-/**
- * Soft wrap budget: keeps every rendered line readable in a 100-column
- * terminal (the narrowest target we format for — demo recordings, CI logs)
- * with a little slack. Wrapping only, never truncation — the terminal render
- * keeps full fidelity with the markdown/json reports.
- */
-const MAX_LINE_WIDTH = 96;
 
 function safeTerminalText(value: string): string {
   const withoutAnsi = value.replace(
@@ -50,71 +51,6 @@ function safeTerminalText(value: string): string {
         : character;
     })
     .join("");
-}
-
-/**
- * Greedy token wrap: tokens are joined with single spaces; a token that
- * would push the line past MAX_LINE_WIDTH starts a continuation line
- * prefixed with contIndent (hanging indent). Tokens are never split.
- */
-function wrapTokens(tokens: string[], firstIndent: string, contIndent: string): string[] {
-  const lines: string[] = [];
-  let current = firstIndent;
-  let hasToken = false;
-  for (const token of tokens) {
-    let remaining = token;
-    if (hasToken && `${current} ${remaining}`.length > MAX_LINE_WIDTH) {
-      lines.push(current);
-      current = contIndent;
-      hasToken = false;
-    }
-    const separator = hasToken ? " " : "";
-    const available = MAX_LINE_WIDTH - current.length - separator.length;
-    if (remaining.length > available) {
-      if (available > 0) {
-        lines.push(`${current}${separator}${remaining.slice(0, available)}`);
-        remaining = remaining.slice(available);
-      }
-      while (remaining.length > MAX_LINE_WIDTH - contIndent.length) {
-        const width = MAX_LINE_WIDTH - contIndent.length;
-        lines.push(`${contIndent}${remaining.slice(0, width)}`);
-        remaining = remaining.slice(width);
-      }
-      current = `${contIndent}${remaining}`;
-      hasToken = remaining.length > 0;
-    } else {
-      current = hasToken ? `${current} ${remaining}` : `${current}${remaining}`;
-      hasToken = true;
-    }
-  }
-  if (hasToken || lines.length === 0) lines.push(current);
-  return lines;
-}
-
-/** Word-wrap plain (uncolored) text; color per returned line if needed. */
-function wrapText(text: string, firstIndent: string, contIndent: string): string[] {
-  return wrapTokens(text.split(" "), firstIndent, contIndent);
-}
-
-/**
- * Pack `sep`-joined segments into lines of at most MAX_LINE_WIDTH,
- * breaking only at segment boundaries (used for the validity line).
- */
-function packSegments(segments: string[], sep: string, contIndent: string): string[] {
-  const lines: string[] = [];
-  let current = "";
-  for (const segment of segments) {
-    if (current === "") {
-      current = segment;
-    } else if (`${current}${sep}${segment}`.length > MAX_LINE_WIDTH) {
-      lines.push(current);
-      current = `${contIndent}${segment}`;
-    } else {
-      current = `${current}${sep}${segment}`;
-    }
-  }
-  if (current !== "") lines.push(current);
-  return lines;
 }
 
 const STATUS_PLAIN: Record<EvalStatus, string> = {
@@ -150,13 +86,10 @@ export function renderTerminal(report: DeltaReport, opts: TerminalOptions = {}):
   const verdictSummary = safeTerminalText(report.verdictSummary);
   const headline = `${pc.bold("diff0")} ${baseRef}...${headRef}  ${verdictColor(pc.bold(verdictLabel))}`;
   const plainTitle = `diff0 ${baseRef}...${headRef}  ${verdictLabel} — ${verdictSummary}`;
-  if (
-    headline.replace(new RegExp(`${String.fromCharCode(27)}\\[[0-?]*[ -/]*[@-~]`, "g"), "").length >
-    MAX_LINE_WIDTH
-  ) {
+  if (displayWidth(headline) > MAX_LINE_WIDTH) {
     lines.push(...wrapText(`diff0 ${baseRef}...${headRef}  ${verdictLabel}`, "", "  "));
     lines.push(...wrapText(`— ${verdictSummary}`, "  ", "    "));
-  } else if (plainTitle.length <= MAX_LINE_WIDTH) {
+  } else if (displayWidth(plainTitle) <= MAX_LINE_WIDTH) {
     lines.push(`${headline} — ${verdictSummary}`);
   } else {
     lines.push(headline);
@@ -208,7 +141,7 @@ export function renderTerminal(report: DeltaReport, opts: TerminalOptions = {}):
   // Evals
   lines.push("");
   lines.push(pc.bold("EVALS"));
-  const nameWidth = Math.max(4, ...report.evals.map((e) => safeTerminalText(e.name).length));
+  const nameWidth = Math.max(4, ...report.evals.map((e) => displayWidth(safeTerminalText(e.name))));
   const baseWidth = Math.max(
     4,
     ...report.evals.map((e) => passCell(e.basePassed, e.baseTotal).length),
@@ -221,10 +154,10 @@ export function renderTerminal(report: DeltaReport, opts: TerminalOptions = {}):
     const status = colorStatus(e.status, pc);
     const extras = evalExtras(e);
     const prefix =
-      `  ${safeTerminalText(e.name).padEnd(nameWidth)}  base ${passCell(e.basePassed, e.baseTotal).padEnd(baseWidth)}` +
-      `  head ${passCell(e.headPassed, e.headTotal).padEnd(headWidth)}  `;
+      `  ${padColumns(safeTerminalText(e.name), nameWidth)}  base ${padColumns(passCell(e.basePassed, e.baseTotal), baseWidth)}` +
+      `  head ${padColumns(passCell(e.headPassed, e.headTotal), headWidth)}  `;
     const plainMain = `${prefix}${STATUS_PLAIN[e.status]}`;
-    if (plainMain.length <= MAX_LINE_WIDTH) {
+    if (displayWidth(plainMain) <= MAX_LINE_WIDTH) {
       lines.push(`${prefix}${status}`);
     } else {
       lines.push(...wrapText(plainMain, "", "    "));
@@ -264,13 +197,13 @@ export function renderTerminal(report: DeltaReport, opts: TerminalOptions = {}):
     metricRow("cache-write tokens", report.costPerf.cacheWriteTokens, formatInt),
     metricRow("duration", report.costPerf.durationMs, formatDuration),
   ];
-  const labelWidth = Math.max(...rows.map((r) => r[0].length));
-  const baseColWidth = Math.max(...rows.map((r) => r[1].length));
-  const headColWidth = Math.max(...rows.map((r) => r[2].length));
+  const labelWidth = Math.max(...rows.map((r) => displayWidth(r[0])));
+  const baseColWidth = Math.max(...rows.map((r) => displayWidth(r[1])));
+  const headColWidth = Math.max(...rows.map((r) => displayWidth(r[2])));
   for (const [label, baseCell, headCell, deltaCell] of rows) {
     lines.push(
-      `  ${label.padEnd(labelWidth)}  base ${baseCell.padEnd(baseColWidth)}  ` +
-        `head ${headCell.padEnd(headColWidth)}  ${deltaCell}`,
+      `  ${padColumns(label, labelWidth)}  base ${padColumns(baseCell, baseColWidth)}  ` +
+        `head ${padColumns(headCell, headColWidth)}  ${deltaCell}`,
     );
   }
   if (report.costPerf.regressions.length > 0) {
@@ -326,18 +259,9 @@ export function renderTerminal(report: DeltaReport, opts: TerminalOptions = {}):
   return `${lines.join("\n")}\n`;
 }
 
-const PERFORMANCE_LABELS: Record<PerformanceRegression["metric"], string> = {
-  costUsd: "cost/session",
-  tokensIn: "uncached input tokens",
-  tokensOut: "output tokens",
-  durationMs: "duration",
-};
-
 function performanceBudgetText(regression: PerformanceRegression): string {
-  return (
-    `${PERFORMANCE_LABELS[regression.metric]} delta ${formatSignedPct(regression.deltaPct)} ` +
-    `exceeds ${formatSignedPct(regression.thresholdPct)} threshold`
-  );
+  const facts = performanceBudgetFacts(regression);
+  return `${facts.labels.terminal} ${facts.text}`;
 }
 
 function colorStatus(status: EvalStatus, pc: Colors): string {
@@ -366,40 +290,20 @@ function colorStatus(status: EvalStatus, pc: Colors): string {
 }
 
 function evalExtras(e: EvalDelta): string {
+  const facts = evalFacts(e);
   const extras: string[] = [];
-  if (e.softScores) {
-    const sign = e.softScores.delta >= 0 ? "+" : "";
+  if (facts.score) {
+    extras.push(`score ${facts.score.base} -> ${facts.score.head} (${facts.score.delta})`);
+    if (facts.score.materialThreshold !== null)
+      extras.push(`material score regression (threshold -${facts.score.materialThreshold})`);
+  }
+  if (facts.coverage) extras.push(facts.coverage);
+  if (facts.hint) extras.push(`hint: ${facts.hint}`);
+  if (facts.fisher !== null)
     extras.push(
-      `score ${e.softScores.baseMedian} -> ${e.softScores.headMedian} (${sign}${e.softScores.delta})`,
+      `Fisher raw p=${facts.fisher}${facts.holm !== null ? `; Holm p=${facts.holm}` : ""}`,
     );
-    if (e.softScores.classification === "material-regression") {
-      extras.push(`material score regression (threshold -${e.softScores.materialThreshold})`);
-    }
-  }
-  if (e.status === "partial-base" || e.status === "partial-head" || e.status === "partial-both") {
-    const coverage: string[] = [];
-    if (e.baseTotal < e.baseExpectedRuns) {
-      coverage.push(`base ${e.baseTotal}/${e.baseExpectedRuns} runs`);
-    }
-    if (e.headTotal < e.headExpectedRuns) {
-      coverage.push(`head ${e.headTotal}/${e.headExpectedRuns} runs`);
-    }
-    extras.push(`coverage ${coverage.join(", ")}`);
-  }
-  if (e.twoProportionHint) {
-    extras.push(`hint: ${e.twoProportionHint.note}`);
-  }
-  if (e.statisticalEvidence.pValue !== null) {
-    extras.push(
-      `Fisher raw p=${formatPValue(e.statisticalEvidence.pValue)}; ` +
-        `Holm p=${formatPValue(e.statisticalEvidence.adjustedPValue as number)}`,
-    );
-  }
   return extras.length > 0 ? `  [${extras.join("; ")}]` : "";
-}
-
-function formatPValue(value: number): string {
-  return value < 0.0001 ? "<0.0001" : value.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
 }
 
 function renderDrift(report: DeltaReport, lines: string[], pc: Colors): void {
@@ -563,7 +467,7 @@ function renderRuns(
   for (const run of summaries) {
     const skills =
       run.skillsLoaded.length > 0 ? run.skillsLoaded.map(safeTerminalText).join(", ") : "none";
-    const cost = run.costUsd !== null && run.costUsd > 0 ? formatUsd(run.costUsd) : "cost n/a";
+    const cost = run.costUsd !== null ? formatUsd(run.costUsd) : "cost n/a";
     lines.push(
       ...wrapText(
         `run ${run.runIndex + 1}: ${run.evalsPassed}/${run.evalsTotal} evals passed, ` +

@@ -16,35 +16,45 @@
   "runsPerRef": 10,
   "sandbox": "unknown",
   "hostDefaultSandboxCandidate": "microsandbox",
-  "verdictIcon": "🟡",
-  "verdictSummary": "Review recommended. No confirmed eval regressions across 10 runs per ref. Confirmed behavioral drift requires review",
-  "evalObservations": {
-    "basePassed": 30,
-    "baseTotal": 30,
-    "headPassed": 30,
-    "headTotal": 30
-  },
   "evals": [
     {
       "name": "revenue/total-revenue",
-      "base": "10/10",
-      "head": "10/10",
-      "result": "✅ pass",
-      "statisticalResult": "score 1 → 1 (+0)"
+      "base": {
+        "passed": 10,
+        "total": 10,
+        "score": 1
+      },
+      "head": {
+        "passed": 10,
+        "total": 10,
+        "score": 1
+      }
     },
     {
       "name": "revenue/no-failed-actions",
-      "base": "10/10",
-      "head": "10/10",
-      "result": "✅ pass",
-      "statisticalResult": "score 1 → 1 (+0)"
+      "base": {
+        "passed": 10,
+        "total": 10,
+        "score": 1
+      },
+      "head": {
+        "passed": 10,
+        "total": 10,
+        "score": 1
+      }
     },
     {
       "name": "revenue/uses-sql-tool",
-      "base": "10/10",
-      "head": "10/10",
-      "result": "✅ pass",
-      "statisticalResult": "score 1 → 1 (+0)"
+      "base": {
+        "passed": 10,
+        "total": 10,
+        "score": 1
+      },
+      "head": {
+        "passed": 10,
+        "total": 10,
+        "score": 1
+      }
     }
   ],
   "subagent": {
@@ -53,36 +63,64 @@
     "baseTotalRuns": 10,
     "headUsedRuns": 0,
     "headTotalRuns": 10,
-    "scope": "3 evals",
     "confidence": "confirmed",
     "rawPValue": "<0.0001",
-    "holmPValue": "<0.0001"
+    "holmPValue": "<0.0001",
+    "evalNames": [
+      "revenue/total-revenue",
+      "revenue/no-failed-actions",
+      "revenue/uses-sql-tool"
+    ]
   },
-  "metrics": [
-    {
-      "label": "Tool calls / run (agents excluded)",
-      "base": "6 (6–10)",
-      "head": "6",
-      "delta": "+0%"
+  "metrics": {
+    "toolCalls": {
+      "base": {
+        "median": 6,
+        "min": 6,
+        "max": 10
+      },
+      "head": {
+        "median": 6,
+        "min": 6,
+        "max": 6
+      },
+      "reportedDeltaPct": 0
     },
-    {
-      "label": "Output tokens / run",
-      "base": "1,017 (941–1,481)",
-      "head": "675 (654–714)",
-      "delta": "-34%"
+    "outputTokens": {
+      "base": {
+        "median": 1017,
+        "min": 941,
+        "max": 1481
+      },
+      "head": {
+        "median": 675,
+        "min": 654,
+        "max": 714
+      },
+      "reportedDeltaPct": -34
     },
-    {
-      "label": "Duration / run",
-      "base": "20.2s (19.0s–27.2s)",
-      "head": "11.8s (10.8s–12.5s)",
-      "delta": "-41%"
+    "durationSeconds": {
+      "base": {
+        "median": 20.2,
+        "min": 19,
+        "max": 27.2
+      },
+      "head": {
+        "median": 11.8,
+        "min": 10.8,
+        "max": 12.5
+      },
+      "reportedDeltaPct": -41
     }
-  ],
+  },
   "costNote": "Comparison cost unavailable because delegated base usage was not fully attributed.",
   "changedFile": {
     "path": "fixtures/demo-agent/agent/instructions.md",
     "insertions": 1,
     "deletions": 2
   },
-  "diffSummary": "1 file changed, 1 insertion(+), 2 deletions(-)"
+  "verdict": "yellow",
+  "inconclusiveSignalCount": 2,
+  "numericPrecision": "Values and percentage changes preserve the rounding of the captured source report; percentages are not recomputed from its rounded medians.",
+  "confirmedEvalRegressions": 0
 }

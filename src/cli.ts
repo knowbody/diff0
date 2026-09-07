@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 /**
  * `diff0` CLI — thin by design: flag parsing, wiring, exit codes.
  * The interface is docs/cli-contract.md; all logic lives in the modules
@@ -20,13 +21,21 @@ import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { Command, CommanderError, InvalidArgumentError, Option } from "commander";
 import { CommandInterruptedError, EvalFilterNoMatchError, NoEvalsError } from "./adapters/eve.js";
-import type { EnforcementCategory, PerformanceThresholds } from "./analyze/types.js";
+import type { PerformanceThresholds } from "./analyze/types.js";
 import { getDiff0Version } from "./collect/cache.js";
-import { type Estimate, type EstimateOptions, runEstimate } from "./harness/estimate.js";
-import type { InferredSandboxBackend } from "./harness/sandbox.js";
-import type { CreateWorktreeOptions, WorktreeHandle } from "./harness/worktree.js";
-import { ENFORCEMENT_CATEGORIES, violatesEnforcement } from "./index.js";
-import { formatDuration, formatUsd, shortSha } from "./report/format.js";
+import { ConfigurationError } from "./errors.js";
+import type { HarnessDependencies } from "./harness/dependencies.js";
+import { type EstimateOptions, runEstimate } from "./harness/estimate.js";
+import { violatesEnforcement } from "./index.js";
+import {
+  type FailOnPolicy,
+  parseFailOn as sharedParseFailOn,
+  parseNonNegativePercentage as sharedParseNonNegativePercentage,
+  parsePositiveInt as sharedParsePositiveInt,
+  parseUsd as sharedParseUsd,
+} from "./options.js";
+import { renderEstimate } from "./report/estimate.js";
+import { formatUsd } from "./report/format.js";
 import { renderNoEvalsHelp } from "./report/teach.js";
 import { renderJson, renderMarkdown, renderTerminal } from "./reporters.js";
 import {
@@ -35,7 +44,7 @@ import {
   MaxSpendExceededError,
   type RunComparisonOptions,
 } from "./runner.js";
-import type { AgentInfo, DependencyInstallMode, EveAdapter } from "./types.js";
+import type { DependencyInstallMode } from "./types.js";
 
 declare const DIFF0_ACTION_BUNDLE: boolean | undefined;
 
@@ -49,29 +58,10 @@ interface CliIo {
  * fake worktrees, ...) so CLI-level behavior — exit codes, stderr wording —
  * is testable without eve or real worktrees. Production callers omit this.
  */
-export interface CliHarnessSeams {
-  adapter?: EveAdapter;
-  createWorktree?: (
-    repoPath: string,
-    ref: string,
-    opts?: CreateWorktreeOptions,
-  ) => Promise<WorktreeHandle>;
-  inferSandbox?: () => Promise<InferredSandboxBackend>;
-  getAgentInfo?: (cwd: string) => Promise<AgentInfo | null>;
-  resolveRef?: NonNullable<RunComparisonOptions["resolveRef"]>;
-  readCache?: NonNullable<RunComparisonOptions["readCache"]>;
-  writeCache?: NonNullable<RunComparisonOptions["writeCache"]>;
-  getEvalHarnessChanges?: NonNullable<RunComparisonOptions["getEvalHarnessChanges"]>;
-  getSandboxConfigChanges?: NonNullable<RunComparisonOptions["getSandboxConfigChanges"]>;
-}
+export type CliHarnessSeams = Partial<HarnessDependencies>;
 
 type InstallModeInput = DependencyInstallMode | "safe" | "trusted";
-type LegacyFailOn = "regression" | "drift" | "never";
-type FailOnPolicy =
-  | { kind: "legacy"; policy: LegacyFailOn }
-  | { kind: "granular"; categories: EnforcementCategory[] };
-
-interface RunFlags {
+interface CollectionFlags {
   base: string;
   head: string;
   repo: string;
@@ -81,95 +71,40 @@ interface RunFlags {
   installMode: InstallModeInput;
   timeout?: number;
   maxConcurrency?: number;
+  maxSpend?: number;
+  cache: boolean;
+}
+
+interface RunFlags extends CollectionFlags {
   validityPath: string[];
   maxCostIncreasePct?: number;
   maxInputTokenIncreasePct?: number;
   maxOutputTokenIncreasePct?: number;
   maxDurationIncreasePct?: number;
-  maxSpend?: number;
   reportMd?: string;
   reportJson?: string;
   json: boolean;
-  /** Base-ref cache is opt-in because external state cannot be represented in its key. */
-  cache: boolean;
   failOn: FailOnPolicy;
   /** Commander's --no-color: true by default, false when the flag is given. */
   color: boolean;
 }
 
-interface EstimateFlags {
-  base: string;
-  head: string;
-  repo: string;
-  appDir: string;
-  runs: number;
-  evals: string[];
-  installMode: InstallModeInput;
-  timeout?: number;
-  maxConcurrency?: number;
-  maxSpend?: number;
-}
+type EstimateFlags = CollectionFlags;
 
-function parsePositiveInt(label: string) {
-  return (value: string): number => {
-    const parsed = Number.parseInt(value, 10);
-    if (!/^\d+$/.test(value.trim()) || Number.isNaN(parsed) || parsed < 1) {
-      throw new InvalidArgumentError(`${label} must be a positive integer (got "${value}")`);
+function commanderParser<T>(parse: (value: string) => T): (value: string) => T {
+  return (value) => {
+    try {
+      return parse(value);
+    } catch (error) {
+      throw new InvalidArgumentError(error instanceof Error ? error.message : String(error));
     }
-    return parsed;
   };
 }
-
-function parseUsd(label: string) {
-  return (value: string): number => {
-    const normalized = value.trim();
-    const decimal = /^(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
-    const parsed = Number(normalized);
-    if (!decimal.test(normalized) || !Number.isFinite(parsed) || parsed <= 0) {
-      throw new InvalidArgumentError(`${label} must be a positive USD amount (got "${value}")`);
-    }
-    return parsed;
-  };
-}
-
-function parseNonNegativePercentage(label: string) {
-  return (value: string): number => {
-    const normalized = value.trim();
-    const decimal = /^(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
-    const parsed = Number(normalized);
-    if (!decimal.test(normalized) || !Number.isFinite(parsed) || parsed < 0) {
-      throw new InvalidArgumentError(
-        `${label} must be a finite non-negative percentage (got "${value}")`,
-      );
-    }
-    return parsed;
-  };
-}
-
-const LEGACY_FAIL_ON = ["regression", "drift", "never"] as const;
-
-function parseFailOn(value: string): FailOnPolicy {
-  const tokens = value.split(",").map((token) => token.trim());
-  if (tokens.length === 0 || tokens.some((token) => token.length === 0)) {
-    throw new InvalidArgumentError("--fail-on must not contain empty policy names");
-  }
-  if (tokens.length === 1 && LEGACY_FAIL_ON.includes(tokens[0] as LegacyFailOn)) {
-    return { kind: "legacy", policy: tokens[0] as LegacyFailOn };
-  }
-  if (tokens.some((token) => LEGACY_FAIL_ON.includes(token as LegacyFailOn))) {
-    throw new InvalidArgumentError("--fail-on cannot mix legacy and granular policies");
-  }
-  const unknown = tokens.filter(
-    (token) => !ENFORCEMENT_CATEGORIES.includes(token as EnforcementCategory),
-  );
-  if (unknown.length > 0) {
-    throw new InvalidArgumentError(`unknown --fail-on policy: ${unknown.join(", ")}`);
-  }
-  return {
-    kind: "granular",
-    categories: [...new Set(tokens as EnforcementCategory[])],
-  };
-}
+const parsePositiveInt = (label: string) => commanderParser(sharedParsePositiveInt(label));
+const parseUsd = (label: string) => commanderParser(sharedParseUsd(label));
+const parseNonNegativePercentage = (label: string) =>
+  commanderParser(sharedParseNonNegativePercentage(label));
+const parseFailOn = commanderParser(sharedParseFailOn);
 
 /** Repeatable and comma-separated: --evals a,b --evals c -> ["a","b","c"]. */
 function collectEvalFilter(value: string, previous: string[]): string[] {
@@ -212,18 +147,7 @@ function exitCodeForError(error: unknown): 2 | 3 | 4 {
   if (error instanceof EvalFilterNoMatchError) return 2;
   if (error instanceof NoEvalsError) return 2;
   if (error instanceof EvalRunError) return 3;
-  const message = error instanceof Error ? error.message : String(error);
-  if (
-    /is not a git repository/i.test(message) ||
-    /was not found in/i.test(message) ||
-    /eve is not installed/i.test(message) ||
-    /working tree has uncommitted changes/i.test(message) ||
-    /runs must be a positive integer/i.test(message) ||
-    /^app-dir (?:contains|does not exist|must )/i.test(message) ||
-    /^validity pattern /i.test(message)
-  ) {
-    return 2;
-  }
+  if (error instanceof ConfigurationError) return 2;
   return 3;
 }
 
@@ -251,59 +175,35 @@ async function writeReportFile(path: string, content: string): Promise<void> {
   await writeFile(resolve(path), content, "utf8");
 }
 
-function applySeams(
-  target: Pick<
-    RunComparisonOptions,
-    | "adapter"
-    | "createWorktree"
-    | "inferSandbox"
-    | "getAgentInfo"
-    | "resolveRef"
-    | "readCache"
-    | "writeCache"
-    | "getEvalHarnessChanges"
-    | "getSandboxConfigChanges"
-  >,
-  seams: CliHarnessSeams | undefined,
-): void {
-  if (seams === undefined) return;
-  if (seams.adapter !== undefined) target.adapter = seams.adapter;
-  if (seams.createWorktree !== undefined) target.createWorktree = seams.createWorktree;
-  if (seams.inferSandbox !== undefined) target.inferSandbox = seams.inferSandbox;
-  if (seams.getAgentInfo !== undefined) target.getAgentInfo = seams.getAgentInfo;
-  if (seams.resolveRef !== undefined) target.resolveRef = seams.resolveRef;
-  if (seams.readCache !== undefined) target.readCache = seams.readCache;
-  if (seams.writeCache !== undefined) target.writeCache = seams.writeCache;
-  if (seams.getEvalHarnessChanges !== undefined) {
-    target.getEvalHarnessChanges = seams.getEvalHarnessChanges;
-  }
-  if (seams.getSandboxConfigChanges !== undefined) {
-    target.getSandboxConfigChanges = seams.getSandboxConfigChanges;
-  }
+function collectionOptions(
+  flags: CollectionFlags,
+  io: CliIo,
+  dependencies?: Partial<HarnessDependencies>,
+): EstimateOptions {
+  return {
+    repoPath: resolve(flags.repo),
+    appDir: flags.appDir,
+    baseRef: flags.base,
+    headRef: flags.head,
+    runs: flags.runs,
+    evalFilter: flags.evals,
+    installMode: normalizeInstallMode(flags.installMode, io),
+    onProgress: (message) => io.err(`${message}\n`),
+    ...(flags.timeout === undefined ? {} : { timeoutMs: flags.timeout }),
+    ...(flags.maxConcurrency === undefined ? {} : { maxConcurrency: flags.maxConcurrency }),
+    ...(dependencies === undefined ? {} : { dependencies }),
+  };
 }
 
 async function executeRun(flags: RunFlags, io: CliIo, seams?: CliHarnessSeams): Promise<number> {
   const repoPath = resolve(flags.repo);
   try {
-    const installMode = normalizeInstallMode(flags.installMode, io);
     const comparisonOptions: RunComparisonOptions = {
-      repoPath,
-      appDir: flags.appDir,
-      baseRef: flags.base,
-      headRef: flags.head,
-      runs: flags.runs,
-      evalFilter: flags.evals,
+      ...collectionOptions(flags, io, seams),
       validityPatterns: flags.validityPath,
-      installMode,
-      onProgress: (message) => io.err(`${message}\n`),
+      noCache: !flags.cache,
+      ...(flags.maxSpend === undefined ? {} : { maxSpendUsd: flags.maxSpend }),
     };
-    if (flags.timeout !== undefined) comparisonOptions.timeoutMs = flags.timeout;
-    if (flags.maxConcurrency !== undefined) {
-      comparisonOptions.maxConcurrency = flags.maxConcurrency;
-    }
-    if (flags.maxSpend !== undefined) comparisonOptions.maxSpendUsd = flags.maxSpend;
-    comparisonOptions.noCache = !flags.cache;
-    applySeams(comparisonOptions, seams);
 
     const performanceThresholds: Partial<PerformanceThresholds> = {};
     if (flags.maxCostIncreasePct !== undefined) {
@@ -347,65 +247,6 @@ async function executeRun(flags: RunFlags, io: CliIo, seams?: CliHarnessSeams): 
   }
 }
 
-/** Human-scale duration for projections: "42.0s", "4m 12s", "1h 05m". */
-function formatLongDuration(ms: number): string {
-  const totalSeconds = Math.round(ms / 1000);
-  if (totalSeconds < 60) return formatDuration(ms);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  if (hours > 0) return `${hours}h ${String(minutes).padStart(2, "0")}m`;
-  return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
-}
-
-function renderEstimate(estimate: Estimate): string {
-  const lines: string[] = [];
-  lines.push(
-    `diff0 estimate: ${estimate.baseRef}...${estimate.headRef} ` +
-      `(${estimate.runsPerRef} runs per ref planned)`,
-  );
-  lines.push("");
-  if (estimate.sampleSource === "base-cache") {
-    lines.push(
-      `  sample:          ${estimate.sampleRuns} cached base runs ` +
-        `(${estimate.baseRef} @ ${shortSha(estimate.baseSha)}) — no eval run spent`,
-    );
-  } else {
-    lines.push(
-      `  sample:          1 fresh suite run on head ` +
-        `(${estimate.headRef} @ ${shortSha(estimate.headSha)})`,
-    );
-  }
-  lines.push(`  evals per run:   ${estimate.evalsPerRun}`);
-  if (estimate.perRunCostUsd !== null) {
-    lines.push(`  cost per run:    ${formatUsd(estimate.perRunCostUsd)} (${estimate.costSource})`);
-  } else {
-    lines.push(
-      `  cost per run:    unavailable — model ${estimate.model} is not in prices.json ` +
-        "and eve reported no gateway cost;",
-    );
-    lines.push("                   the comparison will run but report cost as unavailable");
-  }
-  lines.push(`  time per run:    ${formatDuration(estimate.perRunDurationMs)}`);
-  const runsBreakdown =
-    estimate.cachedBaseRuns > 0
-      ? `${estimate.chargeableRuns} (head only — ${estimate.cachedBaseRuns} base runs already cached)`
-      : `${estimate.chargeableRuns} (${estimate.runsPerRef} per ref x 2 refs)`;
-  lines.push(`  projected runs:  ${runsBreakdown}`);
-  lines.push(
-    `  projected cost:  ${
-      estimate.projectedCostUsd !== null ? formatUsd(estimate.projectedCostUsd) : "unavailable"
-    }`,
-  );
-  lines.push(`  projected time:  ~${formatLongDuration(estimate.projectedDurationMs)}`);
-  lines.push("");
-  const sampledOn = estimate.sampleSource === "base-cache" ? "base" : "head";
-  lines.push(
-    `Measured on ${sampledOn} only — base and head may genuinely differ in cost and duration.`,
-  );
-  return `${lines.join("\n")}\n`;
-}
-
 async function executeEstimate(
   flags: EstimateFlags,
   io: CliIo,
@@ -413,24 +254,10 @@ async function executeEstimate(
 ): Promise<number> {
   const repoPath = resolve(flags.repo);
   try {
-    const installMode = normalizeInstallMode(flags.installMode, io);
-    const estimateOptions: EstimateOptions = {
-      repoPath,
-      appDir: flags.appDir,
-      baseRef: flags.base,
-      headRef: flags.head,
-      runs: flags.runs,
-      evalFilter: flags.evals,
-      installMode,
-      onProgress: (message) => io.err(`${message}\n`),
-    };
-    if (flags.timeout !== undefined) estimateOptions.timeoutMs = flags.timeout;
-    if (flags.maxConcurrency !== undefined) {
-      estimateOptions.maxConcurrency = flags.maxConcurrency;
-    }
-    applySeams(estimateOptions, seams);
-
-    const estimate = await runEstimate(estimateOptions);
+    const estimate = await runEstimate({
+      ...collectionOptions(flags, io, seams),
+      cache: flags.cache,
+    });
     io.out(renderEstimate(estimate));
 
     if (flags.maxSpend !== undefined) {
@@ -462,24 +289,8 @@ async function executeEstimate(
   }
 }
 
-function buildProgram(io: CliIo, onExit: (code: number) => void, seams?: CliHarnessSeams): Command {
-  const program = new Command();
-  program
-    .name("diff0")
-    .version(getDiff0Version())
-    .description(
-      "git diff tells you what changed in the code. " +
-        "diff0 tells you what changed in the agent.",
-    )
-    .exitOverride()
-    .configureOutput({
-      writeOut: (str) => io.out(str),
-      writeErr: (str) => io.err(str),
-    });
-
-  program
-    .command("run")
-    .description("behaviorally diff an eve agent between two git refs")
+function collectionCommand(command: Command): Command {
+  return command
     .requiredOption("--base <ref>", "base git ref (e.g. main, origin/main, a SHA)")
     .option("--head <ref>", "head git ref", "HEAD")
     .option("--repo <path>", "target repo (a git repo with an eve app + evals)", ".")
@@ -501,17 +312,41 @@ function buildProgram(io: CliIo, onExit: (code: number) => void, seams?: CliHarn
       collectEvalFilter,
       [] as string[],
     )
-    .option(
-      "--validity-path <glob>",
-      "additive repo-relative validity glob; repeatable or comma-separated",
-      collectValidityPath,
-      [] as string[],
-    )
     .option("--timeout <ms>", "per-eval timeout in ms", parsePositiveInt("--timeout"))
     .option(
       "--max-concurrency <n>",
       "passed to eve eval --max-concurrency",
       parsePositiveInt("--max-concurrency"),
+    )
+    .option(
+      "--cache",
+      "reuse/write the 24-hour base cache (opt-in; external state is not part of the key)",
+      false,
+    );
+}
+
+function buildProgram(io: CliIo, onExit: (code: number) => void, seams?: CliHarnessSeams): Command {
+  const program = new Command();
+  program
+    .name("diff0")
+    .version(getDiff0Version())
+    .description(
+      "git diff tells you what changed in the code. " +
+        "diff0 tells you what changed in the agent.",
+    )
+    .exitOverride()
+    .configureOutput({
+      writeOut: (str) => io.out(str),
+      writeErr: (str) => io.err(str),
+    });
+
+  collectionCommand(program.command("run"))
+    .description("behaviorally diff an eve agent between two git refs")
+    .option(
+      "--validity-path <glob>",
+      "additive repo-relative validity glob; repeatable or comma-separated",
+      collectValidityPath,
+      [] as string[],
     )
     .option(
       "--max-spend <usd>",
@@ -544,11 +379,6 @@ function buildProgram(io: CliIo, onExit: (code: number) => void, seams?: CliHarn
     .option("--report-md <path>", "write the markdown report here")
     .option("--report-json <path>", "write the JSON report here")
     .option("--json", "print the JSON report to stdout instead of the terminal render", false)
-    .option(
-      "--cache",
-      "reuse/write the 24-hour base cache (opt-in; external state is not part of the key)",
-      false,
-    )
     .addOption(
       new Option(
         "--fail-on <policy>",
@@ -562,43 +392,10 @@ function buildProgram(io: CliIo, onExit: (code: number) => void, seams?: CliHarn
       onExit(await executeRun(flags, io, seams));
     });
 
-  program
-    .command("estimate")
+  collectionCommand(program.command("estimate"))
     .description(
       "measure one eval-suite pass and project the full comparison's cost " +
         "and duration before the full comparison",
-    )
-    .requiredOption("--base <ref>", "base git ref (e.g. main, origin/main, a SHA)")
-    .option("--head <ref>", "head git ref", "HEAD")
-    .option("--repo <path>", "target repo (a git repo with an eve app + evals)", ".")
-    .option("--app-dir <path>", "path of the eve app within the repo", ".")
-    .addOption(
-      new Option(
-        "--install-mode <mode>",
-        "dependency install policy: scripts-off disables lifecycle/build scripts; scripts-on " +
-          "enables repository-controlled scripts and MUST only be used for refs you trust " +
-          "(neither mode is a sandbox)",
-      )
-        .choices(["scripts-off", "scripts-on", "safe", "trusted"])
-        .default("scripts-off"),
-    )
-    .option(
-      "--runs <n>",
-      "planned eval-suite executions per ref to project",
-      parsePositiveInt("--runs"),
-      3,
-    )
-    .option(
-      "--evals <filter>",
-      "eval id/prefix filter; repeatable or comma-separated",
-      collectEvalFilter,
-      [] as string[],
-    )
-    .option("--timeout <ms>", "per-eval timeout in ms", parsePositiveInt("--timeout"))
-    .option(
-      "--max-concurrency <n>",
-      "passed to eve eval --max-concurrency",
-      parsePositiveInt("--max-concurrency"),
     )
     .option(
       "--max-spend <usd>",

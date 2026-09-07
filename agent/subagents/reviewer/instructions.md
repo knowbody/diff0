@@ -35,8 +35,9 @@ Do not approve out of politeness, and do not request changes over pure style pre
 
 Call `check_review` with the reviewed branch sequentially until it returns `complete: true`.
 Each call runs one required check, records its passing result durably against the exact clean
-commit, and returns `nextCheck` if more remain. The standard checks include the deterministic
-comparison for engine/Action changes. A successful call with `complete: false` means continue
+commit, and returns `nextCheck` if more remain. The standard checks come from `agent/lib/verification.ts`, including package validation and the
+deterministic comparison for engine/Action changes. CI-only runtime proof is explicitly separate
+because local backends are unavailable in hosted stations. A successful call with `complete: false` means continue
 with another call; it is not a failed check. Do not batch or parallelize these calls. Each check
 is bounded below the hosted function deadline. Missing, failing, timed-out, or stale-commit checks
 block attestation; never waive them. Report a failed check as a blocking finding.
