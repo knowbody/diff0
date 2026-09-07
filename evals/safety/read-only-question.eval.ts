@@ -10,7 +10,13 @@ export default defineEval({
       "What is this repository about, and what does its README say about getting started?",
     );
     t.succeeded();
-    t.calledSubagent("implementer", { count: 0 });
+    t.eventsSatisfy(
+      "implementer is not invoked",
+      (events) =>
+        !events.some(
+          (event) => event.type === "subagent.called" && event.data.name === "implementer",
+        ),
+    );
     for (const tool of WRITE_TOOLS) {
       t.notCalledTool(tool);
     }

@@ -1,7 +1,6 @@
 import { defineTool } from "eve/tools";
 import { z } from "zod";
-import { readDocument } from "../lib/blob.js";
-import { factoryBrainKey } from "../lib/factory-brain.js";
+import { readFactoryBrain } from "../lib/factory-brain.js";
 
 /**
  * Tool that loads the shared factory brain from Vercel Blob.
@@ -18,7 +17,7 @@ export default defineTool({
     "Load the factory brain: durable, shared notes about the target repository (build quirks, " +
     "verification gotchas, recurring review findings, conventions). Call it at the start of a " +
     "task and weave relevant facts into the messages you send stations, since stations can't " +
-    "read it themselves. Returns empty when the brain has nothing yet.",
+    "read it themselves. Returns a version to pass unchanged to update_factory_brain; null means no document yet.",
   /**
    * Read the factory brain document.
    *
@@ -26,13 +25,8 @@ export default defineTool({
    * @returns `found` plus the `brain` Markdown (empty when none), or an `error`.
    */
   async execute() {
-    const key = factoryBrainKey();
     try {
-      const doc = await readDocument(key);
-      if (!doc.found) {
-        return { brain: "", found: false };
-      }
-      return { brain: doc.content, found: true };
+      return await readFactoryBrain();
     } catch (error) {
       return {
         brain: "",
@@ -46,5 +40,6 @@ export default defineTool({
     brain: z.string(),
     error: z.string().optional(),
     found: z.boolean(),
+    version: z.string().nullable().optional(),
   }),
 });

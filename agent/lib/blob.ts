@@ -23,8 +23,10 @@ export const ARTIFACTS_PREFIX = "artifacts/";
  */
 export const readDocument = async (
   key: string,
-): Promise<{ found: false } | { content: string; found: true; uploadedAt: string }> => {
-  const result = await get(key, { access: DOCUMENT_ACCESS });
+): Promise<
+  { found: false } | { content: string; found: true; uploadedAt: string; etag: string }
+> => {
+  const result = await get(key, { access: DOCUMENT_ACCESS, useCache: false });
   if (!result?.stream) {
     return { found: false };
   }
@@ -32,6 +34,7 @@ export const readDocument = async (
     content: await new Response(result.stream).text(),
     found: true,
     uploadedAt: result.blob.uploadedAt.toISOString(),
+    etag: result.blob.etag,
   };
 };
 
@@ -51,13 +54,18 @@ export const readDocument = async (
 export const writeDocument = (
   key: string,
   contents: string,
-  options: { allowOverwrite: boolean; contentType?: "text/markdown" | "application/json" },
+  options: {
+    allowOverwrite: boolean;
+    contentType?: "text/markdown" | "application/json";
+    ifMatch?: string;
+  },
 ) =>
   put(key, contents, {
     access: DOCUMENT_ACCESS,
     addRandomSuffix: false,
     allowOverwrite: options.allowOverwrite,
     contentType: options.contentType ?? "text/markdown",
+    ...(options.ifMatch === undefined ? {} : { ifMatch: options.ifMatch }),
   });
 
 /**

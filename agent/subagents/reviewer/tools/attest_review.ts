@@ -2,6 +2,7 @@ import { defineTool } from "eve/tools";
 import { z } from "zod";
 import { attestReviewedCommit } from "../../../lib/github/attest.js";
 import { reviewChecks } from "../../../lib/github/review-checks.js";
+import { reviewTarget } from "../../../lib/github/review-target.js";
 
 export default defineTool({
   description:
@@ -13,6 +14,7 @@ export default defineTool({
         rootSessionId: ctx.session.parent?.rootSessionId ?? ctx.session.id,
         sandbox: await ctx.getSandbox(),
         current: reviewChecks.get(),
+        target: reviewTarget.get(),
         signal: ctx.abortSignal,
       });
       return { ...result, success: true as const };

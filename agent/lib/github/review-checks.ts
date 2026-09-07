@@ -3,9 +3,9 @@ import type { SandboxSession } from "eve/sandbox";
 import { verificationPlan } from "../verification.js";
 import { sanitizeCommandOutput } from "./bootstrap-diagnostics.js";
 import { REPO_DIR } from "./git-remote.js";
-import { BASE_MARKER_PATH } from "./runtime-push.js";
+import type { ReviewTarget } from "./review-target.js";
 
-export type ReviewSandbox = Pick<SandboxSession, "run" | "readTextFile">;
+export type ReviewSandbox = Pick<SandboxSession, "run">;
 
 export interface ReviewChecks {
   branch: string;
@@ -14,23 +14,17 @@ export interface ReviewChecks {
   passed: string[];
 }
 
-export const reviewChecks = defineState<ReviewChecks | null>("diff0.review-checks.v2", () => null);
+export const reviewChecks = defineState<ReviewChecks | null>("diff0.review-checks.v3", () => null);
 
 /** App-owned commands: a model cannot replace a required check with an assertion. */
-export async function reviewCheckPlan(sandbox: ReviewSandbox) {
-  const marker = JSON.parse((await sandbox.readTextFile({ path: BASE_MARKER_PATH })) ?? "null");
-  if (!marker || typeof marker.sha !== "string" || !/^[a-f0-9]{40}$/.test(marker.sha)) {
-    throw new Error("Review checks require a valid checkout base SHA.");
+export function reviewCheckPlan(target: ReviewTarget | null) {
+  if (!target || !/^[a-f0-9]{40}$/.test(target.baseSha) || !/^[a-f0-9]{40}$/.test(target.sha)) {
+    throw new Error("Review requires a trusted checkout target. Call checkout_branch first.");
   }
-  const changed = await sandbox.run({
-    command: `git -C ${REPO_DIR} diff --name-only '${marker.sha}' HEAD`,
-  });
-  if (changed.exitCode !== 0)
-    throw new Error("Cannot determine the scope of required review checks.");
-  const checks = verificationPlan(String(changed.stdout).split("\n"), marker.sha).map(
-    ({ command }) => command,
-  );
-  return { baseSha: marker.sha as string, checks };
+  return {
+    baseSha: target.baseSha,
+    checks: verificationPlan(target.paths, target.baseSha).map(({ command }) => command),
+  };
 }
 
 export async function reviewedSha(sandbox: ReviewSandbox, branch: string): Promise<string> {
@@ -56,9 +50,12 @@ export async function runNextReviewCheck(
   sandbox: ReviewSandbox,
   branch: string,
   current: ReviewChecks | null,
+  target: ReviewTarget | null,
 ): Promise<ReviewChecks> {
+  const plan = reviewCheckPlan(target);
   const sha = await reviewedSha(sandbox, branch);
-  const plan = await reviewCheckPlan(sandbox);
+  if (target?.branch !== branch || target.sha !== sha)
+    throw new Error("The review target changed. Call checkout_branch again before checking.");
   const matches =
     current?.branch === branch &&
     current.sha === sha &&

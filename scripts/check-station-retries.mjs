@@ -8,7 +8,11 @@ mkdirSync(join(root, ".eve"), { recursive: true });
 const fixture = mkdtempSync(join(root, ".eve/station-retry-proof-"));
 try {
   cpSync(join(root, "test/fixtures/station-retries"), fixture, { recursive: true });
-  for (const file of ["hooks/station-retries.ts", "lib/station-retries.ts"]) {
+  for (const file of [
+    "hooks/station-retries.ts",
+    "lib/station-retries.ts",
+    "tools/run_station.ts",
+  ]) {
     const destination = join(fixture, "agent", file);
     mkdirSync(join(destination, ".."), { recursive: true });
     cpSync(join(root, "agent", file), destination);
@@ -16,7 +20,7 @@ try {
   symlinkSync(join(root, "node_modules"), join(fixture, "node_modules"), "dir");
   const result = spawnSync(
     process.execPath,
-    [join(root, "node_modules/eve/bin/eve.js"), "eval", "retries", "--json", "--skip-report"],
+    [join(root, "node_modules/eve/bin/eve.js"), "eval", "--json", "--skip-report"],
     {
       cwd: fixture,
       encoding: "utf8",
@@ -31,7 +35,7 @@ try {
       "Station retry runtime proof failed; inspect .eve/station-retry-proof.json and .stderr.",
     );
   console.log(
-    "Mock runtime proof passed: exactly two failed station calls, then termination. No model charges.",
+    "Mock runtime proof passed: sequential calls work across turns; two failures stop the turn; direct and parallel calls are rejected. No model charges.",
   );
 } finally {
   rmSync(fixture, { recursive: true, force: true });

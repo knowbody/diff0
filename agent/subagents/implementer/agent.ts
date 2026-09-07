@@ -13,6 +13,7 @@ import { MODELS, STATION_REASONING } from "../../lib/models.js";
  * request is opened later by the orchestrator, after review.
  */
 export default defineAgent({
+  defaultTools: false,
   description:
     "Execute an approved implementation plan in a checkout of the factory repository: " +
     "write the code on a feature branch, run the repository's own checks, commit, and " +

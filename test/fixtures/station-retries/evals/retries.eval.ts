@@ -3,7 +3,7 @@ export default defineEval({
   timeoutMs: 60000,
   async test(t) {
     await t.send("Try repeatedly until stopped.");
-    t.calledSubagent("analyst", { status: "failed", count: 2 });
+    t.calledTool("run_station", { status: "failed", count: 2 });
     t.eventsSatisfy(
       "runtime stops before a third delegation",
       (events) => events.filter((e) => e.type === "subagent.called").length === 2,

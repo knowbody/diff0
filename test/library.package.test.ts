@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { expect, it } from "vitest";
@@ -18,11 +18,8 @@ it("compiles and runs a consumer with only the installed tarball and declared de
     });
   try {
     // test:package builds once before starting Vitest. No test worker mutates dist.
-    const packed = JSON.parse(
-      run("npm", ["pack", "--ignore-scripts", "--json", "--pack-destination", scratch], root),
-    ) as Array<{ filename: string }>;
-    const artifact = packed[0];
-    if (artifact === undefined) throw new Error("npm pack returned no artifact");
+    const artifact = { filename: "diff0.tgz" };
+    run("pnpm", ["pack", "--out", join(scratch, artifact.filename)], root);
     cpSync(join(root, "test", "fixtures", "library-consumer"), scratch, { recursive: true });
     const version = (name: string): string =>
       JSON.parse(readFileSync(join(root, "node_modules", name, "package.json"), "utf8")).version;
@@ -39,6 +36,16 @@ it("compiles and runs a consumer with only the installed tarball and declared de
       }),
     );
     run("npm", ["install", "--ignore-scripts", "--no-audit", "--no-fund"]);
+    const installed = JSON.parse(
+      readFileSync(join(scratch, "node_modules", "@knowbody", "diff0", "package.json"), "utf8"),
+    );
+    expect(installed.dependencies).not.toHaveProperty("eve");
+    expect(installed.engines.node).toBe(">=20");
+    expect(existsSync(join(scratch, "node_modules", "eve"))).toBe(false);
+    expect(existsSync(join(scratch, "node_modules", "@knowbody", "diff0", "agent"))).toBe(false);
+    expect(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).dependencies.eve).toBe(
+      "0.52.2",
+    );
     const records = (ref: string, sha: string, hash: string) =>
       buildRuns(
         ref,

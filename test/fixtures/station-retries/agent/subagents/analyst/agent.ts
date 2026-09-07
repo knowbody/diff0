@@ -1,9 +1,10 @@
 import { defineAgent } from "eve";
 import { mockModel } from "eve/evals";
 export default defineAgent({
-  description: "Always fail for retry enforcement verification",
+  description: "Deterministic station for delegation verification",
   modelContextWindowTokens: 200000,
-  model: mockModel(() => {
+  model: mockModel(({ messages }) => {
+    if (messages.some((message) => message.text.includes("succeed"))) return "Station completed.";
     throw new Error("deliberate station failure");
   }),
 });

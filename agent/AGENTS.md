@@ -1,7 +1,7 @@
 # diff0 Eve factory guidance
 
-This repository is an Eve 0.47.5 app that maintains `knowbody/diff0`; its authored runtime lives in
-this directory and its evals live in `../evals/`. Read the relevant official guide at
+This repository is an Eve 0.52.2 app that maintains `knowbody/diff0`; its authored runtime lives in
+this directory and its evals live in the root `evals/` directory. Read the relevant official guide at
 https://eve.dev/docs and compare it with `node_modules/eve/docs/` before changing framework code
 or deployment configuration. Online docs can describe a newer runtime than our pinned version;
 verify API compatibility in the installed package. Do not infer Eve APIs from an older template.
@@ -14,7 +14,7 @@ Run from the repository root:
 pnpm install --frozen-lockfile --ignore-scripts
 pnpm agent:validate
 pnpm agent:test:runtime
-pnpm exec eve eval --list --json
+pnpm agent:eval --list --json
 ```
 
 `pnpm agent:validate` must finish with zero formatting, type, test, and Eve discovery diagnostics. Real-model

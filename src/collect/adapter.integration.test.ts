@@ -65,7 +65,7 @@ function assertDemoAgentRunRecord(record: RunRecord, ref: string, commitSha: str
   expect(record.costUsd).toBeNull();
 
   expect(record.model).toBe("eve-mock/mock-revenue-analyst");
-  expect(record.eveVersion).toBe("0.47.5");
+  expect(record.eveVersion).toBe("0.52.2");
   expect(record.durationMs).toBeGreaterThan(0);
   expect(Date.parse(record.startedAt)).not.toBeNaN();
   expect(record.dataSources).toEqual({ evalJson: true, spans: false, logs: false });
@@ -91,7 +91,7 @@ describe("demo-agent through worktree and Eve adapter", () => {
         ["head", head],
       ] as const) {
         const probed = await adapter.probe(worktree.path);
-        expect(probed.eveVersion).toBe("0.47.5");
+        expect(probed.eveVersion).toBe("0.52.2");
         expect(probed.evalIds).toHaveLength(3);
         expect(probed.evalIds).toContain("revenue/total-revenue");
 

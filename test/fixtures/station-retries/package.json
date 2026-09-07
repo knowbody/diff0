@@ -1,1 +1,11 @@
-{"name":"retry-fixture","type":"module","private":true,"packageManager":"pnpm@10.15.1"}
+{
+  "name": "retry-fixture",
+  "type": "module",
+  "private": true,
+  "packageManager": "pnpm@10.15.1",
+  "dependencies": {
+    "eve": "0.52.2",
+    "ai": "7.0.85",
+    "zod": "4.4.3"
+  }
+}

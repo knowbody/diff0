@@ -29,7 +29,7 @@ vi.mock("../agent/lib/blob.js", () => ({
     const content = mocks.documents.get(key);
     return content === undefined
       ? { found: false }
-      : { found: true, content, uploadedAt: "2026-09-07T00:00:00.000Z" };
+      : { found: true, content, etag: "version", uploadedAt: "2026-09-07T00:00:00.000Z" };
   }),
   writeDocument: vi.fn(async (key: string, content: string) => {
     mocks.documents.set(key, content);
@@ -47,6 +47,7 @@ import {
   reviewCheckPlan,
   runNextReviewCheck,
 } from "../agent/lib/github/review-checks.js";
+import { fetchReviewTarget } from "../agent/lib/github/review-target.js";
 import {
   gitBlobSha,
   matchesExistingPublication,
@@ -60,6 +61,44 @@ const LOCAL_SHA = "b".repeat(40);
 const REMOTE_SHA = "c".repeat(40);
 const FILE_BYTES = new TextEncoder().encode("hello\n");
 const FILE_SHA = gitBlobSha(FILE_BYTES);
+
+describe("trusted review scope", () => {
+  it("uses GitHub's merge base and both sides of a rename", async () => {
+    const branch = ownedBranchName("eve/fix", "root");
+    mocks.getGitHubRef
+      .mockReset()
+      .mockResolvedValueOnce({ object: { sha: LOCAL_SHA } })
+      .mockResolvedValueOnce({ object: { sha: REMOTE_SHA } });
+    mocks.githubApi.mockResolvedValueOnce({
+      merge_base_commit: { sha: BASE_SHA },
+      files: [{ filename: "archived/engine.ts", previous_filename: "src/engine.ts" }],
+    });
+    const target = await fetchReviewTarget(branch, "root");
+    expect(target).toEqual({
+      branch,
+      sha: REMOTE_SHA,
+      baseSha: BASE_SHA,
+      paths: ["archived/engine.ts", "src/engine.ts"],
+    });
+    expect(mocks.githubApi).toHaveBeenLastCalledWith(
+      "GET",
+      `/compare/${LOCAL_SHA}...${REMOTE_SHA}?per_page=1`,
+      expect.anything(),
+    );
+    expect(reviewCheckPlan(target).checks.at(-1)).toContain("DIFF0_DEMO_MODEL");
+  });
+
+  it("refuses potentially truncated comparisons instead of trusting a partial scope", async () => {
+    mocks.getGitHubRef.mockReset().mockResolvedValue({ object: { sha: REMOTE_SHA } });
+    mocks.githubApi.mockResolvedValueOnce({
+      merge_base_commit: { sha: BASE_SHA },
+      files: Array.from({ length: 300 }, (_, i) => ({ filename: `docs/${i}.md` })),
+    });
+    await expect(fetchReviewTarget(ownedBranchName("eve/fix", "root"), "root")).rejects.toThrow(
+      "truncated",
+    );
+  });
+});
 
 function sandbox() {
   const run = vi.fn(async ({ command }: { command: string }) => {
@@ -304,6 +343,48 @@ describe("publication byte budgets", () => {
 
 describe("shared checkout mechanics", () => {
   const branch = ownedBranchName("eve/fix", "root");
+  it("refuses a checkout whose current lockfile cannot be installed from the offline cache", async () => {
+    let policy: unknown = "deny-all";
+    const vm = {
+      setNetworkPolicy: vi.fn(async (next: unknown) => {
+        policy = next;
+      }),
+      run: vi.fn(async ({ command }: { command: string }) => {
+        if (command.includes("pnpm install")) {
+          expect(policy).toBe("deny-all");
+          expect(command).toContain("--offline --frozen-lockfile --ignore-scripts");
+          return { exitCode: 1, stdout: "", stderr: "ERR_PNPM_NO_OFFLINE_TARBALL" };
+        }
+        return { exitCode: 0, stdout: command.includes("rev-parse") ? LOCAL_SHA : "", stderr: "" };
+      }),
+    };
+    await expect(checkoutOwnedBranch(vm, branch, "root")).rejects.toThrow(
+      "FACTORY_BOOTSTRAP_REVISION",
+    );
+    expect(vm.setNetworkPolicy).toHaveBeenLastCalledWith("deny-all");
+  });
+
+  it("refreshes both dependency graphs before accepting a checked-out revision", async () => {
+    const vm = {
+      setNetworkPolicy: vi.fn(async () => {}),
+      run: vi.fn(async ({ command }: { command: string }) => ({
+        exitCode: 0,
+        stdout: command.includes("rev-parse") ? LOCAL_SHA : "",
+        stderr: "",
+      })),
+    };
+    await expect(checkoutOwnedBranch(vm, branch, "root")).resolves.toEqual({
+      branch,
+      sha: LOCAL_SHA,
+    });
+    expect(
+      vm.run.mock.calls.some(([{ command }]) =>
+        command.includes(
+          "pnpm --dir fixtures/demo-agent install --offline --frozen-lockfile --ignore-scripts",
+        ),
+      ),
+    ).toBe(true);
+  });
   it.each([
     [1, LOCAL_SHA],
     [0, "not a sha"],
@@ -349,6 +430,7 @@ describe("durable publication, verification, and draft authorization", () => {
       sandbox: local.value,
     });
     const branch = publication.branch;
+    const target = { branch, sha: publication.sha, baseSha: BASE_SHA, paths: ["README.md"] };
     mocks.getGitHubRef.mockResolvedValue({ object: { sha: publication.sha } });
     const auth = {
       principalId: AUTONOMOUS_PRINCIPAL,
@@ -375,13 +457,13 @@ describe("durable publication, verification, and draft authorization", () => {
       })),
     };
     await expect(
-      attestReviewedCommit({ branch, rootSessionId: "root", sandbox: vm, current }),
+      attestReviewedCommit({ branch, rootSessionId: "root", sandbox: vm, current, target }),
     ).rejects.toThrow("incomplete");
     expect(writeDocument).not.toHaveBeenCalled();
-    const plan = await reviewCheckPlan(vm);
+    const plan = reviewCheckPlan(target);
     for (let i = 0; i < plan.checks.length; i++)
-      current = await runNextReviewCheck(vm, branch, current);
-    await attestReviewedCommit({ branch, rootSessionId: "root", sandbox: vm, current });
+      current = await runNextReviewCheck(vm, branch, current, target);
+    await attestReviewedCommit({ branch, rootSessionId: "root", sandbox: vm, current, target });
     expect(writeDocument).toHaveBeenCalledWith(
       expect.stringMatching(/review-attestations\/.*\.json/),
       JSON.stringify({ branch, sha: publication.sha }),
@@ -391,7 +473,7 @@ describe("durable publication, verification, and draft authorization", () => {
     mocks.getGitHubRef.mockResolvedValue({ object: { sha: LOCAL_SHA } });
     await expect(createPullRequestPolicy(ctx)).resolves.toMatchObject({ type: "denied" });
     await expect(
-      attestReviewedCommit({ branch, rootSessionId: "root", sandbox: vm, current }),
+      attestReviewedCommit({ branch, rootSessionId: "root", sandbox: vm, current, target }),
     ).rejects.toThrow("remote branch moved");
     expect(writeDocument).toHaveBeenCalledTimes(1);
     await expect(

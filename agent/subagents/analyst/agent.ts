@@ -12,6 +12,7 @@ import { MODELS } from "../../lib/models.js";
  * contract the reviewer later judges the implementation against, verbatim.
  */
 export default defineAgent({
+  defaultTools: false,
   description:
     "Analyze a classified work item against the real repository checkout and produce an " +
     "implementation plan: problem statement, approach, ordered steps, affected files, " +

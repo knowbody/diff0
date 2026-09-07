@@ -19,7 +19,9 @@
       "!website/out",
       "!website/next-env.d.ts",
       "!test/fixtures",
-      "!fixtures"
+      "!fixtures",
+      "scripts/**/*.cjs",
+      ".pnpmfile.cjs"
     ]
   },
   "linter": {

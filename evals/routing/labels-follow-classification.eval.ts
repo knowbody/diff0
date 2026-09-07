@@ -38,9 +38,19 @@ export default defineEval({
     await t.send(
       "Run issue #1 on the repository through the classifier and mirror the classification onto the issue, then stop; do not run the analyst or any later station.",
     );
-    t.calledSubagent("classifier");
-    t.calledSubagent("analyst", { count: 0 });
-    t.calledSubagent("implementer", { count: 0 });
+    t.calledTool("run_station", { input: { station: "classifier" } });
+    t.eventsSatisfy(
+      "analyst is not invoked",
+      (events) =>
+        !events.some((event) => event.type === "subagent.called" && event.data.name === "analyst"),
+    );
+    t.eventsSatisfy(
+      "implementer is not invoked",
+      (events) =>
+        !events.some(
+          (event) => event.type === "subagent.called" && event.data.name === "implementer",
+        ),
+    );
     t.parked();
     t.check(
       t.pendingInputRequests.map((request) => request.action.toolName),
