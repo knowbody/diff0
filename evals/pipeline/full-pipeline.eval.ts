@@ -12,7 +12,7 @@ export default defineEval({
     );
     t.succeeded();
     for (const station of STATIONS) {
-      t.calledSubagent(station);
+      t.calledTool("run_station", { input: { station } });
     }
     t.eventsSatisfy("stations ran in pipeline order", (events) =>
       calledInOrder(events, [...STATIONS]),

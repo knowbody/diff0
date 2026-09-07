@@ -43,6 +43,8 @@ export const BEHAVIOR_COMPARISON_PATTERNS = [
   "prices.json",
   "package.json",
   "pnpm-lock.yaml",
+  ".pnpmfile.cjs",
+  "scripts/check-pack-manager.mjs",
 ] as const;
 
 export function requiresBehaviorComparison(paths: readonly string[]): boolean {

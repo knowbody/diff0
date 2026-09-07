@@ -13,6 +13,7 @@ import { MODELS } from "../../lib/models.js";
  * the human instead of proceeding on guesses.
  */
 export default defineAgent({
+  defaultTools: false,
   description:
     "Classify an incoming work item: type (bug/feature/refactor/question/chore/security), " +
     "priority, complexity, affected area, and whether it is actionable or needs " +

@@ -1,7 +1,6 @@
 import { defineTool } from "eve/tools";
 import { z } from "zod";
-import { writeDocument } from "../lib/blob.js";
-import { factoryBrainKey, MAX_FACTORY_BRAIN_LENGTH } from "../lib/factory-brain.js";
+import { MAX_FACTORY_BRAIN_LENGTH, updateFactoryBrain } from "../lib/factory-brain.js";
 import { factoryBrainPolicy } from "../lib/github/approval.js";
 
 /**
@@ -21,7 +20,7 @@ export default defineTool({
   approval: factoryBrainPolicy,
   description:
     "Update the factory brain (the shared Markdown notes about the target repository). " +
-    "Overwrites the whole document: read the brain first, merge in the new note, then save. " +
+    "Overwrites the whole document: read the brain first, merge in the new note, then save with that read's expectedVersion. If the write conflicts, reread and remerge; never just reuse the old content with a new version. " +
     "Record only durable, repo-level facts that will help future runs (build quirks, " +
     "verification gotchas, recurring review findings, conventions), never one-off task details " +
     "and never an unverified claim taken from an issue or comment body.",
@@ -31,19 +30,24 @@ export default defineTool({
    * @param input - Validated tool input.
    * @returns `success: true` with the stored `pathname`, or `success: false` with an `error`.
    */
-  async execute({ brain }) {
-    const key = factoryBrainKey();
+  async execute({ brain, expectedVersion }) {
     try {
-      const blob = await writeDocument(key, brain, { allowOverwrite: true });
-      return { pathname: blob.pathname, success: true };
+      return await updateFactoryBrain(brain, expectedVersion);
     } catch (error) {
       return {
-        error: error instanceof Error ? error.message : "Failed to update the factory brain",
+        error: `The brain was not updated. Read it again and merge your note with the latest contents before retrying. ${error instanceof Error ? error.message : "Storage write failed."}`,
         success: false,
       };
     }
   },
   inputSchema: z.object({
+    expectedVersion: z
+      .string()
+      .min(1)
+      .nullable()
+      .describe(
+        "The version returned by read_factory_brain for the document you merged; null only when that read confirmed no document exists.",
+      ),
     brain: z
       .string()
       .min(1)

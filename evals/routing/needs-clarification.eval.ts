@@ -8,9 +8,19 @@ export default defineEval({
     await t.send(
       "Something is wrong with the emails, you know the one I mean. Fix it properly this time.",
     );
-    t.calledSubagent("classifier");
-    t.calledSubagent("implementer", { count: 0 });
-    t.calledSubagent("reviewer", { count: 0 });
+    t.calledTool("run_station", { input: { station: "classifier" } });
+    t.eventsSatisfy(
+      "implementer is not invoked",
+      (events) =>
+        !events.some(
+          (event) => event.type === "subagent.called" && event.data.name === "implementer",
+        ),
+    );
+    t.eventsSatisfy(
+      "reviewer is not invoked",
+      (events) =>
+        !events.some((event) => event.type === "subagent.called" && event.data.name === "reviewer"),
+    );
     t.judge.autoevals
       .closedQA(
         "Does the submission ask the user specific clarifying questions about which email problem they mean, rather than proceeding to build something or claiming work was done?",

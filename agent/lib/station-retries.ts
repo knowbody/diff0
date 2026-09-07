@@ -12,6 +12,12 @@ export const stationRetries = defineState<StationRetries>("diff0.station-retries
   failures: {},
 }));
 
+/** Permit only child invocations bound to an actual run_station workflow call. */
+export const stationInvocations = defineState<Record<string, string>>(
+  "diff0.station-invocations",
+  () => ({}),
+);
+
 /** Count completed failed calls, not replayed events or review revision requests. */
 export function recordStationResult(
   current: StationRetries,
@@ -38,3 +44,5 @@ export function enforceStationRetries(state: StationRetries): void {
     }
   }
 }
+
+export const stationInFlight = defineState<string | null>("diff0.station-in-flight", () => null);

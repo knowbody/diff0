@@ -63,7 +63,7 @@ describe("diff0 run end to end", () => {
 
     // Terminal render on stdout: title + validity header.
     expect(result.stdout).toContain("diff0 base...head");
-    expect(result.stdout).toContain("eve 0.47.5");
+    expect(result.stdout).toContain("eve 0.52.2");
     expect(result.stdout).toContain("model eve-mock/mock-revenue-analyst");
     expect(result.stdout).toContain("2 runs per ref");
     expect(result.stdout).toContain("comparison cost unavailable");

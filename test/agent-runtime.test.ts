@@ -60,6 +60,7 @@ function sandbox(fail?: string, changed = "src/report/format.ts") {
   }));
   return {
     run,
+    target: { branch: "eve/test", sha, baseSha: "a".repeat(40), paths: [changed] },
     moveHead: () => {
       sha = "c".repeat(40);
     },
@@ -70,13 +71,13 @@ function sandbox(fail?: string, changed = "src/report/format.ts") {
 describe("required review checks", () => {
   it("persists one bounded check per call and refuses incomplete attestation", async () => {
     const vm = sandbox();
-    const plan = await reviewCheckPlan(vm);
+    const plan = reviewCheckPlan(vm.target);
     let state: ReviewChecks | null = null;
     for (let i = 0; i < plan.checks.length; i++) {
       expect(() => requireReviewChecks(state, "eve/test", "b".repeat(40), plan)).toThrow(
         "incomplete",
       );
-      state = await runNextReviewCheck(vm, "eve/test", state);
+      state = await runNextReviewCheck(vm, "eve/test", state, vm.target);
       expect(state.passed).toHaveLength(i + 1);
       expect(
         vm.run.mock.calls.filter(([input]) => input.command.includes("timeout -k 5 240")),
@@ -87,7 +88,7 @@ describe("required review checks", () => {
     );
     expect(state?.passed.at(-1)).toContain("--fail-on drift");
     expect(state?.passed.at(-2)).toContain("git diff --exit-code -- action/dist");
-    await runNextReviewCheck(vm, "eve/test", state);
+    await runNextReviewCheck(vm, "eve/test", state, vm.target);
     expect(
       vm.run.mock.calls.filter(([input]) => input.command.includes("timeout -k 5 240")),
     ).toHaveLength(plan.checks.length);
@@ -100,28 +101,34 @@ describe("required review checks", () => {
     ]) {
       const vm = sandbox(fail);
       let state: ReviewChecks | null = null;
-      const successful = (await reviewCheckPlan(vm)).checks.findIndex((command) =>
+      const successful = reviewCheckPlan(vm.target).checks.findIndex((command) =>
         command.includes(fail),
       );
       expect(successful).toBeGreaterThanOrEqual(0);
-      for (let i = 0; i < successful; i++) state = await runNextReviewCheck(vm, "eve/test", state);
-      await expect(runNextReviewCheck(vm, "eve/test", state)).rejects.toThrow("exit 124");
+      for (let i = 0; i < successful; i++)
+        state = await runNextReviewCheck(vm, "eve/test", state, vm.target);
+      await expect(runNextReviewCheck(vm, "eve/test", state, vm.target)).rejects.toThrow(
+        "exit 124",
+      );
       expect(state?.passed).toHaveLength(successful);
     }
   });
 
   it("invalidates old results when the commit changes", async () => {
     const vm = sandbox();
-    const old = await runNextReviewCheck(vm, "eve/test", null);
+    const old = await runNextReviewCheck(vm, "eve/test", null, vm.target);
     vm.moveHead();
-    const next = await runNextReviewCheck(vm, "eve/test", old);
+    const next = await runNextReviewCheck(vm, "eve/test", old, {
+      ...vm.target,
+      sha: "c".repeat(40),
+    });
     expect(next.sha).not.toBe(old.sha);
     expect(next.passed).toEqual(["pnpm typecheck"]);
   });
 
   it("rejects stale branch, SHA, base, or incomplete command evidence", async () => {
     const vm = sandbox();
-    const plan = await reviewCheckPlan(vm);
+    const plan = reviewCheckPlan(vm.target);
     const state: ReviewChecks = {
       branch: "eve/test",
       sha: "b".repeat(40),
@@ -140,11 +147,36 @@ describe("required review checks", () => {
     }
   });
 
-  it("rejects an invalid base before executing commands", async () => {
+  it("rejects a missing trusted target before running sandbox code", async () => {
     const vm = sandbox();
-    vm.readTextFile.mockResolvedValue(JSON.stringify({ sha: "$(command)" }));
-    await expect(reviewCheckPlan(vm)).rejects.toThrow("valid checkout base SHA");
+    await expect(runNextReviewCheck(vm, "eve/test", null, null)).rejects.toThrow(
+      "trusted checkout target",
+    );
     expect(vm.run).not.toHaveBeenCalled();
+  });
+
+  it("cannot remove engine checks by changing the sandbox baseline or reported diff", async () => {
+    const vm = sandbox(undefined, "src/engine.ts");
+    vm.readTextFile.mockResolvedValue(JSON.stringify({ sha: vm.target.sha }));
+    const plan = reviewCheckPlan(vm.target);
+    let state: ReviewChecks | null = null;
+    for (const _check of plan.checks)
+      state = await runNextReviewCheck(vm, "eve/test", state, vm.target);
+    expect(state?.passed.at(-1)).toContain("DIFF0_DEMO_MODEL=mock");
+    expect(state?.passed.at(-2)).toContain("action:build");
+    expect(vm.readTextFile).not.toHaveBeenCalled();
+    expect(vm.run.mock.calls.some(([{ command }]) => command.includes("diff --name-only"))).toBe(
+      false,
+    );
+  });
+
+  it("requires fresh checkout when HEAD no longer matches the trusted target", async () => {
+    const vm = sandbox();
+    vm.moveHead();
+    await expect(runNextReviewCheck(vm, "eve/test", null, vm.target)).rejects.toThrow(
+      "target changed",
+    );
+    expect(vm.run.mock.calls.some(([{ command }]) => command.includes("timeout"))).toBe(false);
   });
 });
 

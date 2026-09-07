@@ -6,6 +6,7 @@ import {
   reviewChecks,
   runNextReviewCheck,
 } from "../../../lib/github/review-checks.js";
+import { reviewTarget } from "../../../lib/github/review-target.js";
 import { isOwnedBranch } from "../../../lib/github/runtime-push.js";
 
 export default defineTool({
@@ -32,9 +33,14 @@ export default defineTool({
       };
     try {
       const sandbox = await ctx.getSandbox();
-      const next = await runNextReviewCheck(sandbox, branch, reviewChecks.get());
+      const next = await runNextReviewCheck(
+        sandbox,
+        branch,
+        reviewChecks.get(),
+        reviewTarget.get(),
+      );
       reviewChecks.update(() => next);
-      const plan = await reviewCheckPlan(sandbox);
+      const plan = reviewCheckPlan(reviewTarget.get());
       const nextCheck = plan.checks[next.passed.length];
       return nextCheck === undefined
         ? { success: true as const, complete: true as const, checks: next.passed }

@@ -3,6 +3,7 @@ name: diff0 maintenance agent
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - ".github/workflows/eve-diff.yml"
       - "scripts/maintenance-relevance.mjs"
@@ -49,6 +50,7 @@ jobs:
     # Keep the same credential boundary as the fixture job. Bot-authored PRs
     # need a maintainer-reviewed branch before they can receive model secrets.
     if: >-
+      !github.event.pull_request.draft &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.user.login == github.repository_owner &&
       github.actor == github.repository_owner &&

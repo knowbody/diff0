@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { FACTORY_BRAIN_PREFIX } from "./blob.js";
+import { FACTORY_BRAIN_PREFIX, readDocument, writeDocument } from "./blob.js";
 import { FACTORY_REPO } from "./constants.js";
 
 /**
@@ -38,3 +38,24 @@ export const factoryBrainKey = (): string => {
   const id = createHash("sha256").update(FACTORY_REPO).digest("hex");
   return `${FACTORY_BRAIN_PREFIX}${id}.md`;
 };
+
+/** A version names the exact document used to prepare the merged replacement. */
+export async function readFactoryBrain() {
+  const doc = await readDocument(factoryBrainKey());
+  return doc.found
+    ? { brain: doc.content, found: true, version: doc.etag }
+    : { brain: "", found: false, version: null };
+}
+
+export async function updateFactoryBrain(brain: string, expectedVersion: string | null) {
+  // A missing document is created atomically; existing documents require an ETag match.
+  // Never retry an overwrite with a newly read ETag: its contents must be remerged first.
+  const blob = await writeDocument(
+    factoryBrainKey(),
+    brain,
+    expectedVersion === null
+      ? { allowOverwrite: false }
+      : { allowOverwrite: true, ifMatch: expectedVersion },
+  );
+  return { pathname: blob.pathname, success: true as const };
+}

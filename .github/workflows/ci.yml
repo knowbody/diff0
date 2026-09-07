@@ -64,8 +64,8 @@ jobs:
           pack_dir="$RUNNER_TEMP/diff0-pack"
           consumer_dir="$RUNNER_TEMP/diff0-consumer"
           mkdir -p "$pack_dir" "$consumer_dir"
-          package_name="$(npm pack --silent --pack-destination "$pack_dir")"
-          npm install --ignore-scripts --prefix "$consumer_dir" "$pack_dir/$package_name"
+          pnpm pack --out "$pack_dir/diff0.tgz"
+          npm install --ignore-scripts --prefix "$consumer_dir" "$pack_dir/diff0.tgz"
           "$consumer_dir/node_modules/.bin/diff0" --help >/dev/null
           echo "DIFF0_SMOKE_BIN=$consumer_dir/node_modules/.bin/diff0" >> "$GITHUB_ENV"
 

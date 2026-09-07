@@ -15,6 +15,7 @@ import { MODELS } from "./lib/models.js";
  * more than a chat reply.
  */
 export default defineAgent({
+  defaultTools: false,
   compaction: { thresholdPercent: 0.75 },
   limits: {
     maxOutputTokensPerSession: 100_000,

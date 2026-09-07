@@ -8,8 +8,18 @@ export default defineEval({
   async test(t) {
     await t.send("Hi! What are you and what can you do for me on this repository?");
     t.succeeded();
-    t.calledSubagent("implementer", { count: 0 });
-    t.calledSubagent("reviewer", { count: 0 });
+    t.eventsSatisfy(
+      "implementer is not invoked",
+      (events) =>
+        !events.some(
+          (event) => event.type === "subagent.called" && event.data.name === "implementer",
+        ),
+    );
+    t.eventsSatisfy(
+      "reviewer is not invoked",
+      (events) =>
+        !events.some((event) => event.type === "subagent.called" && event.data.name === "reviewer"),
+    );
     for (const tool of WRITE_TOOLS) {
       t.notCalledTool(tool);
     }

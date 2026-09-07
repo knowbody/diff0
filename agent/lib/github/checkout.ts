@@ -1,6 +1,7 @@
 import type { SandboxSession } from "eve/sandbox";
 import { sanitizeCommandOutput } from "./bootstrap-diagnostics.js";
 import { githubCredentials } from "./credentials.js";
+import { syncFactoryDependencies } from "./dependencies.js";
 import {
   brokerPolicy,
   fetchFactoryRepositoryMetadata,
@@ -40,6 +41,8 @@ export async function checkoutOwnedBranch(
     const sha = String(head.stdout).trim();
     if (head.exitCode !== 0 || !/^[a-f0-9]{40}$/.test(sha))
       throw new Error("Could not resolve the fetched branch head.");
+    await sandbox.setNetworkPolicy("deny-all");
+    await syncFactoryDependencies(sandbox);
     return { branch, sha };
   } finally {
     await sandbox.setNetworkPolicy("deny-all");
