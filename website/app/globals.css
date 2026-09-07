@@ -97,6 +97,7 @@ button {
 }
 
 .hero-grid::before {
+  pointer-events: none;
   position: absolute;
   inset: 0;
   z-index: -1;
@@ -109,6 +110,7 @@ button {
 }
 
 .hero-glow {
+  pointer-events: none;
   position: absolute;
   inset: -35% 8% 10%;
   background: radial-gradient(circle at 50% 55%, var(--accent-soft), transparent 64%);
@@ -116,6 +118,7 @@ button {
 }
 
 .cta-grid {
+  pointer-events: none;
   position: absolute;
   inset: 0;
   opacity: 0.13;
