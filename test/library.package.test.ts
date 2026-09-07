@@ -57,7 +57,7 @@ it("compiles and runs a consumer with only the installed tarball and declared de
     );
     run(join(scratch, "node_modules", ".bin", "tsc"), ["--project", "tsconfig.json"]);
     const result = run(process.execPath, ["consumer.mjs"]);
-    expect(JSON.parse(result)).toEqual({ verdict: "yellow", schemaVersion: 4 });
+    expect(JSON.parse(result)).toEqual({ verdict: "yellow", schemaVersion: 5 });
     expect(
       readFileSync(
         join(scratch, "node_modules", "@knowbody", "diff0", "docs", "library-api.md"),

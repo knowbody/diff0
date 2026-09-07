@@ -1,9 +1,13 @@
 /** Node.js collection and comparison API. Output and exit policy belong to callers. */
+
 import { computeDelta } from "./analyze/delta.js";
+import { validatePerformanceThresholds } from "./analyze/performance.js";
 import type { DeltaReport, PerformanceThresholds } from "./analyze/types.js";
 import { applyPricing } from "./collect/pricing.js";
+import { ConfigurationError } from "./errors.js";
 import { getDiffStat } from "./harness/gitdiff.js";
 import { type RunComparisonOptions, runComparison } from "./harness/runner.js";
+import { validateCollectionOptions } from "./options.js";
 
 export interface CompareRefsOptions extends RunComparisonOptions {
   /** Increase-only budgets used to classify performance regressions. */
@@ -17,6 +21,14 @@ export interface CompareRefsOptions extends RunComparisonOptions {
  * Cache reuse is opt-in here, matching the CLI. Failures reject the promise.
  */
 export async function compareRefs(options: CompareRefsOptions): Promise<DeltaReport> {
+  validateCollectionOptions(options);
+  try {
+    validatePerformanceThresholds(options.performanceThresholds ?? {});
+  } catch (error) {
+    throw new ConfigurationError(error instanceof Error ? error.message : String(error), {
+      cause: error,
+    });
+  }
   const { baseRuns, headRuns, meta } = await runComparison({
     ...options,
     noCache: options.noCache ?? true,
@@ -41,6 +53,8 @@ export async function compareRefs(options: CompareRefsOptions): Promise<DeltaRep
 }
 
 export { CommandInterruptedError, EvalFilterNoMatchError, NoEvalsError } from "./adapters/eve.js";
+export { CommandTimeoutError, ConfigurationError, RefError } from "./errors.js";
+export type { HarnessDependencies } from "./harness/dependencies.js";
 export { type Estimate, type EstimateOptions, runEstimate } from "./harness/estimate.js";
 export {
   type ComparisonResult,

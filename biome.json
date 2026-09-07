@@ -3,27 +3,35 @@
   "files": {
     "includes": [
       "src/**/*.ts",
-      "scripts/calibrate.mjs",
-      "scripts/maintenance-relevance.mjs",
-      "test/calibration*.ts",
-      "test/maintenance-relevance.test.ts",
-      "scripts/trial-station-models.mjs",
-      "scripts/trial-coding-models.mjs",
-      "scripts/trial-checks.mjs",
-      "test/trial-budget.test.mjs",
-      "scripts/fixtures/coding-trial.mjs",
-      "action/**/*.mjs",
       "agent/**/*.ts",
       "evals/**/*.ts",
-      "test/agent-*.test.ts",
-      "test/library.package.test.ts",
-      "test/fixtures/library-consumer/**",
-      "test/runner-api.test.ts",
+      "test/**/*.ts",
+      "test/**/*.mjs",
+      "scripts/**/*.ts",
+      "scripts/**/*.mjs",
+      "action/**/*.mjs",
+      "website/**/*.ts",
+      "website/**/*.tsx",
+      "website/**/*.mjs",
       "!**/dist",
       "!**/node_modules",
+      "!website/.next",
+      "!website/out",
+      "!website/next-env.d.ts",
+      "!test/fixtures",
       "!fixtures"
     ]
   },
-  "linter": { "enabled": true, "rules": { "preset": "recommended" } },
-  "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 }
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended"
+    }
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  }
 }

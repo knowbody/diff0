@@ -6,13 +6,17 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "gen:og": "node scripts/gen-og.mjs"
+    "gen:og": "node scripts/gen-og.mjs",
+    "test": "node --experimental-strip-types --test test/*.test.mjs",
+    "typecheck": "tsc --noEmit",
+    "check:content": "node --experimental-strip-types --test test/content.test.mjs"
   },
   "dependencies": {
     "geist": "1.7.2",
     "next": "16.3.3",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",
@@ -23,5 +27,6 @@
     "satori": "^0.29.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.0"
-  }
+  },
+  "type": "module"
 }

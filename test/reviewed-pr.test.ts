@@ -41,15 +41,19 @@ describe("reviewed PR comparison", () => {
   });
 
   it("does not execute an unreviewed base branch", () => {
-    expect(() => validateReviewedPullRequest(
-      { ...pr(), base: { ...pr().base, ref: "unreviewed-branch" } }, repository, headSha,
-    )).toThrow("default branch");
+    expect(() =>
+      validateReviewedPullRequest(
+        { ...pr(), base: { ...pr().base, ref: "unreviewed-branch" } },
+        repository,
+        headSha,
+      ),
+    ).toThrow("default branch");
   });
 
   it("gates paid execution and report publication on separate revision checks", () => {
-    const workflow = parse(readFileSync(
-      new URL("../.github/workflows/eve-reviewed-diff.yml", import.meta.url), "utf8",
-    ));
+    const workflow = parse(
+      readFileSync(new URL("../.github/workflows/eve-reviewed-diff.yml", import.meta.url), "utf8"),
+    );
     expect(Object.keys(workflow.on)).toEqual(["workflow_dispatch"]);
     const job = workflow.jobs.compare;
     expect(job.if).toContain("github.actor == github.repository_owner");
@@ -58,13 +62,20 @@ describe("reviewed PR comparison", () => {
     const verify = job.steps.findIndex((step: { id?: string }) => step.id === "refs");
     const compare = job.steps.findIndex((step: { id?: string }) => step.id === "compare");
     expect(verify).toBeLessThan(compare);
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub expressions are literal workflow fixtures.
     expect(job.steps[verify].env.REVIEWED_SHA).toBe("${{ inputs.reviewed_sha }}");
-    expect(Object.keys(job.steps[compare].env)).toEqual(["AI_GATEWAY_API_KEY", "FACTORY_EVAL_SANDBOX"]);
+    expect(Object.keys(job.steps[compare].env)).toEqual([
+      "AI_GATEWAY_API_KEY",
+      "FACTORY_EVAL_SANDBOX",
+    ]);
     const publish = job.steps[compare + 1];
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub expressions are literal workflow fixtures.
     expect(publish.env.REVIEWED_SHA).toBe("${{ inputs.reviewed_sha }}");
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub expressions are literal workflow fixtures.
     expect(publish.env.EXPECTED_BASE_SHA).toBe("${{ steps.refs.outputs.base-sha }}");
     expect(publish.run.trim().split("\n")).toEqual([
-      "node scripts/validate-reviewed-pr.mjs", "node action/upsert-comment.mjs",
+      "node scripts/validate-reviewed-pr.mjs",
+      "node action/upsert-comment.mjs",
     ]);
   });
 });

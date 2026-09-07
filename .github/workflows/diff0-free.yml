@@ -4,6 +4,13 @@ on:
   pull_request:
     paths:
       - ".github/workflows/diff0-free.yml"
+      - "src/**"
+      - "action/**"
+      - "scripts/action-*"
+      - "scripts/build-action.mjs"
+      - "prices.json"
+      - "package.json"
+      - "pnpm-lock.yaml"
       - "fixtures/demo-agent/agent/**"
       - "fixtures/demo-agent/evals/**"
       - "fixtures/demo-agent/package.json"

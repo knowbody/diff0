@@ -25,7 +25,7 @@ export async function saveReviewAttestation(
   await writeDocument(
     reviewAttestationKey(rootSessionId, attestation.branch),
     JSON.stringify(attestation),
-    { allowOverwrite: true },
+    { allowOverwrite: true, contentType: "application/json" },
   );
 }
 

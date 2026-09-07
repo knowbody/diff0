@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   COST_DRIFT_THRESHOLD_PCT,
+  computeDelta,
   DEFAULT_PERFORMANCE_THRESHOLDS,
   OPERATIONAL_REGRESSION_MIN_RUNS,
   SOFT_SCORE_REGRESSION_THRESHOLD,
-  computeDelta,
   violatesEnforcement,
 } from "../src/analyze/delta.js";
 import type { EvalDelta } from "../src/analyze/types.js";
@@ -143,14 +143,8 @@ describe("computeDelta: eval statuses & verdict", () => {
   });
 
   it("flaky on both refs -> flaky-both", () => {
-    const base = buildRuns("main", "aaa1111", [
-      { evals: { e: true } },
-      { evals: { e: false } },
-    ]);
-    const head = buildRuns("feat", "bbb2222", [
-      { evals: { e: false } },
-      { evals: { e: true } },
-    ]);
+    const base = buildRuns("main", "aaa1111", [{ evals: { e: true } }, { evals: { e: false } }]);
+    const head = buildRuns("feat", "bbb2222", [{ evals: { e: false } }, { evals: { e: true } }]);
     const report = computeDelta(base, head, { now: FIXED_NOW });
     expect(evalByName(report.evals, "e").status).toBe("flaky-both");
   });
@@ -188,13 +182,7 @@ describe("computeDelta: eval statuses & verdict", () => {
 
   it("treats an eval missing from only some runs as incomplete coverage", () => {
     const base = repeatRuns("main", "aaa1111", 5, { evals: { e: true } });
-    const head = buildRuns("feat", "bbb2222", [
-      { evals: { e: true } },
-      {},
-      {},
-      {},
-      {},
-    ]);
+    const head = buildRuns("feat", "bbb2222", [{ evals: { e: true } }, {}, {}, {}, {}]);
     const report = computeDelta(base, head, { now: FIXED_NOW });
     const delta = evalByName(report.evals, "e");
 
@@ -440,12 +428,19 @@ describe("computeDelta: behavioral drift", () => {
   });
 
   it("subagent drift mirrors skill drift", () => {
-    const base = repeatRuns("main", "aaa1111", 2, { evals: { e: true }, subagents: ["researcher"] });
+    const base = repeatRuns("main", "aaa1111", 2, {
+      evals: { e: true },
+      subagents: ["researcher"],
+    });
     const head = repeatRuns("feat", "bbb2222", 2, { evals: { e: true } });
     const report = computeDelta(base, head, { now: FIXED_NOW });
     expect(report.drift.subagents).toEqual([
       expect.objectContaining({
-        name: "researcher", baseUsedRuns: 2, baseTotalRuns: 2, headUsedRuns: 0, headTotalRuns: 2,
+        name: "researcher",
+        baseUsedRuns: 2,
+        baseTotalRuns: 2,
+        headUsedRuns: 0,
+        headTotalRuns: 2,
         confidence: "inconclusive",
       }),
     ]);
@@ -465,19 +460,23 @@ describe("computeDelta: behavioral drift", () => {
     });
     const report = computeDelta(base, head, { now: FIXED_NOW });
 
-    expect(report.drift.skills.map(({ evalName, baseLoadedRuns, headLoadedRuns }) => ({
-      evalName,
-      baseLoadedRuns,
-      headLoadedRuns,
-    }))).toEqual([
+    expect(
+      report.drift.skills.map(({ evalName, baseLoadedRuns, headLoadedRuns }) => ({
+        evalName,
+        baseLoadedRuns,
+        headLoadedRuns,
+      })),
+    ).toEqual([
       { evalName: "alpha", baseLoadedRuns: 3, headLoadedRuns: 0 },
       { evalName: "beta", baseLoadedRuns: 0, headLoadedRuns: 3 },
     ]);
-    expect(report.drift.subagents.map(({ evalName, baseUsedRuns, headUsedRuns }) => ({
-      evalName,
-      baseUsedRuns,
-      headUsedRuns,
-    }))).toEqual([
+    expect(
+      report.drift.subagents.map(({ evalName, baseUsedRuns, headUsedRuns }) => ({
+        evalName,
+        baseUsedRuns,
+        headUsedRuns,
+      })),
+    ).toEqual([
       { evalName: "alpha", baseUsedRuns: 3, headUsedRuns: 0 },
       { evalName: "beta", baseUsedRuns: 0, headUsedRuns: 3 },
     ]);
@@ -604,22 +603,24 @@ describe("computeDelta: behavioral drift", () => {
       finalOutput: { hash: "sha256-new", length: 12 },
     });
     const report = computeDelta(base, head, { now: FIXED_NOW });
-    expect(report.drift.finalOutputs).toEqual([{
-      evalName: "e",
-      baseCapturedRuns: 2,
-      baseAbsentRuns: 0,
-      headAbsentRuns: 0,
-      baseTotalRuns: 2,
-      headCapturedRuns: 2,
-      headTotalRuns: 2,
-      baseHashes: ["sha256-old"],
-      headHashes: ["sha256-new"],
-      baseFrequencies: [{ hash: "sha256-old", runs: 2 }],
-      headFrequencies: [{ hash: "sha256-new", runs: 2 }],
-      baseLengths: [10],
-      headLengths: [12],
-      confidence: "stable",
-    }]);
+    expect(report.drift.finalOutputs).toEqual([
+      {
+        evalName: "e",
+        baseCapturedRuns: 2,
+        baseAbsentRuns: 0,
+        headAbsentRuns: 0,
+        baseTotalRuns: 2,
+        headCapturedRuns: 2,
+        headTotalRuns: 2,
+        baseHashes: ["sha256-old"],
+        headHashes: ["sha256-new"],
+        baseFrequencies: [{ hash: "sha256-old", runs: 2 }],
+        headFrequencies: [{ hash: "sha256-new", runs: 2 }],
+        baseLengths: [10],
+        headLengths: [12],
+        confidence: "stable",
+      },
+    ]);
     expect(JSON.stringify(report)).not.toContain("raw output");
   });
 
@@ -1025,9 +1026,9 @@ describe("computeDelta: meta, mismatches, caveats, edge cases", () => {
       summary: "1 file changed, 12 insertions(+), 4 deletions(-)",
     };
     expect(computeDelta(base, head, { now: FIXED_NOW }).meta.gitDiffStat).toBeNull();
-    expect(computeDelta(base, head, { now: FIXED_NOW, gitDiffStat: stat }).meta.gitDiffStat).toEqual(
-      stat,
-    );
+    expect(
+      computeDelta(base, head, { now: FIXED_NOW, gitDiffStat: stat }).meta.gitDiffStat,
+    ).toEqual(stat);
   });
 
   it("is deterministic: identical inputs produce identical reports", () => {
@@ -1037,4 +1038,93 @@ describe("computeDelta: meta, mismatches, caveats, edge cases", () => {
     const b = computeDelta(base, head, { now: FIXED_NOW });
     expect(a).toEqual(b);
   });
+});
+
+describe("decision precision and cost provenance", () => {
+  it.each([110.04, 110.00000001])(
+    "enforces an actual %s duration increase above a 10 percent budget",
+    (durationMs) => {
+      const base = repeatRuns("main", "aaa", 3, { durationMs: 100 });
+      const head = repeatRuns("head", "bbb", 3, { durationMs });
+      const report = computeDelta(base, head, { performanceThresholds: { durationMs: 10 } });
+      expect(report.costPerf.durationMs.deltaPct).toBeGreaterThan(10);
+      expect(violatesEnforcement(report, ["performance-regression"])).toBe(true);
+    },
+  );
+
+  it("does not enforce a value just under a budget", () => {
+    const report = computeDelta(
+      repeatRuns("main", "aaa", 3, { durationMs: 100 }),
+      repeatRuns("head", "bbb", 3, { durationMs: 109.999999 }),
+      { performanceThresholds: { durationMs: 10 } },
+    );
+    expect(report.costPerf.regressions).toEqual([]);
+  });
+
+  it("retains tiny positive medians inside their range and detects their increase", () => {
+    const report = computeDelta(
+      repeatRuns("main", "aaa", 3, { costUsd: 1e-8 }),
+      repeatRuns("head", "bbb", 3, { costUsd: 1e-5 }),
+    );
+    expect(report.costPerf.costUsd.base).toEqual({ median: 1e-8, min: 1e-8, max: 1e-8 });
+    expect(report.costPerf.costUsd.deltaPct).toBeCloseTo(99900);
+    expect(report.costPerf.regressions.map((r) => r.metric)).toContain("costUsd");
+  });
+
+  it("uses the same complete-cost policy for mixed legacy zero samples and totals", () => {
+    const base = buildRuns("main", "aaa", [{ costUsd: 0 }, { costUsd: 1 }, { costUsd: 1 }]);
+    const report = computeDelta(base, repeatRuns("head", "bbb", 3, { costUsd: 1 }));
+    expect(report.meta.totalComparisonCostUsd).toBeNull();
+    expect(report.costPerf.costUsd.base).toBeNull();
+    expect(report.runSummaries.base[0]?.costUsd).toBeNull();
+  });
+
+  it("keeps explicitly sourced zeros and table provenance without a batch override", () => {
+    const base = repeatRuns("main", "aaa", 3, { costUsd: 0, costSource: "gateway" });
+    const head = repeatRuns("head", "bbb", 3, { costUsd: 0, costSource: "priced-tokens" });
+    const report = computeDelta(base, head);
+    expect(report.meta.totalComparisonCostUsd).toBe(0);
+    expect(report.meta.costSource).toBe("priced-tokens");
+    expect(report.costPerf.costUsd.base?.median).toBe(0);
+    expect(report.costPerf.costUsd.deltaPct).toBeNull();
+  });
+});
+
+it("allows a fractional cost exactly on its budget despite floating-point percentage noise", () => {
+  const report = computeDelta(
+    repeatRuns("main", "aaa", 3, { costUsd: 1 }),
+    repeatRuns("head", "bbb", 3, { costUsd: 1.1 }),
+    { performanceThresholds: { costUsd: 10 } },
+  );
+  expect(report.costPerf.costUsd.deltaPct).toBeCloseTo(10, 12);
+  expect(report.costPerf.regressions).toEqual([]);
+});
+
+describe("known zero performance baselines", () => {
+  it.each(["costUsd", "durationMs"] as const)(
+    "enforces %s zero-to-positive increases without inventing a percentage",
+    (metric) => {
+      const base = repeatRuns("main", "aaa", 3, { [metric]: 0, costSource: "gateway" });
+      const head = repeatRuns("head", "bbb", 3, { [metric]: 1, costSource: "gateway" });
+      const report = computeDelta(base, head);
+      expect(report.costPerf[metric].deltaPct).toBeNull();
+      expect(report.costPerf.regressions).toEqual([
+        expect.objectContaining({ metric, baseMedian: 0, headMedian: 1, deltaPct: null }),
+      ]);
+      expect(violatesEnforcement(report, ["performance-regression"])).toBe(true);
+      expect(report.verdict).toBe("yellow");
+      expect(report.verdictReasons.join("\n")).toContain("allows no increase from a zero baseline");
+    },
+  );
+
+  it.each(["costUsd", "durationMs"] as const)(
+    "allows %s positive-to-zero and zero-to-zero comparisons",
+    (metric) => {
+      for (const baseValue of [1, 0]) {
+        const base = repeatRuns("main", "aaa", 3, { [metric]: baseValue, costSource: "gateway" });
+        const head = repeatRuns("head", "bbb", 3, { [metric]: 0, costSource: "gateway" });
+        expect(computeDelta(base, head).costPerf.regressions).toEqual([]);
+      }
+    },
+  );
 });

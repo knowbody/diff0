@@ -10,6 +10,56 @@ import {
   MAX_ARTIFACT_TITLE_LENGTH,
 } from "./config.js";
 
+export async function saveArtifact(
+  {
+    kind,
+    title,
+    markdown,
+  }: { kind: (typeof ARTIFACT_KINDS)[number]; title: string; markdown: string },
+  rootSessionId: string,
+) {
+  const id = artifactId(kind, title);
+  const key = artifactKey(id, artifactScope(rootSessionId));
+  if (!key) {
+    return { error: "Could not build a valid artifact id.", saved: false as const };
+  }
+  try {
+    await writeDocument(key, markdown, { allowOverwrite: false });
+    return { id, kind, saved: true as const, title };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Failed to save artifact",
+      saved: false as const,
+    };
+  }
+}
+
+export async function readArtifact(id: string, rootSessionId: string) {
+  const key = artifactKey(id, artifactScope(rootSessionId));
+  if (!key) {
+    return { found: false as const, status: "missing" as const };
+  }
+  try {
+    const doc = await readDocument(key);
+    if (!doc.found) {
+      return { found: false as const, status: "missing" as const };
+    }
+    return {
+      createdAt: doc.uploadedAt,
+      found: true as const,
+      status: "found" as const,
+      id,
+      markdown: doc.content,
+    };
+  } catch {
+    return {
+      found: false as const,
+      status: "unavailable" as const,
+      error: "Artifact storage is unavailable. Retry the read before proceeding.",
+    };
+  }
+}
+
 /**
  * The handoff-artifact tools.
  *
@@ -51,22 +101,8 @@ export const saveArtifactTool = () =>
      * @param input - Validated tool input.
      * @returns The `id` to hand along, or `saved: false` with an `error`.
      */
-    async execute({ kind, title, markdown }, ctx) {
-      const id = artifactId(kind, title);
-      const rootSessionId = ctx.session.parent?.rootSessionId ?? ctx.session.id;
-      const key = artifactKey(id, artifactScope(rootSessionId));
-      if (!key) {
-        return { error: "Could not build a valid artifact id.", saved: false };
-      }
-      try {
-        await writeDocument(key, markdown, { allowOverwrite: false });
-        return { id, kind, saved: true, title };
-      } catch (error) {
-        return {
-          error: error instanceof Error ? error.message : "Failed to save artifact",
-          saved: false,
-        };
-      }
+    async execute(input, ctx) {
+      return saveArtifact(input, ctx.session.parent?.rootSessionId ?? ctx.session.id);
     },
     inputSchema: z.object({
       kind: z
@@ -89,18 +125,15 @@ export const saveArtifactTool = () =>
           "Human-readable title, e.g. 'Dedupe reset emails analysis'. The id is derived from it.",
         ),
     }),
-    outputSchema: z.object({
-      error: z.string().optional(),
-      id: z
-        .string()
-        .optional()
-        .describe(
-          "Report this in your structured output; it is how anyone else reads the document.",
-        ),
-      kind: z.string().optional(),
-      saved: z.boolean(),
-      title: z.string().optional(),
-    }),
+    outputSchema: z.discriminatedUnion("saved", [
+      z.object({
+        saved: z.literal(true),
+        id: z.string(),
+        kind: z.enum(ARTIFACT_KINDS),
+        title: z.string(),
+      }),
+      z.object({ saved: z.literal(false), error: z.string() }),
+    ]),
   });
 
 /**
@@ -127,38 +160,20 @@ export const readArtifactTool = () =>
      * @returns `found: true` with the document, or `found: false`.
      */
     async execute({ id }, ctx) {
-      const rootSessionId = ctx.session.parent?.rootSessionId ?? ctx.session.id;
-      const key = artifactKey(id, artifactScope(rootSessionId));
-      if (!key) {
-        return { found: false };
-      }
-      try {
-        const doc = await readDocument(key);
-        if (!doc.found) {
-          return { found: false };
-        }
-        return {
-          createdAt: doc.uploadedAt,
-          found: true,
-          id,
-          markdown: doc.content,
-        };
-      } catch {
-        return { found: false };
-      }
+      return readArtifact(id, ctx.session.parent?.rootSessionId ?? ctx.session.id);
     },
     inputSchema: z.object({
       id: z.string().min(1).max(200).describe("The artifact id, exactly as it was handed to you."),
     }),
-    outputSchema: z.object({
-      createdAt: z
-        .string()
-        .optional()
-        .describe("When it was saved. Treat an old artifact as possibly stale."),
-      found: z
-        .boolean()
-        .describe("False when no artifact exists for that id; report that rather than guessing."),
-      id: z.string().optional(),
-      markdown: z.string().optional(),
-    }),
+    outputSchema: z.discriminatedUnion("status", [
+      z.object({
+        status: z.literal("found"),
+        found: z.literal(true),
+        createdAt: z.string(),
+        id: z.string(),
+        markdown: z.string(),
+      }),
+      z.object({ status: z.literal("missing"), found: z.literal(false) }),
+      z.object({ status: z.literal("unavailable"), found: z.literal(false), error: z.string() }),
+    ]),
   });

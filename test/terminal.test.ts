@@ -15,10 +15,26 @@ function sampleReport() {
     costUsd: 0.05,
   });
   const head = buildRuns("feat/new-planner", "bbb2222333344445555", [
-    { evals: { "sql/join": false, "weather/forecast": true }, tools: ["run_sql", "done"], costUsd: 0.06 },
-    { evals: { "sql/join": false, "weather/forecast": true }, tools: ["run_sql", "done"], costUsd: 0.061 },
-    { evals: { "sql/join": false, "weather/forecast": true }, tools: ["run_sql", "done"], costUsd: 0.062 },
-    { evals: { "sql/join": false, "weather/forecast": true }, tools: ["run_sql", "done"], costUsd: 0.063 },
+    {
+      evals: { "sql/join": false, "weather/forecast": true },
+      tools: ["run_sql", "done"],
+      costUsd: 0.06,
+    },
+    {
+      evals: { "sql/join": false, "weather/forecast": true },
+      tools: ["run_sql", "done"],
+      costUsd: 0.061,
+    },
+    {
+      evals: { "sql/join": false, "weather/forecast": true },
+      tools: ["run_sql", "done"],
+      costUsd: 0.062,
+    },
+    {
+      evals: { "sql/join": false, "weather/forecast": true },
+      tools: ["run_sql", "done"],
+      costUsd: 0.063,
+    },
   ]);
   return computeDelta(base, head, { now: FIXED_NOW });
 }
@@ -80,7 +96,11 @@ describe("renderTerminal", () => {
       color: false,
     });
     const unchanged = renderTerminal(
-      computeDelta(base, base.map((run) => ({ ...run, ref: "feat" })), { now: FIXED_NOW }),
+      computeDelta(
+        base,
+        base.map((run) => ({ ...run, ref: "feat" })),
+        { now: FIXED_NOW },
+      ),
       { color: false },
     );
 
@@ -95,11 +115,15 @@ describe("renderTerminal", () => {
       evals: { e: true },
       sandboxBackend: "unknown",
     });
-    const report = computeDelta(runs, runs.map((run) => ({ ...run, ref: "feat" })), {
-      now: FIXED_NOW,
-      sandboxInferred: false,
-      hostDefaultSandboxCandidate: "docker",
-    });
+    const report = computeDelta(
+      runs,
+      runs.map((run) => ({ ...run, ref: "feat" })),
+      {
+        now: FIXED_NOW,
+        sandboxInferred: false,
+        hostDefaultSandboxCandidate: "docker",
+      },
+    );
     const out = renderTerminal(report, { color: false });
 
     expect(out).toContain("actual sandbox unknown");
@@ -113,8 +137,14 @@ describe("renderTerminal 100-column fit", () => {
   // base, refs long enough to push the one-line title past the budget.
   function demoScaleReport() {
     const longSeq = [
-      "load_skill", "run_sql", "load_skill", "run_sql",
-      "load_skill", "run_sql", "load_skill", "run_sql",
+      "load_skill",
+      "run_sql",
+      "load_skill",
+      "run_sql",
+      "load_skill",
+      "run_sql",
+      "load_skill",
+      "run_sql",
     ];
     const base = repeatRuns("main", "aaa1111222233334444", 3, {
       evals: { "revenue/total-revenue": true, "revenue/uses-sql-tool": true },
@@ -172,7 +202,9 @@ describe("renderTerminal 100-column fit", () => {
     // Continuation lines are indented 6 spaces and start on a tool name.
     expect(lines[start + 1]).toMatch(/^ {6}(load_skill|run_sql)/);
     // Full fidelity: all 8 calls survive the wrap (joined across lines).
-    const headStart = lines.findIndex((line, index) => index > start && line.includes("head most common"));
+    const headStart = lines.findIndex(
+      (line, index) => index > start && line.includes("head most common"),
+    );
     const joined = lines.slice(start, headStart).join(" ").replace(/\s+/g, " ");
     const arrows = joined.split(" -> ").length - 1;
     expect(arrows).toBe(7);
@@ -207,7 +239,38 @@ describe("renderTerminal 100-column fit", () => {
     expect(out).toContain("base most common");
     expect(out).toContain("head most common");
     for (const line of out.split("\n")) {
-      expect(line.length, `line overflows 96 cols: ${JSON.stringify(line)}`).toBeLessThanOrEqual(96);
+      expect(line.length, `line overflows 96 cols: ${JSON.stringify(line)}`).toBeLessThanOrEqual(
+        96,
+      );
     }
   });
+});
+
+it("wraps and aligns Unicode names by display columns without breaking graphemes", async () => {
+  const { default: stringWidth } = await import("string-width");
+  const name = "界👩🏽‍💻e\u0301".repeat(30);
+  const report = computeDelta(
+    repeatRuns(`main/${name}`, "aaa", 3, {
+      evals: { [name]: true },
+      tools: [name],
+      skills: [name],
+    }),
+    repeatRuns("head", "bbb", 3, { evals: { [name]: true }, tools: [name], skills: [name] }),
+    { now: FIXED_NOW },
+  );
+  const output = renderTerminal(report, { color: false });
+  for (const line of output.split("\n")) {
+    expect(stringWidth(line), line).toBeLessThanOrEqual(96);
+    expect(line).not.toMatch(/\uFFFD/);
+    expect(line).not.toMatch(/^\s*[\u0301\u200d]/u);
+  }
+  expect(output).toContain("👩🏽‍💻");
+});
+
+it("renders an explicitly measured free run as zero cost", () => {
+  const report = computeDelta(
+    repeatRuns("main", "aaa", 2, { costUsd: 0, costSource: "gateway" }),
+    repeatRuns("head", "bbb", 2, { costUsd: 0, costSource: "gateway" }),
+  );
+  expect(renderTerminal(report, { color: false })).toContain("$0.0000");
 });

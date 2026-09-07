@@ -1,7 +1,7 @@
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
-import { showcase } from "@/lib/showcase";
 import type { Metadata } from "next";
+import { showcase } from "@/lib/showcase";
 import "./globals.css";
 
 const description =
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
         url: "/og.png",
         width: 1200,
         height: 630,
-        alt: `diff0: real-model drift detected with no confirmed eval regression. ${showcase.subagent.name} subagent ${showcase.subagent.baseUsedRuns}/${showcase.subagent.baseTotalRuns} to ${showcase.subagent.headUsedRuns}/${showcase.subagent.headTotalRuns}; median output tokens ${showcase.featuredMetrics.outputTokens.delta} and duration ${showcase.featuredMetrics.duration.delta}.`,
+        alt: showcase.ogDescription,
       },
     ],
   },
@@ -41,9 +41,7 @@ export const metadata: Metadata = {
  */
 const themeInit = `(function(){try{var t=localStorage.getItem("theme");document.documentElement.classList.add(t==="dark"?"dark":"light")}catch(e){document.documentElement.classList.add("light")}})()`;
 
-export default function RootLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
       lang="en"

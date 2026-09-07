@@ -70,51 +70,58 @@ function sandbox(fail?: string, changed = "src/report/format.ts") {
 describe("required review checks", () => {
   it("persists one bounded check per call and refuses incomplete attestation", async () => {
     const vm = sandbox();
-    const plan = await reviewCheckPlan(vm as never);
+    const plan = await reviewCheckPlan(vm);
     let state: ReviewChecks | null = null;
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < plan.checks.length; i++) {
       expect(() => requireReviewChecks(state, "eve/test", "b".repeat(40), plan)).toThrow(
         "incomplete",
       );
-      state = await runNextReviewCheck(vm as never, "eve/test", state);
+      state = await runNextReviewCheck(vm, "eve/test", state);
       expect(state.passed).toHaveLength(i + 1);
       expect(
         vm.run.mock.calls.filter(([input]) => input.command.includes("timeout -k 5 240")),
       ).toHaveLength(i + 1);
     }
-    expect(requireReviewChecks(state, "eve/test", "b".repeat(40), plan)).toHaveLength(7);
+    expect(requireReviewChecks(state, "eve/test", "b".repeat(40), plan)).toHaveLength(
+      plan.checks.length,
+    );
     expect(state?.passed.at(-1)).toContain("--fail-on drift");
-    expect(state?.passed.at(-2)).toContain("git diff --exit-code -- action/dist/cli.mjs");
-    await runNextReviewCheck(vm as never, "eve/test", state);
+    expect(state?.passed.at(-2)).toContain("git diff --exit-code -- action/dist");
+    await runNextReviewCheck(vm, "eve/test", state);
     expect(
       vm.run.mock.calls.filter(([input]) => input.command.includes("timeout -k 5 240")),
-    ).toHaveLength(7);
+    ).toHaveLength(plan.checks.length);
   });
 
   it("does not advance a failed check or waive a timed-out comparison", async () => {
-    for (const fail of ["pnpm test:integration", "DIFF0_DEMO_MODEL"]) {
+    for (const fail of [
+      "pnpm exec vitest run src/collect/adapter.integration.test.ts",
+      "DIFF0_DEMO_MODEL",
+    ]) {
       const vm = sandbox(fail);
       let state: ReviewChecks | null = null;
-      const successful = fail === "pnpm test:integration" ? 3 : 6;
-      for (let i = 0; i < successful; i++)
-        state = await runNextReviewCheck(vm as never, "eve/test", state);
-      await expect(runNextReviewCheck(vm as never, "eve/test", state)).rejects.toThrow("exit 124");
+      const successful = (await reviewCheckPlan(vm)).checks.findIndex((command) =>
+        command.includes(fail),
+      );
+      expect(successful).toBeGreaterThanOrEqual(0);
+      for (let i = 0; i < successful; i++) state = await runNextReviewCheck(vm, "eve/test", state);
+      await expect(runNextReviewCheck(vm, "eve/test", state)).rejects.toThrow("exit 124");
       expect(state?.passed).toHaveLength(successful);
     }
   });
 
   it("invalidates old results when the commit changes", async () => {
     const vm = sandbox();
-    const old = await runNextReviewCheck(vm as never, "eve/test", null);
+    const old = await runNextReviewCheck(vm, "eve/test", null);
     vm.moveHead();
-    const next = await runNextReviewCheck(vm as never, "eve/test", old);
+    const next = await runNextReviewCheck(vm, "eve/test", old);
     expect(next.sha).not.toBe(old.sha);
     expect(next.passed).toEqual(["pnpm typecheck"]);
   });
 
   it("rejects stale branch, SHA, base, or incomplete command evidence", async () => {
     const vm = sandbox();
-    const plan = await reviewCheckPlan(vm as never);
+    const plan = await reviewCheckPlan(vm);
     const state: ReviewChecks = {
       branch: "eve/test",
       sha: "b".repeat(40),
@@ -136,7 +143,7 @@ describe("required review checks", () => {
   it("rejects an invalid base before executing commands", async () => {
     const vm = sandbox();
     vm.readTextFile.mockResolvedValue(JSON.stringify({ sha: "$(command)" }));
-    await expect(reviewCheckPlan(vm as never)).rejects.toThrow("valid checkout base SHA");
+    await expect(reviewCheckPlan(vm)).rejects.toThrow("valid checkout base SHA");
     expect(vm.run).not.toHaveBeenCalled();
   });
 });
@@ -181,5 +188,89 @@ describe("hosted sandbox imports", () => {
       vi.unstubAllEnvs();
       vi.resetModules();
     }
+  });
+});
+
+describe("bounded GitHub transport", () => {
+  it("backs off GETs according to Retry-After without replaying writes", async () => {
+    const { githubRequest } = await import("../agent/lib/github/transport.js");
+    const read = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response('{"message":"rate limited"}', {
+          status: 429,
+          headers: { "Retry-After": "0" },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ ok: true }));
+    await expect(
+      githubRequest("https://api.github.com/test", "GET", "secret", { fetchImpl: read }),
+    ).resolves.toEqual({ ok: true });
+    expect(read).toHaveBeenCalledTimes(2);
+    for (const method of ["POST", "PATCH"] as const) {
+      const write = vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(new Response('{"message":"busy"}', { status: 503 }));
+      await expect(
+        githubRequest("https://api.github.com/test", method, "secret", { fetchImpl: write }),
+      ).rejects.toThrow("GitHub API 503");
+      expect(write).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it("rejects long retry delays and caps attempts", async () => {
+    const { githubRequest } = await import("../agent/lib/github/transport.js");
+    for (const [header, expectedAttempts] of [
+      ["600", 1],
+      ["0", 3],
+    ] as const) {
+      const fetchImpl = vi
+        .fn<typeof fetch>()
+        .mockImplementation(
+          async () =>
+            new Response('{"message":"busy"}', { status: 429, headers: { "Retry-After": header } }),
+        );
+      await expect(
+        githubRequest("https://api.github.com/test", "GET", "secret", { fetchImpl }),
+      ).rejects.toThrow("GitHub API 429");
+      expect(fetchImpl).toHaveBeenCalledTimes(expectedAttempts);
+    }
+  });
+
+  it("applies the request deadline and propagates cancellation during body reads", async () => {
+    const { githubRequest } = await import("../agent/lib/github/transport.js");
+    // Native AbortSignal.timeout is observable on the request, and caller abort
+    // also covers body reads rather than ending the deadline after headers.
+    const timeout = vi.spyOn(AbortSignal, "timeout");
+    const controller = new AbortController();
+    const fetchImpl = vi.fn<typeof fetch>().mockImplementation(async (_url, options) => {
+      expect(options?.signal).toBeInstanceOf(AbortSignal);
+      expect(options?.redirect).toBe("error");
+      return new Response(
+        new ReadableStream({
+          start(stream) {
+            options?.signal?.addEventListener("abort", () => stream.error(options.signal?.reason));
+          },
+        }),
+      );
+    });
+    const pending = githubRequest("https://api.github.com/test", "GET", "secret", {
+      fetchImpl,
+      signal: controller.signal,
+    });
+    expect(timeout).toHaveBeenCalledWith(30_000);
+    timeout.mockRestore();
+    controller.abort(new Error("cancelled"));
+    await expect(pending).rejects.toThrow("cancelled");
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects malformed successful responses", async () => {
+    const { githubRequest } = await import("../agent/lib/github/transport.js");
+    await expect(
+      githubRequest("https://api.github.com/test", "GET", "secret", {
+        fetchImpl: vi.fn<typeof fetch>().mockResolvedValue(new Response("not JSON")),
+      }),
+    ).rejects.toThrow("invalid JSON");
   });
 });

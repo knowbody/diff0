@@ -3,11 +3,14 @@
  * renders of the same report are byte-identical (stable for diffing, hashing,
  * and CI artifact comparison). schemaVersion gates future shape changes.
  */
-import type { DeltaReport } from "../analyze/types.js";
+import { sortKeysDeep } from "../serialization.js";
+import { JSON_SCHEMA_VERSION } from "./schema.js";
 
-export const JSON_SCHEMA_VERSION = 4;
+export { JSON_SCHEMA_VERSION } from "./schema.js";
 
-function opaqueFingerprintLabels(report: DeltaReport): DeltaReport {
+import type { DeltaReport, FinalOutputDelta, ToolInputDelta } from "../analyze/types.js";
+
+function opaqueFingerprintLabels(report: DeltaReport): Omit<PublicReport, "schemaVersion"> {
   const copy = structuredClone(report);
   const relabel = (delta: {
     baseHashes: string[];
@@ -44,27 +47,30 @@ function opaqueFingerprintLabels(report: DeltaReport): DeltaReport {
   };
   for (const input of copy.drift.toolInputs) relabel(input);
   for (const output of copy.drift.finalOutputs) relabel(output);
-  return copy;
+  // Every fingerprint-bearing collection was relabeled above; this is the sole branding boundary.
+  return copy as Omit<PublicReport, "schemaVersion">;
 }
 
-function sortKeysDeep(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(sortKeysDeep);
-  }
-  if (value !== null && typeof value === "object") {
-    const entries = Object.entries(value as Record<string, unknown>)
-      .filter(([, v]) => v !== undefined)
-      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-    const sorted: Record<string, unknown> = {};
-    for (const [key, entryValue] of entries) {
-      sorted[key] = sortKeysDeep(entryValue);
-    }
-    return sorted;
-  }
-  return value;
-}
-
-export type PublicReport = DeltaReport & { schemaVersion: typeof JSON_SCHEMA_VERSION };
+declare const publicFingerprint: unique symbol;
+/** Public labels cannot be mistaken for reusable internal fingerprints when publishing. */
+export type PublicFingerprint = string & { readonly [publicFingerprint]: true };
+type PublicFingerprintDelta<T> = Omit<
+  T,
+  "baseHashes" | "headHashes" | "baseFrequencies" | "headFrequencies"
+> & {
+  baseHashes: PublicFingerprint[];
+  headHashes: PublicFingerprint[];
+  baseFrequencies: Array<{ hash: PublicFingerprint; runs: number }>;
+  headFrequencies: Array<{ hash: PublicFingerprint; runs: number }>;
+};
+/** Explicit redacted projection; still structurally consumable by human renderers. */
+export type PublicReport = Omit<DeltaReport, "drift"> & {
+  schemaVersion: typeof JSON_SCHEMA_VERSION;
+  drift: Omit<DeltaReport["drift"], "toolInputs" | "finalOutputs"> & {
+    toolInputs: Array<PublicFingerprintDelta<ToolInputDelta>>;
+    finalOutputs: Array<PublicFingerprintDelta<FinalOutputDelta>>;
+  };
+};
 
 /** Copy a report for publication, replacing reusable hashes with opaque labels. */
 export function toPublicReport(report: DeltaReport): PublicReport {

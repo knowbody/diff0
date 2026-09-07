@@ -134,7 +134,22 @@ and compared against the projection (exit 4 if it exceeds the cap before the ful
 
 ## JSON report
 
-`renderJson` output (`schemaVersion: 4`) — see `src/report/json.ts`. Version 4 adds:
+`renderJson` output (`schemaVersion: 5`) — see `src/report/json.ts`. Version 5 changes
+`costPerf.regressions[].deltaPct` to `number | null`: a known zero baseline followed by a
+positive amount exceeds the percentage budget, but its percentage is undefined and is serialized
+as `null`. The regression retains finite `baseMedian`, `headMedian`, and `thresholdPct` values;
+its explanation states the amount and why a percentage budget permits no increase from zero.
+Zero to zero and positive to zero do not exceed the budget. Unknown cost remains unavailable,
+which is distinct from an explicitly measured zero.
+
+Metric summaries and deltas retain full numeric precision. Enforcement compares the head median
+against the allowed amount before display formatting, with a relative tolerance of two machine
+epsilons to absorb floating-point arithmetic noise at an exact boundary. Formatting precision
+does not alter decisions: a 10.04% increase exceeds a 10% budget even when a short display would
+round both to 10%. Consumers of version 4 must handle the nullable regression percentage before
+accepting version 5; no `Infinity` or `NaN` percentage is emitted for a zero baseline.
+
+Version 5 retains the version 4 additions:
 
 - directional `costPerf.regressions` with metric, medians, delta, and threshold;
 - `enforcement.violations`, grouped by granular policy category; and
@@ -192,7 +207,7 @@ src/report/markdown.ts). The Action upserts the PR comment containing that marke
 
 The Action: installs deps in the target, runs `diff0 run` with `--report-md`/`--report-json`,
 upserts the sticky PR comment for its `comment-key` (find by marker, edit; else create), and sets the
-step outcome from the exit code + the legacy verdict or selected schema-4 enforcement categories
+step outcome from the exit code + the legacy verdict or selected schema-5 enforcement categories
 (drift under the default policy remains neutral; the comment is still posted). An empty key
 preserves the original `<!-- diff0-report -->` marker.
 The caller must use `actions/checkout` with `persist-credentials: false`; the Action refuses a
@@ -203,3 +218,9 @@ application code execute on the runner; in `scripts-on` install mode, dependency
 scripts execute too. Fork comments are skipped because the ordinary `pull_request` token cannot
 write them. Never use `scripts-on` mode for an unreviewed ref or work around this with a privileged
 `pull_request_target` job carrying secrets.
+
+Estimate cache policy: `diff0 estimate --cache` projects a following `diff0 run --cache`.
+Without `--cache`, projections include both refs even when cached records supply the
+measurement sample. The estimate output prints the planned cache policy separately
+from the sample source. Numeric flags reject unsafe integers and timeouts exceeding
+Node's maximum timer interval (2,147,483,647 ms) before execution.

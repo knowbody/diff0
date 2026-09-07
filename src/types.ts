@@ -1,6 +1,6 @@
 /**
  * Normalized data model. Every analysis and report consumes RunRecord[] —
- * never raw eve output. The only producer is adapters/eve.ts.
+ * never raw host output. Host adapters and library callers produce this model.
  */
 
 /** Result of a single check/assertion inside one eval. */
@@ -96,8 +96,10 @@ export interface RunRecord {
    */
   finalOutput?: FinalOutputFingerprint;
   tokens: TokenUsage;
-  /** null when no cost source (neither provider metadata nor prices.json entry) was available. */
+  /** null when unavailable; legacy zero without costSource is also treated as unavailable. */
   costUsd: number | null;
+  /** Per-record provenance; explicitly sourced zero is a known cost. Omitted for legacy callers. */
+  costSource?: "gateway" | "priced-tokens" | "unavailable";
   durationMs: number;
   sandboxBackend: SandboxBackend;
   model: string;
@@ -151,7 +153,9 @@ export interface AgentInfo {
 /** The single seam between diff0 and eve. Implemented by adapters/eve.ts. */
 export interface EveAdapter {
   /** Detect eve, its version, and that the repo has at least one eval suite. */
-  probe(cwd: string): Promise<{ eveVersion: string; evalIds: string[] }>;
+  probe(
+    cwd: string,
+  ): Promise<{ eveVersion: string; evalIds: string[]; agentInfo?: AgentInfo | null }>;
   /** Run the suite once and return the normalized record. */
   runEvalSuite(ref: string, commitSha: string, opts: RunOptions): Promise<RunRecord>;
 }

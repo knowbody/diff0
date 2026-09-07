@@ -28,7 +28,7 @@ describe("formatUsd", () => {
   });
 
   it("preserves existing sub-$1 formatting away from the tiny-value boundary", () => {
-    expect(formatUsd(0.0300)).toBe("$0.0300");
+    expect(formatUsd(0.03)).toBe("$0.0300");
     expect(formatUsd(0.5)).toBe("$0.5000");
   });
 
@@ -69,4 +69,31 @@ describe("tiny costs in rendered reports", () => {
     expect(json.meta.totalComparisonCostUsd).toBeCloseTo(6 * costUsd, 12);
     expect(output).not.toContain("<$0.0001");
   });
+});
+
+it("keeps a budget explanation visibly above its threshold", async () => {
+  const { performanceBudgetFacts } = await import("../src/report/facts.js");
+  expect(
+    performanceBudgetFacts({
+      metric: "durationMs",
+      baseMedian: 100,
+      headMedian: 110.04,
+      deltaPct: 10.04,
+      thresholdPct: 10,
+    }),
+  ).toMatchObject({ delta: "+10.04%", threshold: "+10%" });
+});
+
+it("explains known zero baselines in amounts rather than an invented percentage", async () => {
+  const { performanceBudgetFacts } = await import("../src/report/facts.js");
+  const facts = performanceBudgetFacts({
+    metric: "costUsd",
+    baseMedian: 0,
+    headMedian: 0.01,
+    deltaPct: null,
+    thresholdPct: 25,
+  });
+  expect(facts.delta).toBeNull();
+  expect(facts.text).toContain("from $0.0000 to $0.0100");
+  expect(facts.text).toContain("allows no increase from a zero baseline");
 });

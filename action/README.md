@@ -136,7 +136,7 @@ Then the action enforces the `fail-on` **input**:
 - `fail-on: regression` (default) — fail on a `red` verdict; drift alone (`yellow`) passes.
 - `fail-on: drift` — fail on `red` or `yellow`.
 - `fail-on: never` — never fail on the verdict (execution errors still fail).
-- A comma-separated granular selection fails when any selected schema-4 enforcement category is
+- A comma-separated granular selection fails when any selected schema-5 enforcement category is
   present: `eval-regression`, `score-regression`, `performance-regression`, `behavioral-drift`, or
   `comparison-validity`.
 

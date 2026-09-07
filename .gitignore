@@ -11,4 +11,5 @@ agent/.eve/
 dist/
 !action/dist/
 !action/dist/cli.mjs
+!action/dist/policy.mjs
 .claude/

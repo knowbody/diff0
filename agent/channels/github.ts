@@ -37,20 +37,26 @@ const isIgnoredComment = (comment: GitHubComment, botName: string): boolean => {
 const TRUSTED_LABELER_ROLES = new Set(["admin", "maintain", "write", "triage"]);
 const TRUSTED_WRITER_ROLES = new Set(["admin", "maintain", "write"]);
 
-async function repositoryRole(ctx: GitHubInboundContext): Promise<string | null> {
-  const response = await ctx.github.request<{
-    permission?: string;
-    role_name?: string;
-  }>({
+export interface RepositoryRoleContext {
+  github: { request(input: { method: "GET"; path: string }): Promise<{ body: unknown }> };
+  repository: Pick<GitHubInboundContext["repository"], "owner" | "name">;
+  sender: Pick<GitHubInboundContext["sender"], "login">;
+}
+
+async function repositoryRole(ctx: RepositoryRoleContext): Promise<string | null> {
+  const { body } = await ctx.github.request({
     method: "GET",
     path: `/repos/${ctx.repository.owner}/${ctx.repository.name}/collaborators/${encodeURIComponent(ctx.sender.login)}/permission`,
   });
-  const role = response.body.role_name ?? response.body.permission;
+  if (body === null || typeof body !== "object") return null;
+  const role =
+    ("role_name" in body ? body.role_name : undefined) ??
+    ("permission" in body ? body.permission : undefined);
   return typeof role === "string" ? role : null;
 }
 
 /** A mention may start an attended session only for a verified repository writer. */
-export async function isTrustedCommenter(ctx: GitHubInboundContext): Promise<boolean> {
+export async function isTrustedCommenter(ctx: RepositoryRoleContext): Promise<boolean> {
   const role = await repositoryRole(ctx);
   return role !== null && TRUSTED_WRITER_ROLES.has(role);
 }

@@ -83,12 +83,28 @@ describe("maintenance eval relevance", () => {
     ).toBe(true);
   });
 
-  it("reads committed refs and treats a lockfile-only upgrade as relevant", () => {
+  // This exercises real Git through several subprocesses, including three commits.
+  // Allow contention from parallel suite/integration installs without weakening assertions.
+  it("reads committed refs and treats a lockfile-only upgrade as relevant", {
+    timeout: 20_000,
+  }, () => {
     const repo = mkdtempSync(join(tmpdir(), "diff0-relevance-"));
     const git = (...args: string[]) =>
       execFileSync(
         "git",
-        ["-C", repo, "-c", "user.name=test", "-c", "user.email=test@example.invalid", ...args],
+        [
+          "-C",
+          repo,
+          "-c",
+          "user.name=test",
+          "-c",
+          "user.email=test@example.invalid",
+          "-c",
+          "commit.gpgsign=false",
+          "-c",
+          "core.hooksPath=/dev/null",
+          ...args,
+        ],
         { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
       ).trim();
     try {

@@ -5,12 +5,13 @@
  * gate (projection over cap → exit 4; unmeasurable cost → exit 0 + caveat).
  */
 import { beforeEach, describe, expect, it } from "vitest";
+import { fakeWorktrees, harnessRecord } from "../../test/helpers/harness.js";
 import { CommandInterruptedError } from "../adapters/eve.js";
 import { runCli } from "../cli.js";
 import { computeCacheKey } from "../collect/cache.js";
+import { RefError } from "../errors.js";
 import type { AgentInfo, EveAdapter, RunOptions, RunRecord } from "../types.js";
 import { runEstimate } from "./estimate.js";
-import type { CreateWorktreeOptions, WorktreeHandle } from "./worktree.js";
 
 const FAKE_EVE_VERSION = "0.29.5-fake";
 const FAKE_MODEL = "fake/unpriced-model";
@@ -22,28 +23,12 @@ function record(
   costUsd: number | null,
   durationMs = 30_000,
 ): RunRecord {
-  return {
-    ref,
-    commitSha,
-    runIndex,
-    evalResults: [
-      { name: "e/one", passed: true, checks: [{ name: "c", passed: true }] },
-      { name: "e/two", passed: true, checks: [{ name: "c", passed: true }] },
-    ],
-    toolCalls: [],
-    skillLoads: [],
-    skillsLoaded: [],
-    subagentCalls: [],
-    tokens: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0 },
+  return harnessRecord(ref, commitSha, runIndex, {
+    model: FAKE_MODEL,
     costUsd,
     durationMs,
-    sandboxBackend: "docker",
-    model: FAKE_MODEL,
-    pricingModel: FAKE_MODEL,
-    eveVersion: FAKE_EVE_VERSION,
-    dataSources: { evalJson: true, spans: false, logs: false },
-    startedAt: "2026-08-03T10:00:00.000Z",
-  };
+    evals: { "e/one": true, "e/two": true },
+  });
 }
 
 class FakeAdapter implements EveAdapter {
@@ -68,35 +53,6 @@ class InterruptedAdapter extends FakeAdapter {
   }
 }
 
-interface FakeWorktrees {
-  factory: (repoPath: string, ref: string, opts?: CreateWorktreeOptions) => Promise<WorktreeHandle>;
-  created: string[];
-  cleanups: string[];
-  options: CreateWorktreeOptions[];
-}
-
-function fakeWorktrees(sha: string): FakeWorktrees {
-  const created: string[] = [];
-  const cleanups: string[] = [];
-  const options: CreateWorktreeOptions[] = [];
-  return {
-    created,
-    cleanups,
-    options,
-    factory: async (_repoPath: string, ref: string, opts = {}) => {
-      created.push(ref);
-      options.push(opts);
-      return {
-        path: `/fake-worktree/${ref}`,
-        commitSha: sha,
-        cleanup: async () => {
-          cleanups.push(ref);
-        },
-      };
-    },
-  };
-}
-
 const fakeSandbox = async () => ({ backend: "docker" as const, inferred: true as const });
 const fakeAgentInfo = async (_cwd: string): Promise<AgentInfo | null> => ({
   model: FAKE_MODEL,
@@ -111,7 +67,7 @@ const cache = new Map<string, RunRecord[]>();
 
 const fakeResolveRef = async (_repoPath: string, ref: string): Promise<string> => {
   if (ref === "no-such-ref" || ref === "nope") {
-    throw new Error(`Ref "${ref}" was not found in ${repo}`);
+    throw new RefError(`Ref "${ref}" was not found in ${repo}`);
   }
   return sha;
 };
@@ -174,51 +130,55 @@ describe("runEstimate", () => {
     expect(estimate.projectedDurationMs).toBe(180_000);
   });
 
-  it("fresh base cache: uses cached records as the sample, zero eval runs, head-only projection", async () => {
-    const cachedSha = sha;
-    const key = computeCacheKey({
-      appDir: ".",
-      commitSha: cachedSha,
-      eveVersion: FAKE_EVE_VERSION,
-      model: FAKE_MODEL,
-      evalFilter: [],
-      sandboxBackend: "docker",
-    });
-    await fakeWriteCache(repo, key, [
-      record("main", cachedSha, 0, 0.02, 20_000),
-      record("main", cachedSha, 1, 0.03, 30_000),
-      record("main", cachedSha, 2, 0.04, 40_000),
-    ]);
+  it.each([false, true])(
+    "cached sample separates evidence from planned cache reuse (%s)",
+    async (plannedCacheReuse) => {
+      const cachedSha = sha;
+      const key = computeCacheKey({
+        appDir: ".",
+        commitSha: cachedSha,
+        eveVersion: FAKE_EVE_VERSION,
+        model: FAKE_MODEL,
+        evalFilter: [],
+        sandboxBackend: "docker",
+      });
+      await fakeWriteCache(repo, key, [
+        record("main", cachedSha, 0, 0.02, 20_000),
+        record("main", cachedSha, 1, 0.03, 30_000),
+        record("main", cachedSha, 2, 0.04, 40_000),
+      ]);
 
-    const adapter = new FakeAdapter(999); // must never be asked to run
-    const worktrees = fakeWorktrees(cachedSha);
+      const adapter = new FakeAdapter(999); // must never be asked to run
+      const worktrees = fakeWorktrees(cachedSha);
 
-    const estimate = await runEstimate({
-      repoPath: repo,
-      appDir: ".",
-      baseRef: "main",
-      headRef: "HEAD",
-      runs: 3,
-      evalFilter: [],
-      adapter,
-      createWorktree: worktrees.factory,
-      inferSandbox: fakeSandbox,
-      getAgentInfo: fakeAgentInfo,
-      ...fakeGitAndCache,
-    });
+      const estimate = await runEstimate({
+        cache: plannedCacheReuse,
+        repoPath: repo,
+        appDir: ".",
+        baseRef: "main",
+        headRef: "HEAD",
+        runs: 3,
+        evalFilter: [],
+        adapter,
+        createWorktree: worktrees.factory,
+        inferSandbox: fakeSandbox,
+        getAgentInfo: fakeAgentInfo,
+        ...fakeGitAndCache,
+      });
 
-    expect(adapter.suiteCalls).toEqual([]);
-    expect(estimate.sampleSource).toBe("base-cache");
-    expect(estimate.sampleRuns).toBe(3);
-    // Median of $0.02/$0.03/$0.04 and 20s/30s/40s.
-    expect(estimate.perRunCostUsd).toBeCloseTo(0.03, 10);
-    expect(estimate.perRunDurationMs).toBe(30_000);
-    expect(estimate.cachedBaseRuns).toBe(3);
-    expect(estimate.chargeableRuns).toBe(3);
-    expect(estimate.projectedCostUsd).toBeCloseTo(0.09, 10);
-    expect(estimate.projectedDurationMs).toBe(90_000);
-    expect(worktrees.cleanups).toEqual(["HEAD"]);
-  });
+      expect(adapter.suiteCalls).toEqual([]);
+      expect(estimate.sampleSource).toBe("base-cache");
+      expect(estimate.sampleRuns).toBe(3);
+      // Median of $0.02/$0.03/$0.04 and 20s/30s/40s.
+      expect(estimate.perRunCostUsd).toBeCloseTo(0.03, 10);
+      expect(estimate.perRunDurationMs).toBe(30_000);
+      expect(estimate.cachedBaseRuns).toBe(plannedCacheReuse ? 3 : 0);
+      expect(estimate.chargeableRuns).toBe(plannedCacheReuse ? 3 : 6);
+      expect(estimate.projectedCostUsd).toBeCloseTo(plannedCacheReuse ? 0.09 : 0.18, 10);
+      expect(estimate.projectedDurationMs).toBe(plannedCacheReuse ? 90_000 : 180_000);
+      expect(worktrees.cleanups).toEqual(["HEAD"]);
+    },
+  );
 
   it("includes timeout and concurrency in the cache key and forwards them to eve on a miss", async () => {
     const adapter = new FakeAdapter(0.05);

@@ -12,24 +12,19 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Resvg } from "@resvg/resvg-js";
 import satori from "satori";
+import { createShowcase } from "../lib/showcase-model.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
 const fontDir = join(root, "node_modules", "geist", "dist", "fonts");
-const showcase = JSON.parse(
-  readFileSync(join(root, "content", "showcase.json"), "utf8"),
+const showcase = createShowcase(
+  JSON.parse(readFileSync(join(root, "content", "showcase.json"), "utf8")),
 );
-const reporter = showcase.subagent;
-const outputTokens = showcase.metrics.find((entry) => entry.label === "Output tokens / run");
-const duration = showcase.metrics.find((entry) => entry.label === "Duration / run");
-if (!outputTokens || !duration) throw new Error("Showcase metrics are incomplete.");
 
 const mono = readFileSync(join(fontDir, "geist-mono", "GeistMono-Regular.ttf"));
-const monoMedium = readFileSync(
-  join(fontDir, "geist-mono", "GeistMono-Medium.ttf"),
-);
+const monoMedium = readFileSync(join(fontDir, "geist-mono", "GeistMono-Medium.ttf"));
 
-const YELLOW = "#f5a623";
+const VERDICT_COLOR = { green: "#61c978", yellow: "#f5a623", red: "#ef5b5b" }[showcase.verdict];
 const BG = "#0a0a0a";
 const FG = "#ededed";
 const MUTED = "#a1a1a1";
@@ -55,11 +50,7 @@ const og = el(
       border: `2px solid ${LINE}`,
     },
   },
-  el(
-    "div",
-    { style: { display: "flex", fontSize: "30px", color: FG, fontWeight: 500 } },
-    "diff0",
-  ),
+  el("div", { style: { display: "flex", fontSize: "30px", color: FG, fontWeight: 500 } }, "diff0"),
   el(
     "div",
     { style: { display: "flex", flexDirection: "column", gap: "26px" } },
@@ -77,7 +68,7 @@ const og = el(
           width: "34px",
           height: "34px",
           borderRadius: "17px",
-          backgroundColor: YELLOW,
+          backgroundColor: VERDICT_COLOR,
           display: "flex",
         },
       }),
@@ -87,18 +78,14 @@ const og = el(
           style: {
             display: "flex",
             fontSize: "38px",
-            color: YELLOW,
+            color: VERDICT_COLOR,
             fontWeight: 500,
           },
         },
-        "real-model drift · no confirmed regression",
+        showcase.ogTitle,
       ),
     ),
-    el(
-      "div",
-      { style: { display: "flex", fontSize: "30px", color: MUTED } },
-      `reporter: ${reporter.baseUsedRuns}/${reporter.baseTotalRuns} -> ${reporter.headUsedRuns}/${reporter.headTotalRuns} · output ${outputTokens.delta} · duration ${duration.delta}`,
-    ),
+    el("div", { style: { display: "flex", fontSize: "30px", color: MUTED } }, showcase.ogEvidence),
   ),
   el(
     "div",
@@ -120,19 +107,14 @@ const og = el(
           lineHeight: 1.6,
         },
       },
-      el("div", { style: { display: "flex" } },
-        "git diff tells you what changed in the code."),
+      el("div", { style: { display: "flex" } }, "git diff tells you what changed in the code."),
       el(
         "div",
         { style: { display: "flex", color: FG } },
         "diff0 tells you what changed in the agent.",
       ),
     ),
-    el(
-      "div",
-      { style: { display: "flex", fontSize: "21px", color: MUTED } },
-      "diff0.io",
-    ),
+    el("div", { style: { display: "flex", fontSize: "21px", color: MUTED } }, "diff0.io"),
   ),
 );
 
@@ -147,13 +129,17 @@ const svg = await satori(og, {
 
 const png = new Resvg(svg, {
   fitTo: { mode: "width", value: 1200 },
-}).render().asPng();
+})
+  .render()
+  .asPng();
 writeFileSync(join(root, "public", "og.png"), png);
 console.log(`public/og.png written (${png.length} bytes)`);
 
 const iconSvg = readFileSync(join(root, "app", "icon.svg"), "utf8");
 const iconPng = new Resvg(iconSvg, {
   fitTo: { mode: "width", value: 180 },
-}).render().asPng();
+})
+  .render()
+  .asPng();
 writeFileSync(join(root, "app", "apple-icon.png"), iconPng);
 console.log(`app/apple-icon.png written (${iconPng.length} bytes)`);

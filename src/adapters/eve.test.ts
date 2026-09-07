@@ -99,6 +99,7 @@ describe("summaryToRunRecord", () => {
 
     // A later usage-bearing step has no gateway cost, so the partial $0.0046 is rejected.
     expect(record.costUsd).toBeNull();
+    expect(record.costSource).toBeUndefined();
 
     expect(record.durationMs).toBe(10_000);
     expect(record.startedAt).toBe("2026-08-03T10:00:00.000Z");
@@ -123,6 +124,7 @@ describe("summaryToRunRecord", () => {
     }
     const record = summaryToRunRecord(summary, ctx);
     expect(record.costUsd).toBeNull();
+    expect(record.costSource).toBeUndefined();
     // Tokens still fold.
     expect(record.tokens).toEqual({ input: 340, output: 120, cacheRead: 0, cacheWrite: 0 });
   });
@@ -250,6 +252,7 @@ describe("summaryToRunRecord", () => {
     // Eve/AI SDK inputTokens includes cached input; normalized input is the non-cache remainder.
     expect(record.tokens).toEqual({ input: 77, output: 55, cacheRead: 22, cacheWrite: 11 });
     expect(record.costUsd).toBeNull();
+    expect(record.costSource).toBeUndefined();
     expect(record.pricingModel).toBeNull();
   });
 
@@ -421,7 +424,7 @@ else process.exit(2);
 
     try {
       const adapter = new EveCliAdapter();
-      await expect(adapter.probe(cwd)).resolves.toEqual({
+      await expect(adapter.probe(cwd)).resolves.toMatchObject({
         eveVersion: "0.47.5",
         evalIds: ["compat/eval"],
       });

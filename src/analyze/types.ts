@@ -298,7 +298,8 @@ export interface PerformanceRegression {
   metric: PerformanceMetric;
   baseMedian: number;
   headMedian: number;
-  deltaPct: number;
+  /** Null when the known baseline is zero; the amount increase still violates its budget. */
+  deltaPct: number | null;
   thresholdPct: number;
 }
 

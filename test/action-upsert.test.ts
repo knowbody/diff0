@@ -7,11 +7,12 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { buildSync } from "esbuild";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
 import {
-  MAX_BODY_LENGTH,
   failureReportBody,
+  MAX_BODY_LENGTH,
   parseNextLink,
   prepareReportBody,
   REPORT_MARKER,
@@ -19,6 +20,30 @@ import {
   truncateBody,
   upsertComment,
 } from "../action/upsert-comment.mjs"; // plain .mjs module, no type declarations on purpose
+import {
+  enforceActionReport,
+  executionFailure,
+  validateActionInputs,
+} from "../scripts/action-policy.js";
+import { JSON_SCHEMA_VERSION } from "../src/report/schema.js";
+
+// Exercise the same bundled Node entrypoint shipped by the Action without depending on
+// whether a maintainer has rebuilt the checked-in bundle before running unit tests.
+let policyBundleRoot: string;
+beforeAll(() => {
+  policyBundleRoot = mkdtempSync(join(tmpdir(), "diff0-action-policy-"));
+  buildSync({
+    entryPoints: ["scripts/action-policy-entry.ts"],
+    bundle: true,
+    platform: "node",
+    format: "esm",
+    target: "node20",
+    outfile: join(policyBundleRoot, "dist", "policy.mjs"),
+  });
+});
+afterAll(() => {
+  if (policyBundleRoot) rmSync(policyBundleRoot, { recursive: true, force: true });
+});
 
 // ---------------------------------------------------------------------------
 // fetch stub
@@ -36,28 +61,21 @@ function makeResponse({
   json = null as unknown,
   headers = {} as Record<string, string>,
 }) {
-  const lower = Object.fromEntries(
-    Object.entries(headers).map(([key, value]) => [key.toLowerCase(), value]),
-  );
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    headers: { get: (name: string) => lower[name.toLowerCase()] ?? null },
-    json: async () => json,
-    text: async () => JSON.stringify(json),
-  };
+  return new Response(JSON.stringify(json), { status, headers });
 }
 
 type Handler = (call: RecordedCall) => ReturnType<typeof makeResponse>;
 
 function stubFetch(handler: Handler) {
   const calls: RecordedCall[] = [];
-  const fetchImpl = async (url: string, options: { method?: string; body?: string; headers?: Record<string, string> } = {}) => {
+  const fetchImpl: typeof fetch = async (input, options = {}) => {
+    if (options.body != null && typeof options.body !== "string")
+      throw new Error("Expected JSON string body");
     const call: RecordedCall = {
-      url,
+      url: input instanceof Request ? input.url : String(input),
       method: options.method ?? "GET",
-      body: options.body === undefined ? undefined : JSON.parse(options.body),
-      headers: options.headers ?? {},
+      body: options.body == null ? undefined : JSON.parse(options.body),
+      headers: Object.fromEntries(new Headers(options.headers).entries()),
     };
     calls.push(call);
     return handler(call);
@@ -96,7 +114,7 @@ describe("upsertComment", () => {
     );
     expect(calls[1]?.method).toBe("POST");
     expect(calls[1]?.url).toBe("https://api.github.com/repos/octo/diff0/issues/7/comments");
-    expect((calls[1]?.body as { body: string }).body).toContain(REPORT_MARKER);
+    expect((calls[1]?.body as { body: string } | undefined)?.body ?? "").toContain(REPORT_MARKER);
     expect(calls[1]?.headers.authorization).toBe("Bearer tok");
   });
 
@@ -121,7 +139,7 @@ describe("upsertComment", () => {
     expect(calls[1]?.method).toBe("PATCH");
     // PATCH goes to the comment endpoint (no issue number), targeting the FIRST match.
     expect(calls[1]?.url).toBe("https://api.github.com/repos/octo/diff0/issues/comments/2");
-    expect((calls[1]?.body as { body: string }).body).toBe(REPORT_BODY);
+    expect((calls[1]?.body as { body: string } | undefined)?.body ?? "").toBe(REPORT_BODY);
   });
 
   it("skips a spoofed marker comment that the token cannot edit", async () => {
@@ -169,8 +187,7 @@ describe("upsertComment", () => {
 
   it("paginates across pages via the Link header before deciding", async () => {
     const pageOne = Array.from({ length: 100 }, (_, i) => ({ id: i, body: `noise ${i}` }));
-    const nextUrl =
-      "https://api.github.com/repos/octo/diff0/issues/7/comments?per_page=100&page=2";
+    const nextUrl = "https://api.github.com/repos/octo/diff0/issues/7/comments?per_page=100&page=2";
     const { fetchImpl, calls } = stubFetch((call) => {
       if (call.method === "GET" && !call.url.includes("page=2")) {
         return makeResponse({
@@ -212,7 +229,7 @@ describe("upsertComment", () => {
 
     await upsertComment({ ...BASE_ARGS, fetchImpl, body: huge });
 
-    const posted = (calls[1]?.body as { body: string }).body;
+    const posted = (calls[1]?.body as { body: string } | undefined)?.body ?? "";
     expect(posted.length).toBeLessThan(65_536);
     expect(posted).toContain(REPORT_MARKER);
     expect(posted).toContain("truncated");
@@ -356,9 +373,7 @@ describe("named sticky reports", () => {
 
   it("gives each valid key an independent marker", () => {
     expect(reportMarker("factory")).toBe("<!-- diff0-report:factory -->");
-    expect(prepareReportBody(REPORT_BODY, "factory")).toContain(
-      "<!-- diff0-report:factory -->",
-    );
+    expect(prepareReportBody(REPORT_BODY, "factory")).toContain("<!-- diff0-report:factory -->");
   });
 
   it("rejects keys that cannot safely form a marker", () => {
@@ -425,12 +440,15 @@ describe("action/action.yml", () => {
   });
 
   it("uses the contract's defaults", () => {
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub expressions are literal workflow fixtures.
     expect(action.inputs.base?.default).toBe("${{ github.event.pull_request.base.sha }}");
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub expressions are literal workflow fixtures.
     expect(action.inputs.head?.default).toBe("${{ github.event.pull_request.head.sha }}");
     expect(action.inputs.runs?.default).toBe("3");
     expect(action.inputs["fail-on"]?.default).toBe("regression");
     expect(action.inputs["install-mode"]?.default).toBe("scripts-off");
     expect(action.inputs["working-directory"]?.default).toBe(".");
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub expressions are literal workflow fixtures.
     expect(action.inputs["github-token"]?.default).toBe("${{ github.token }}");
     expect(action.inputs["comment-key"]?.default).toBe("");
     expect(action.inputs["allow-untrusted-head"]?.default).toBe("false");
@@ -451,11 +469,9 @@ describe("action/action.yml", () => {
     expect(yml).toMatch(/name: Enforce fail-on policy/);
   });
 
-  it("fails closed when the JSON artifact has a missing or unknown verdict", () => {
-    expect(yml).toContain('report.schemaVersion !== 4');
-    expect(yml).toContain('!["green", "yellow", "red"].includes(report.verdict)');
-    expect(yml).toContain("report.enforcement?.violations");
-    expect(yml).toContain("JSON report has an unsupported schema or invalid verdict/enforcement data");
+  it("enforces typed policy through the bundled entrypoint", () => {
+    const step = action.runs.steps.find((step) => step.name === "Enforce fail-on policy");
+    expect(step?.run).toBe('node "$GITHUB_ACTION_PATH/dist/policy.mjs" enforce');
   });
 
   it("guards the comment step to pull_request events", () => {
@@ -476,10 +492,10 @@ describe("action/action.yml", () => {
     expect(yml).not.toContain("pnpm install --frozen-lockfile");
     expect(yml).toContain('node "$GITHUB_ACTION_PATH/dist/cli.mjs"');
     expect(yml).toContain('mktemp -d "$RUNNER_TEMP/diff0.XXXXXX"');
-    expect(yml).not.toContain('$RUNNER_TEMP/diff0-report.md');
+    expect(yml).not.toContain("$RUNNER_TEMP/diff0-report.md");
     expect(yml).toContain("install-mode:");
     expect(yml).toContain('default: "scripts-off"');
-    expect(yml).toContain('scripts-off|scripts-on) ;;');
+    expect(yml).toContain("scripts-off|scripts-on) ;;");
     expect(yml).toContain("install-mode 'safe' is deprecated");
     expect(yml).toContain("install-mode 'trusted' is deprecated");
     expect(yml).toContain('--install-mode "$INPUT_INSTALL_MODE"');
@@ -490,6 +506,7 @@ describe("action/action.yml", () => {
     expect(yml).toContain('--max-duration-increase-pct "$INPUT_MAX_DURATION_INCREASE_PCT"');
     expect(yml).toContain("scripts-on mode executes lifecycle/build scripts");
     expect(yml).not.toContain("skipping the PR comment");
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub expressions are literal workflow fixtures.
     expect(yml).toContain("BASE_REF: ${{ inputs.base }}");
   });
 
@@ -497,6 +514,7 @@ describe("action/action.yml", () => {
     const runStep = action.runs.steps.find((step) => step.name === "Run diff0");
     const baseEnv = {
       ...process.env,
+      GITHUB_ACTION_PATH: policyBundleRoot,
       INPUT_BASE: "main",
       INPUT_HEAD: "HEAD",
       INPUT_RUNS: "3",
@@ -525,7 +543,7 @@ describe("action/action.yml", () => {
     }
   });
 
-  it("enforces selected granular categories from schema 4 JSON", () => {
+  it("enforces selected granular categories from schema 5 JSON", () => {
     const scratch = mkdtempSync(join(tmpdir(), "diff0-action-enforcement-"));
     const reportPath = join(scratch, "report.json");
     const outputPath = join(scratch, "output.txt");
@@ -533,7 +551,7 @@ describe("action/action.yml", () => {
     writeFileSync(
       reportPath,
       JSON.stringify({
-        schemaVersion: 4,
+        schemaVersion: JSON_SCHEMA_VERSION,
         verdict: "red",
         enforcement: {
           violations: [
@@ -551,6 +569,7 @@ describe("action/action.yml", () => {
           encoding: "utf8",
           env: {
             ...process.env,
+            GITHUB_ACTION_PATH: policyBundleRoot,
             CLI_EXIT: "0",
             FAIL_ON: failOn,
             REPORT_JSON: reportPath,
@@ -615,13 +634,10 @@ describe("action/action.yml", () => {
     }
 
     const dogfood = readFileSync(new URL(".github/workflows/diff0.yml", root), "utf8");
-    expect(dogfood).toContain(
-      "github.event.pull_request.head.repo.full_name == github.repository",
-    );
-    expect(dogfood).toContain(
-      "github.event.pull_request.user.login == github.repository_owner",
-    );
+    expect(dogfood).toContain("github.event.pull_request.head.repo.full_name == github.repository");
+    expect(dogfood).toContain("github.event.pull_request.user.login == github.repository_owner");
     expect(dogfood).toContain("github.actor == github.repository_owner");
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub expressions are literal workflow fixtures.
     expect(dogfood).toContain("AI_GATEWAY_API_KEY: ${{ secrets.DIFF0_AI_GATEWAY_API_KEY }}");
     expect(dogfood).toContain("DIFF0_DEMO_MODEL: anthropic/claude-haiku-4.5");
     expect(dogfood).toContain('runs: "10"');
@@ -646,16 +662,18 @@ describe("action/action.yml", () => {
       expect(job.if).toContain(
         "github.event.pull_request.head.repo.full_name == github.repository",
       );
-      expect(job.if).toContain(
-        "github.event.pull_request.user.login == github.repository_owner",
-      );
+      expect(job.if).toContain("github.event.pull_request.user.login == github.repository_owner");
       expect(job.if).toContain("github.actor == github.repository_owner");
       expect(job.if).toContain("github.triggering_actor == github.repository_owner");
-      expect(job.if).toContain("!contains(github.event.pull_request.labels.*.name, 'skip-paid-evals')");
+      expect(job.if).toContain(
+        "!contains(github.event.pull_request.labels.*.name, 'skip-paid-evals')",
+      );
       const comparison = job.steps.find((step) => step.uses === "./action");
-      expect(Object.keys({ ...job.env, ...comparison?.env }).filter((key) => /TOKEN|KEY|CONNECTOR/.test(key))).toEqual([
-        "AI_GATEWAY_API_KEY",
-      ]);
+      expect(
+        Object.keys({ ...job.env, ...comparison?.env }).filter((key) =>
+          /TOKEN|KEY|CONNECTOR/.test(key),
+        ),
+      ).toEqual(["AI_GATEWAY_API_KEY"]);
       expect(comparison).toBeDefined();
       const key = comparison?.with?.["comment-key"] ?? "";
       expect(reportKeys.has(key), "dogfood reports must not overwrite each other").toBe(false);
@@ -672,7 +690,9 @@ describe("action/action.yml", () => {
       (step: { id?: string }) => step.id === "relevance",
     );
     expect(preflight.env).toEqual({
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub expressions are literal workflow fixtures.
       BASE_SHA: "${{ github.event.pull_request.base.sha }}",
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub expressions are literal workflow fixtures.
       HEAD_SHA: "${{ github.event.pull_request.head.sha }}",
     });
     const selected = maintenance.with.evals.split(",") as string[];
@@ -684,5 +704,58 @@ describe("action/action.yml", () => {
       expect(tags).toBeDefined();
       expect(tags).not.toMatch(/needs-connect|mutating|pipeline/);
     }
+  });
+});
+
+describe("Action policy boundary", () => {
+  const report = {
+    schemaVersion: JSON_SCHEMA_VERSION,
+    verdict: "yellow",
+    enforcement: { violations: [{ category: "behavioral-drift", reasons: ["changed"] }] },
+  };
+  it.each([
+    null,
+    {},
+    { ...report, schemaVersion: -1 },
+    { ...report, schemaVersion: 4 },
+    { ...report, verdict: "purple" },
+    { ...report, enforcement: { violations: [{ category: "unknown", reasons: [] }] } },
+    { ...report, enforcement: { violations: [{ category: "behavioral-drift", reasons: [2] }] } },
+  ])("rejects malformed reports even with the never policy", (value) => {
+    expect(enforceActionReport(value, "never").code).toBe(3);
+  });
+  it.each(["regression", "never", "eval-regression"])("passes nonmatching policy %s", (policy) => {
+    expect(enforceActionReport(report, policy).code).toBe(0);
+  });
+  it.each(["drift", " behavioral-drift ", "score-regression,behavioral-drift"])(
+    "enforces matching policy %s",
+    (policy) => {
+      expect(enforceActionReport(report, policy).code).toBe(1);
+    },
+  );
+  it.each(["", "wat", "regression,behavioral-drift", "never,"])(
+    "rejects invalid policy %s",
+    (policy) => {
+      expect(() => enforceActionReport(report, policy)).toThrow();
+    },
+  );
+  it.each(["2", "3", "4", "137"])("preserves execution failure %s", (code) => {
+    expect(executionFailure(code)?.code).toBe(Number(code));
+  });
+  it.each([undefined, "", "-1", "256", "NaN", "0oops"])(
+    "fails closed on invalid CLI exit %s",
+    (code) => {
+      expect(executionFailure(code)?.code).toBe(3);
+    },
+  );
+  it("validates cheap run inputs before launch", () => {
+    for (const values of [
+      { INPUT_RUNS: "9007199254740992" },
+      { INPUT_RUNS: "0" },
+      { INPUT_BASE: " " },
+      { INPUT_MAX_SPEND: "NaN" },
+    ])
+      expect(() => validateActionInputs({ INPUT_BASE: "main", ...values })).toThrow();
+    expect(executionFailure("0")).toBeNull();
   });
 });

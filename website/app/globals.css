@@ -10,6 +10,15 @@
   --card: #fdfdfb;
   --code-bg: #efefeb;
 
+  --panel-bg: #111111;
+  --terminal-bg: #0c0c0c;
+  --panel-warning: #f5ae2d;
+  --panel-success: #61c978;
+  --diff-negative: #ef5b5b;
+  --diff-negative-text: #ff8585;
+  --diff-positive-text: #7bdd91;
+  --gh-warning: #d29922;
+
   --gh-bg: #ffffff;
   --gh-header: #f6f8fa;
   --gh-border: #d1d9e0;
@@ -41,6 +50,15 @@
 }
 
 @theme inline {
+  --color-panel: var(--panel-bg);
+  --color-terminal: var(--terminal-bg);
+  --color-panel-warning: var(--panel-warning);
+  --color-panel-success: var(--panel-success);
+  --color-diff-negative: var(--diff-negative);
+  --color-diff-negative-text: var(--diff-negative-text);
+  --color-diff-positive-text: var(--diff-positive-text);
+  --color-gh-warning: var(--gh-warning);
+  --color-gh-border: var(--gh-border);
   --color-bg: var(--bg);
   --color-fg: var(--fg);
   --color-muted: var(--muted);
@@ -137,3 +155,18 @@ button {
     transition-duration: 0.01ms !important;
   }
 }
+
+[data-verdict="yellow"] { --verdict-color: var(--panel-warning); }
+[data-verdict="green"] { --verdict-color: var(--panel-success); }
+[data-verdict="red"] { --verdict-color: var(--diff-negative); }
+
+.verdict-badge {
+  border-color: color-mix(in srgb, var(--verdict-color) 30%, transparent);
+  background-color: color-mix(in srgb, var(--verdict-color) 10%, transparent);
+  color: var(--verdict-color);
+}
+.verdict-callout {
+  border-color: var(--verdict-color);
+  background-color: color-mix(in srgb, var(--verdict-color) 10%, transparent);
+}
+.verdict-callout[data-verdict="yellow"] { --verdict-color: var(--gh-warning); }

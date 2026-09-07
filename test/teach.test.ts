@@ -11,9 +11,9 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { NoEvalsError } from "../src/adapters/eve.js";
 import { runCli } from "../src/cli.js";
+import type { WorktreeHandle } from "../src/harness/worktree.js";
 import { renderNoEvalsHelp } from "../src/report/teach.js";
 import type { AgentInfo, EveAdapter, RunOptions, RunRecord } from "../src/types.js";
-import type { WorktreeHandle } from "../src/harness/worktree.js";
 
 describe("renderNoEvalsHelp", () => {
   const help = renderNoEvalsHelp(
@@ -68,7 +68,18 @@ describe("no-evals teaching error through runCli", () => {
     );
     execFileSync(
       "git",
-      ["-C", repo, "-c", "user.name=t", "-c", "user.email=t@test.invalid", "commit", "-q", "-m", "one"],
+      [
+        "-C",
+        repo,
+        "-c",
+        "user.name=t",
+        "-c",
+        "user.email=t@test.invalid",
+        "commit",
+        "-q",
+        "-m",
+        "one",
+      ],
       { encoding: "utf8" },
     );
   });

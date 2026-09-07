@@ -30,7 +30,7 @@ or approval. Green means no supported regression/review finding was detected,
 not that the agents are proven equivalent. Incomplete output capture does not
 invalidate otherwise complete eval pass/fail evidence or suppress a red eval gate.
 
-The public JSON shape remains schema 4, with optional `baseAbsentRuns` and
+The public JSON report uses schema 5 and retains optional `baseAbsentRuns` and
 `headAbsentRuns` counts on final-output observations. Internal `RunRecord`
 evals can carry `finalOutputAbsent: true`. Cache schema 7 invalidates older
 records that cannot distinguish known absence from unknown capture.

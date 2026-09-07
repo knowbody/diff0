@@ -3,16 +3,17 @@
  * verdict, status, and caveat is precomputed in the DeltaReport; this file
  * only formats. Honest framing shows up as "X of N runs" everywhere.
  */
+
 import { markdownTable } from "markdown-table";
 import type {
   DeltaReport,
   EvalDelta,
   EvalStatus,
   MetricDelta,
-  MetricStats,
   PerformanceRegression,
   RunSummary,
 } from "../analyze/types.js";
+import { evalFacts, formatPValue, overviewFacts, performanceBudgetFacts } from "./facts.js";
 import {
   formatDuration,
   formatInt,
@@ -271,14 +272,8 @@ function refLabel(ref: string, commitSha: string): string {
 }
 
 function renderOverview(report: DeltaReport, lines: string[]): void {
-  const basePassing = report.evals.filter(
-    (evalDelta) => evalDelta.baseTotal > 0 && evalDelta.basePassed === evalDelta.baseTotal,
-  ).length;
-  const headPassing = report.evals.filter(
-    (evalDelta) => evalDelta.headTotal > 0 && evalDelta.headPassed === evalDelta.headTotal,
-  ).length;
+  const { basePassing, headPassing, toolCalls } = overviewFacts(report);
   const evalDelta = headPassing - basePassing;
-  const toolCalls = metricFromRuns(report.runSummaries.base, report.runSummaries.head);
   const rows = [
     ["Signal", "Base", "Head", "Change"],
     [
@@ -299,30 +294,6 @@ function renderOverview(report: DeltaReport, lines: string[]): void {
     metricCells("Duration / run", report.costPerf.durationMs, formatDuration, "no timing data"),
   );
   pushTable(lines, rows, ["l", "r", "r", "l"]);
-}
-
-function metricFromRuns(base: RunSummary[], head: RunSummary[]): MetricDelta {
-  const baseStats = stats(base.map((run) => run.toolCallCount));
-  const headStats = stats(head.map((run) => run.toolCallCount));
-  return {
-    base: baseStats,
-    head: headStats,
-    deltaPct:
-      baseStats !== null && headStats !== null && baseStats.median !== 0
-        ? ((headStats.median - baseStats.median) / baseStats.median) * 100
-        : null,
-  };
-}
-
-function stats(values: number[]): MetricStats | null {
-  if (values.length === 0) return null;
-  const sorted = [...values].sort((a, b) => a - b);
-  const first = sorted[0];
-  if (first === undefined) return null;
-  const middle = Math.floor(sorted.length / 2);
-  const upper = sorted[middle] ?? first;
-  const median = sorted.length % 2 === 0 ? ((sorted[middle - 1] ?? upper) + upper) / 2 : upper;
-  return { median, min: first, max: sorted[sorted.length - 1] ?? first };
 }
 
 interface EvidenceGroup<T extends { evalName: string | null }> {
@@ -531,56 +502,27 @@ function validityLine(report: DeltaReport): string {
 }
 
 function compactStatusCell(e: EvalDelta): string {
+  const facts = evalFacts(e);
   let cell = STATUS_TEXT[e.status];
-  if (e.softScores && e.softScores.delta !== 0) {
-    const sign = e.softScores.delta >= 0 ? "+" : "";
-    cell += ` · score ${e.softScores.baseMedian} → ${e.softScores.headMedian} (${sign}${e.softScores.delta})`;
-  }
-  if (e.status === "partial-base" || e.status === "partial-head" || e.status === "partial-both") {
-    const coverage: string[] = [];
-    if (e.baseTotal < e.baseExpectedRuns) {
-      coverage.push(`base ${e.baseTotal}/${e.baseExpectedRuns} runs`);
-    }
-    if (e.headTotal < e.headExpectedRuns) {
-      coverage.push(`head ${e.headTotal}/${e.headExpectedRuns} runs`);
-    }
-    cell += ` · coverage ${coverage.join(", ")}`;
-  }
+  if (facts.score?.changed)
+    cell += ` · score ${facts.score.base} → ${facts.score.head} (${facts.score.delta})`;
+  if (facts.coverage) cell += ` · ${facts.coverage}`;
   return cell;
 }
 
 function statusCell(e: EvalDelta): string {
+  const facts = evalFacts(e);
   let cell = STATUS_TEXT[e.status];
-  if (e.softScores) {
-    const sign = e.softScores.delta >= 0 ? "+" : "";
-    cell += ` · score ${e.softScores.baseMedian} → ${e.softScores.headMedian} (${sign}${e.softScores.delta})`;
-    if (e.softScores.classification === "material-regression") {
-      cell += ` · **material score regression** (threshold -${e.softScores.materialThreshold})`;
-    }
+  if (facts.score) {
+    cell += ` · score ${facts.score.base} → ${facts.score.head} (${facts.score.delta})`;
+    if (facts.score.materialThreshold !== null)
+      cell += ` · **material score regression** (threshold -${facts.score.materialThreshold})`;
   }
-  if (e.status === "partial-base" || e.status === "partial-head" || e.status === "partial-both") {
-    const coverage: string[] = [];
-    if (e.baseTotal < e.baseExpectedRuns) {
-      coverage.push(`base ${e.baseTotal}/${e.baseExpectedRuns} runs`);
-    }
-    if (e.headTotal < e.headExpectedRuns) {
-      coverage.push(`head ${e.headTotal}/${e.headExpectedRuns} runs`);
-    }
-    cell += ` · coverage ${coverage.join(", ")}`;
-  }
-  if (e.twoProportionHint) {
-    cell += ` · _hint: ${e.twoProportionHint.note}_`;
-  }
-  if (e.statisticalEvidence.pValue !== null) {
-    cell +=
-      ` · Fisher raw p=${formatPValue(e.statisticalEvidence.pValue)}` +
-      ` · Holm p=${formatPValue(e.statisticalEvidence.adjustedPValue as number)}`;
-  }
+  if (facts.coverage) cell += ` · ${facts.coverage}`;
+  if (facts.hint) cell += ` · _hint: ${facts.hint}_`;
+  if (facts.fisher !== null) cell += ` · Fisher raw p=${facts.fisher}`;
+  if (facts.holm !== null) cell += ` · Holm p=${facts.holm}`;
   return cell;
-}
-
-function formatPValue(value: number): string {
-  return value < 0.0001 ? "<0.0001" : value.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
 }
 
 function renderDrift(report: DeltaReport, lines: string[]): void {
@@ -703,19 +645,9 @@ function metricCells(
   return [label, baseCell, headCell, deltaCell];
 }
 
-const PERFORMANCE_LABELS: Record<PerformanceRegression["metric"], string> = {
-  costUsd: "Cost / session",
-  tokensIn: "Uncached input tokens",
-  tokensOut: "Output tokens",
-  durationMs: "Duration",
-};
-
 function performanceBudgetText(regression: PerformanceRegression): string {
-  return (
-    `**${PERFORMANCE_LABELS[regression.metric]}:** delta ` +
-    `${formatSignedPct(regression.deltaPct)} exceeds ` +
-    `${formatSignedPct(regression.thresholdPct)} threshold.`
-  );
+  const facts = performanceBudgetFacts(regression);
+  return `**${facts.labels.markdown}:** ${facts.text}.`;
 }
 
 function pushTable(lines: string[], rows: string[][], align: string[]): void {
@@ -741,7 +673,7 @@ function renderRunTable(
         `${run.evalsPassed}/${run.evalsTotal}`,
         String(run.toolCallCount),
         run.skillsLoaded.length > 0 ? run.skillsLoaded.map(inlineCode).join(", ") : "none",
-        run.costUsd !== null && run.costUsd > 0 ? formatUsd(run.costUsd) : "—",
+        run.costUsd !== null ? formatUsd(run.costUsd) : "—",
         formatDuration(run.durationMs),
       ]),
     ],

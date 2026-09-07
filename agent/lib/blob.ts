@@ -10,7 +10,7 @@ export const FACTORY_BRAIN_PREFIX = "factory-brain/";
 export const ARTIFACTS_PREFIX = "artifacts/";
 
 /**
- * Read a Markdown document from the store by its exact key.
+ * Read a private document from the store by its exact key.
  *
  * @remarks
  * Reads through the authenticated `get` path rather than listing and fetching a public URL, so
@@ -36,11 +36,11 @@ export const readDocument = async (
 };
 
 /**
- * Write a Markdown document to the store at its exact key.
+ * Write a private document to the store at its exact key.
  *
  * @remarks
  * Carries the store's shared write posture: private access, no random suffix (the key is the
- * identity), and Markdown content type. Overwrite is the caller's decision:
+ * identity), and an explicit content type (Markdown by default). Overwrite is the caller's decision:
  * singleton documents replace themselves, while artifacts are write-once.
  *
  * @param key - The exact Blob pathname, derived by the owning feature module.
@@ -51,13 +51,13 @@ export const readDocument = async (
 export const writeDocument = (
   key: string,
   contents: string,
-  options: { allowOverwrite: boolean },
+  options: { allowOverwrite: boolean; contentType?: "text/markdown" | "application/json" },
 ) =>
   put(key, contents, {
     access: DOCUMENT_ACCESS,
     addRandomSuffix: false,
     allowOverwrite: options.allowOverwrite,
-    contentType: "text/markdown",
+    contentType: options.contentType ?? "text/markdown",
   });
 
 /**

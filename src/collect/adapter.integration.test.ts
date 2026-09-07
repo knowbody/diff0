@@ -1,96 +1,33 @@
+import { rm } from "node:fs/promises";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { demoRepository } from "../../test/helpers/demo-repository.js";
 /**
  * fixtures/demo-agent runs end-to-end through the worktree and Eve adapter.
  *
  * Copies the fixture into a scratch git repo with two refs (base, head — the
- * head tweak is cosmetic and does not change behavior), creates a worktree
+ * head file is cosmetic and does not change behavior), creates a worktree
  * per ref with dependencies installed, probes eve, runs the suite once per
  * ref, and asserts both normalized RunRecords.
  */
 
-import { execFileSync } from "node:child_process";
-import { appendFileSync, writeFileSync } from "node:fs";
-import { cp, mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { basename, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { EveCliAdapter, getAgentInfo } from "../adapters/eve.js";
 import { createWorktree, type WorktreeHandle } from "../harness/worktree.js";
 import type { RunRecord } from "../types.js";
 
 const INTEGRATION_TIMEOUT_MS = 240_000;
 
-const repoRoot = join(fileURLToPath(new URL(".", import.meta.url)), "..", "..");
-const fixtureDir = join(repoRoot, "fixtures", "demo-agent");
-
-function gitIn(repo: string, args: string[]): string {
-  return execFileSync(
-    "git",
-    ["-C", repo, "-c", "user.name=diff0-test", "-c", "user.email=test@diff0.invalid", ...args],
-    // stderr piped (not inherited): on case-insensitive filesystems git warns
-    // that refname "head" is ambiguous with HEAD; harmless here.
-    { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
-  );
-}
-
 let scratch: string;
 let agentRepo: string;
 
+const originalDemoModel = process.env.DIFF0_DEMO_MODEL;
 beforeAll(async () => {
-  // Pin the fixture to its deterministic mock model even on machines where
-  // gateway credentials (AI_GATEWAY_API_KEY / VERCEL_OIDC_TOKEN) are exported:
-  // the demo agent auto-selects a real model when it sees a key (see
-  // fixtures/demo-agent/agent/lib/demo-model.ts), and this suite must stay
-  // hermetic — zero credentials, zero spend. The adapter passes parent env
-  // through to the eve subprocess, so this reaches the fixture's agent.ts.
   process.env.DIFF0_DEMO_MODEL = "mock";
-  scratch = await mkdtemp(join(tmpdir(), "diff0-m1-"));
-  agentRepo = join(scratch, "demo-agent");
-  await cp(fixtureDir, agentRepo, {
-    recursive: true,
-    filter: (source) => {
-      const name = basename(source);
-      return name !== "node_modules" && name !== ".eve";
-    },
-  });
-  // Pin the instructions this test asserts against, regardless of what the
-  // committed fixture currently says — dogfood PRs edit the fixture's
-  // instructions on purpose (that IS the drift demo), and this test must not
-  // inherit that drift.
-  writeFileSync(
-    join(agentRepo, "agent", "instructions.md"),
-    [
-      "# Identity",
-      "",
-      "You are a meticulous revenue analyst for Demo Corp.",
-      "",
-      "# Rules",
-      "",
-      "- You MUST load the `revenue-definitions` skill before answering any revenue",
-      "  question, so your figures use the canonical definitions.",
-      "- Use the `run_sql` tool to compute figures; never estimate from memory.",
-      "- After computing a figure, delegate a one-line executive summary to the",
-      "  `reporter` subagent before replying.",
-      "- Report totals using the canonical `TOTAL_REVENUE=<n>` format.",
-      "",
-    ].join("\n"),
-  );
-  execFileSync("git", ["init", "-q", "-b", "main", agentRepo], { encoding: "utf8" });
-  gitIn(agentRepo, ["add", "-A"]);
-  gitIn(agentRepo, ["commit", "-q", "-m", "base"]);
-  gitIn(agentRepo, ["branch", "base"]);
-  gitIn(agentRepo, ["checkout", "-q", "-b", "head"]);
-  // Cosmetic instructions tweak: does NOT change agent behavior.
-  appendFileSync(
-    join(agentRepo, "agent", "instructions.md"),
-    "\n<!-- cosmetic touch-up for the head ref; behavior unchanged -->\n",
-  );
-  gitIn(agentRepo, ["add", "-A"]);
-  gitIn(agentRepo, ["commit", "-q", "-m", "head: cosmetic instructions tweak"]);
+  ({ scratch, agentRepo } = await demoRepository("adapter"));
 }, INTEGRATION_TIMEOUT_MS);
 
 afterAll(async () => {
-  delete process.env.DIFF0_DEMO_MODEL;
+  if (originalDemoModel === undefined) delete process.env.DIFF0_DEMO_MODEL;
+  else process.env.DIFF0_DEMO_MODEL = originalDemoModel;
   if (scratch !== undefined) {
     await rm(scratch, { recursive: true, force: true });
   }

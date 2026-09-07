@@ -68,7 +68,8 @@ describe("applyPricing", () => {
     const records = [makeRecord({ costUsd: 0.5 }), makeRecord({ costUsd: 0.25, runIndex: 1 })];
     const result = applyPricing(records, { pricesPath });
     expect(result.costSource).toBe("gateway");
-    expect(result.records).toBe(records);
+    expect(result.records).toEqual(records);
+    expect(result.records).not.toBe(records);
     expect(result.records.map((r) => r.costUsd)).toEqual([0.5, 0.25]);
   });
 
@@ -154,15 +155,57 @@ describe("applyPricing", () => {
     expect(result.records[1]?.costUsd).toBeNull();
   });
 
-  it("labels 'unavailable' when the prices file is missing or corrupt", async () => {
-    const missing = applyPricing([makeRecord()], { pricesPath: join(scratch, "nope.json") });
-    expect(missing.costSource).toBe("unavailable");
-    expect(missing.records[0]?.costUsd).toBeNull();
+  it("rejects malformed explicit price configuration rather than silently disabling it", async () => {
+    expect(() => applyPricing([makeRecord()], { pricesPath: join(scratch, "nope.json") })).toThrow(
+      "Invalid prices table",
+    );
+    for (const [index, text] of [
+      "{not json",
+      '{"models":null}',
+      '{"models":{"test/model-a":{"inputPerToken":"oops","outputPerToken":1}}}',
+      '{"models":{"test/model-a":{"inputPerToken":-1,"outputPerToken":1}}}',
+    ].entries()) {
+      const path = join(scratch, `invalid-${index}.json`);
+      await writeFile(path, text);
+      expect(() => applyPricing([makeRecord()], { pricesPath: path })).toThrow(
+        "Invalid prices table",
+      );
+    }
+  });
 
-    const corruptPath = join(scratch, "corrupt.json");
-    await writeFile(corruptPath, "{not json", "utf8");
-    const corrupt = applyPricing([makeRecord()], { pricesPath: corruptPath });
-    expect(corrupt.costSource).toBe("unavailable");
+  it("preserves fallback provenance on repeated pricing and mixed-source batches", () => {
+    const first = applyPricing([makeRecord(), makeRecord({ costUsd: 0.9 })], { pricesPath });
+    expect(first.records[0]?.costSource).toBe("priced-tokens");
+    expect(applyPricing(first.records, { pricesPath })).toEqual(first);
+  });
+
+  it("distinguishes explicitly measured zero from legacy unknown zero", () => {
+    expect(applyPricing([makeRecord({ costUsd: 0 })], { pricesPath }).costSource).toBe(
+      "unavailable",
+    );
+    expect(
+      applyPricing([makeRecord({ costUsd: 0, costSource: "gateway" })], { pricesPath }).costSource,
+    ).toBe("gateway");
+    const pricedZero = applyPricing(
+      [makeRecord({ tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } })],
+      { pricesPath },
+    );
+    expect(pricedZero.records[0]).toMatchObject({ costUsd: 0, costSource: "priced-tokens" });
+    expect(applyPricing(pricedZero.records).costSource).toBe("priced-tokens");
+  });
+
+  it("does not publish non-finite fallback costs when finite inputs overflow", async () => {
+    const path = join(scratch, "overflow.json");
+    await writeFile(
+      path,
+      JSON.stringify({ models: { "test/model-a": { inputPerToken: 10, outputPerToken: 1 } } }),
+    );
+    const result = applyPricing(
+      [makeRecord({ tokens: { input: Number.MAX_VALUE, output: 0, cacheRead: 0, cacheWrite: 0 } })],
+      { pricesPath: path },
+    );
+    expect(result.costSource).toBe("unavailable");
+    expect(result.records[0]?.costUsd).toBeNull();
   });
 
   it("labels an empty record set 'unavailable'", () => {

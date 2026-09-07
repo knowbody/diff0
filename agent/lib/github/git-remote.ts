@@ -1,6 +1,8 @@
 import type { GitHubChannelCredentials } from "eve/channels/github";
 import type { SandboxNetworkPolicy } from "eve/sandbox";
-import { FACTORY_BRANCH_PREFIX, FACTORY_REPO, factoryRepo } from "../constants.js";
+import { FACTORY_BRANCH_PREFIX, FACTORY_REPO } from "../constants.js";
+
+import { githubRequest } from "./transport.js";
 
 const PROTECTED_BRANCHES = new Set(["main", "master"]);
 
@@ -32,13 +34,16 @@ export const REMOTE_URL = `https://github.com/${FACTORY_REPO}.git`;
  * git command.
  *
  * @remarks
- * `refs/heads/main` and `HEAD` would reach a protected branch under another
- * name, so only plain branch names are accepted, and the protected branches
- * themselves are refused outright: the factory delivers pull requests, never
- * direct pushes to the default branch.
+ * Only plain branch names may reach shell commands. Protected-branch and
+ * publication namespace policy belongs to `validateBranch`.
  */
 export function validateBranchName(branch: string): string | null {
-  if (!BRANCH_PATTERN.test(branch) || branch.includes("..") || branch.includes("//")) {
+  if (
+    !BRANCH_PATTERN.test(branch) ||
+    branch.includes("..") ||
+    branch.includes("//") ||
+    branch.split("/").some((segment) => segment.startsWith(".") || segment.endsWith(".lock"))
+  ) {
     return `"${branch}" is not a valid branch name.`;
   }
   if (branch.startsWith("refs/") || branch === "HEAD") {
@@ -71,20 +76,12 @@ export async function fetchFactoryRepositoryMetadata(
   installationToken: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<FactoryRepositoryMetadata> {
-  const response = await fetchImpl(
-    `https://api.github.com/repos/${factoryRepo.owner}/${factoryRepo.repo}`,
-    {
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${installationToken}`,
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
-    },
+  const body = await githubRequest<{ default_branch?: unknown }>(
+    `https://api.github.com/repos/${FACTORY_REPO}`,
+    "GET",
+    installationToken,
+    { fetchImpl },
   );
-  if (!response.ok) {
-    throw new Error(`Failed to read ${FACTORY_REPO} metadata from GitHub (${response.status}).`);
-  }
-  const body = (await response.json()) as { default_branch?: unknown };
   if (typeof body.default_branch !== "string" || validateBranchName(body.default_branch) !== null) {
     throw new Error(`GitHub returned no usable default branch for ${FACTORY_REPO}.`);
   }

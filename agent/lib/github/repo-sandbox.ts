@@ -187,7 +187,7 @@ async function gitIdentity(): Promise<{ email: string; name: string }> {
  *   ownership". The commit identity is written here for the same reason:
  *   session-scoped config lands in the session user's own home directory,
  *   where the implementer's commits actually read it.
- * - The default branch is read from the clone's `origin/HEAD` rather than
+ * - The default branch is read from GitHub's repository metadata rather than
  *   assumed, so repositories whose default is not `main` work unchanged.
  * - The fetch targets {@link REMOTE_URL} literally with a firewall-brokered
  *   credential, mirroring the bootstrap clone.

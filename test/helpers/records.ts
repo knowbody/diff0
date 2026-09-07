@@ -28,6 +28,7 @@ export interface RunSpec {
   subagents?: string[];
   subagentCalls?: Array<{ name: string; evalName?: string }>;
   costUsd?: number | null;
+  costSource?: RunRecord["costSource"];
   durationMs?: number;
   tokens?: { input: number; output: number; cacheRead?: number; cacheWrite?: number };
   model?: string;
@@ -60,7 +61,12 @@ function toEvalResult(name: string, spec: EvalSpec): EvalResult {
   return { name, passed, checks, durationMs: 1000 };
 }
 
-export function buildRun(ref: string, commitSha: string, runIndex: number, spec: RunSpec = {}): RunRecord {
+export function buildRun(
+  ref: string,
+  commitSha: string,
+  runIndex: number,
+  spec: RunSpec = {},
+): RunRecord {
   const tools = spec.tools ?? [];
   const subagents = spec.subagents ?? [];
   const evalResults = Object.entries(spec.evals ?? {}).map(([name, evalSpec]) => {
@@ -92,6 +98,7 @@ export function buildRun(ref: string, commitSha: string, runIndex: number, spec:
           cacheWrite: spec.tokens.cacheWrite ?? 0,
         }
       : DEFAULTS.tokens,
+    ...(spec.costSource === undefined ? {} : { costSource: spec.costSource }),
     costUsd: spec.costUsd === undefined ? DEFAULTS.costUsd : spec.costUsd,
     durationMs: spec.durationMs ?? DEFAULTS.durationMs,
     sandboxBackend: spec.sandboxBackend ?? DEFAULTS.sandboxBackend,
@@ -108,8 +115,17 @@ export function buildRuns(ref: string, commitSha: string, specs: RunSpec[]): Run
 }
 
 /** N runs with identical spec — the common "consistent ref" case. */
-export function repeatRuns(ref: string, commitSha: string, n: number, spec: RunSpec = {}): RunRecord[] {
-  return buildRuns(ref, commitSha, Array.from({ length: n }, () => spec));
+export function repeatRuns(
+  ref: string,
+  commitSha: string,
+  n: number,
+  spec: RunSpec = {},
+): RunRecord[] {
+  return buildRuns(
+    ref,
+    commitSha,
+    Array.from({ length: n }, () => spec),
+  );
 }
 
 /** Fixed timestamp so DeltaReport output is snapshot-stable. */

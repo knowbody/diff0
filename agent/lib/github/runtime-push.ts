@@ -12,6 +12,8 @@ import {
 
 export const BASE_MARKER_PATH = "/workspace/.eve-factory-base.json";
 
+export type PublicationSandbox = Pick<SandboxSession, "run" | "readFile" | "readTextFile">;
+
 const SHA_PATTERN = /^[a-f0-9]{40}$/;
 const MAX_CHANGED_FILES = 500;
 const MAX_FILE_BYTES = 4 * 1024 * 1024;
@@ -50,7 +52,7 @@ export function matchesExistingPublication(
 
 const shellQuote = (value: string): string => `'${value.replaceAll("'", `'\\''`)}'`;
 
-const runGit = async (sandbox: SandboxSession, args: string): Promise<string> => {
+const runGit = async (sandbox: PublicationSandbox, args: string): Promise<string> => {
   const result = await sandbox.run({
     command: `/usr/bin/git -c core.hooksPath=/dev/null -C ${REPO_DIR} ${args}`,
   });
@@ -116,7 +118,7 @@ export function validateChangedPath(path: string): string | null {
   return null;
 }
 
-async function readBaseMarker(sandbox: SandboxSession): Promise<BaseMarker> {
+async function readBaseMarker(sandbox: PublicationSandbox): Promise<BaseMarker> {
   const raw = await sandbox.readTextFile({ path: BASE_MARKER_PATH });
   if (raw === null) {
     throw new Error("The sandbox checkout has no trusted base marker; start a fresh session.");
@@ -136,7 +138,7 @@ async function readBaseMarker(sandbox: SandboxSession): Promise<BaseMarker> {
 }
 
 async function changedPaths(
-  sandbox: SandboxSession,
+  sandbox: PublicationSandbox,
   baseSha: string,
   localSha: string,
 ): Promise<string[]> {
@@ -163,26 +165,51 @@ async function changedPaths(
 }
 
 async function treeEntryForPath(
-  sandbox: SandboxSession,
+  sandbox: PublicationSandbox,
   localSha: string,
   path: string,
+  remainingBytes: number,
 ): Promise<{ bytes?: Uint8Array; entry: TreeEntry }> {
-  const line = await runGit(sandbox, `ls-tree -z ${localSha} -- ${shellQuote(path)}`);
+  const line = await runGit(sandbox, `ls-tree -zl ${localSha} -- ${shellQuote(path)}`);
   if (line === "") {
     return { entry: { path, sha: null } };
   }
-  const match = /^(100644|100755) blob ([a-f0-9]{40})\t([^\0]+)\0$/.exec(line);
-  if (!match || match[3] !== path) {
+  const match = /^(100644|100755) blob ([a-f0-9]{40}) +([0-9]+)\t([^\0]+)\0$/.exec(line);
+  if (!match || match[4] !== path) {
     throw new Error(`Only regular files may be published; unsupported entry: ${path}`);
   }
-  const bytes = await sandbox.readBinaryFile({ path: `${REPO_DIR}/${path}` });
-  if (bytes === null) {
+  const size = Number(match[3]);
+  if (!Number.isSafeInteger(size) || size > MAX_FILE_BYTES) {
+    throw new Error(`${path} exceeds the per-file limit of ${MAX_FILE_BYTES} bytes.`);
+  }
+  if (size > remainingBytes) {
+    throw new Error(`The branch exceeds the total limit of ${MAX_TOTAL_BYTES} bytes.`);
+  }
+  const stream = await sandbox.readFile({ path: `${REPO_DIR}/${path}` });
+  if (stream === null) {
     throw new Error(`The committed file is missing from the sandbox: ${path}`);
   }
-  if (bytes.byteLength > MAX_FILE_BYTES) {
-    throw new Error(
-      `${path} is ${bytes.byteLength} bytes; the per-file limit is ${MAX_FILE_BYTES}.`,
-    );
+  // The working tree is untrusted and may change after ls-tree. Allocate only the
+  // committed size and cancel as soon as the stream exceeds it.
+  const bytes = new Uint8Array(size);
+  const reader = stream.getReader();
+  let offset = 0;
+  try {
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      if (offset + chunk.value.byteLength > size) {
+        throw new Error(`The working-tree bytes changed after commit inspection: ${path}`);
+      }
+      bytes.set(chunk.value, offset);
+      offset += chunk.value.byteLength;
+    }
+    if (offset !== size) {
+      throw new Error(`The working-tree bytes changed after commit inspection: ${path}`);
+    }
+  } finally {
+    await reader.cancel().catch(() => undefined);
+    reader.releaseLock();
   }
   if (gitBlobSha(bytes) !== match[2]) {
     throw new Error(`The working-tree bytes changed after commit inspection: ${path}`);
@@ -201,7 +228,7 @@ async function treeEntryForPath(
 export async function publishSandboxCommit(input: {
   requestedBranch: string;
   rootSessionId: string;
-  sandbox: SandboxSession;
+  sandbox: PublicationSandbox;
   signal?: AbortSignal;
 }): Promise<{ branch: string; changedFiles: number; sha: string }> {
   const branch = ownedBranchName(input.requestedBranch, input.rootSessionId);
@@ -229,14 +256,17 @@ export async function publishSandboxCommit(input: {
   }
 
   const paths = await changedPaths(input.sandbox, marker.sha, localSha);
-  const localEntries = await Promise.all(
-    paths.map((path) => treeEntryForPath(input.sandbox, localSha, path)),
-  );
-  const totalBytes = localEntries.reduce((sum, item) => sum + (item.bytes?.byteLength ?? 0), 0);
-  if (totalBytes > MAX_TOTAL_BYTES) {
-    throw new Error(
-      `The branch changes ${totalBytes} bytes; the total limit is ${MAX_TOTAL_BYTES}.`,
+  const localEntries: Awaited<ReturnType<typeof treeEntryForPath>>[] = [];
+  let totalBytes = 0;
+  for (const path of paths) {
+    const item = await treeEntryForPath(
+      input.sandbox,
+      localSha,
+      path,
+      MAX_TOTAL_BYTES - totalBytes,
     );
+    totalBytes += item.bytes?.byteLength ?? 0;
+    localEntries.push(item);
   }
 
   const entries: TreeEntry[] = [];

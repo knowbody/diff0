@@ -1,93 +1,35 @@
+import { existsSync } from "node:fs";
+import { readdir, readFile, rm } from "node:fs/promises";
+import { join } from "node:path";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { captureCli as cli } from "../../test/helpers/cli.js";
+import { demoRepository } from "../../test/helpers/demo-repository.js";
 /**
  * The full `diff0 run` pipeline against fixtures/demo-agent.
  *
- * Scratch git repo with base/head refs (head = cosmetic instructions tweak),
+ * Scratch git repo with unchanged and skill-removal refs,
  * then the REAL CLI (runCli in-process for coverage): N-run counterbalanced
  * comparison, pricing, delta, terminal render, report files, and — on the
  * second invocation — the base-ref cache hit.
  */
 
-import { execFileSync } from "node:child_process";
-import { appendFileSync, existsSync } from "node:fs";
-import { cp, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { basename, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { runCli } from "../cli.js";
 import { CACHE_DIR_NAME } from "./cache.js";
 
 // Allow the same per-comparison timeout as the adapter integration test under parallel CI load.
 const INTEGRATION_TIMEOUT_MS = 240_000;
 
-const repoRoot = join(fileURLToPath(new URL(".", import.meta.url)), "..", "..");
-const fixtureDir = join(repoRoot, "fixtures", "demo-agent");
-
-function gitIn(repo: string, args: string[]): string {
-  return execFileSync(
-    "git",
-    ["-C", repo, "-c", "user.name=diff0-test", "-c", "user.email=test@diff0.invalid", ...args],
-    // stderr piped: on case-insensitive filesystems git warns that refname
-    // "head" is ambiguous with HEAD; harmless here.
-    { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
-  );
-}
-
-interface CliCapture {
-  code: number;
-  stdout: string;
-  stderr: string;
-}
-
-async function cli(args: string[]): Promise<CliCapture> {
-  let stdout = "";
-  let stderr = "";
-  const code = await runCli(["node", "diff0", ...args], {
-    out: (text) => {
-      stdout += text;
-    },
-    err: (text) => {
-      stderr += text;
-    },
-  });
-  return { code, stdout, stderr };
-}
-
 let scratch: string;
 let agentRepo: string;
 
+const originalDemoModel = process.env.DIFF0_DEMO_MODEL;
 beforeAll(async () => {
-  // Pin the fixture to its deterministic mock model even on machines where
-  // gateway credentials (AI_GATEWAY_API_KEY / VERCEL_OIDC_TOKEN) are exported:
-  // the demo agent auto-selects a real model when it sees a key (see
-  // fixtures/demo-agent/agent/lib/demo-model.ts), and this suite must stay
-  // hermetic — zero credentials, zero spend. The CLI passes parent env
-  // through to the eve subprocess, so this reaches the fixture's agent.ts.
   process.env.DIFF0_DEMO_MODEL = "mock";
-  scratch = await mkdtemp(join(tmpdir(), "diff0-m2-"));
-  agentRepo = join(scratch, "demo-agent");
-  await cp(fixtureDir, agentRepo, {
-    recursive: true,
-    filter: (source) => {
-      const name = basename(source);
-      return name !== "node_modules" && name !== ".eve";
-    },
-  });
-  execFileSync("git", ["init", "-q", "-b", "main", agentRepo], { encoding: "utf8" });
-  gitIn(agentRepo, ["add", "-A"]);
-  gitIn(agentRepo, ["commit", "-q", "-m", "base"]);
-  gitIn(agentRepo, ["branch", "base"]);
-  gitIn(agentRepo, ["checkout", "-q", "-b", "head"]);
-  appendFileSync(
-    join(agentRepo, "agent", "instructions.md"),
-    "\n<!-- cosmetic touch-up for the head ref; behavior unchanged -->\n",
-  );
-  gitIn(agentRepo, ["add", "-A"]);
-  gitIn(agentRepo, ["commit", "-q", "-m", "head: cosmetic instructions tweak"]);
+  ({ scratch, agentRepo } = await demoRepository("cli"));
 }, INTEGRATION_TIMEOUT_MS);
 
 afterAll(async () => {
-  delete process.env.DIFF0_DEMO_MODEL;
+  if (originalDemoModel === undefined) delete process.env.DIFF0_DEMO_MODEL;
+  else process.env.DIFF0_DEMO_MODEL = originalDemoModel;
   if (scratch !== undefined) {
     await rm(scratch, { recursive: true, force: true });
   }
@@ -95,7 +37,7 @@ afterAll(async () => {
 
 describe("diff0 run end to end", () => {
   it("renders reports, writes the base cache, and reuses it on the next comparison", {
-    timeout: 2 * INTEGRATION_TIMEOUT_MS,
+    timeout: INTEGRATION_TIMEOUT_MS,
   }, async () => {
     const mdPath = join(scratch, "reports", "report.md");
     const jsonPath = join(scratch, "reports", "report.json");
@@ -127,9 +69,9 @@ describe("diff0 run end to end", () => {
     expect(result.stdout).toContain("comparison cost unavailable");
     expect(result.stdout).toContain("EVALS");
     expect(result.stdout).toContain("revenue/total-revenue");
-    // The cosmetic head tweak shows up as a changed file.
+    // The cosmetic file shows up in the diff statistics.
     expect(result.stdout).toContain("CHANGED FILES");
-    expect(result.stdout).toContain("agent/instructions.md");
+    expect(result.stdout).toContain("cosmetic.txt");
 
     // Progress went to stderr in counterbalanced order, with run counters.
     expect(result.stderr).toContain("base cache miss");
@@ -142,13 +84,13 @@ describe("diff0 run end to end", () => {
     const md = await readFile(mdPath, "utf8");
     expect(md.startsWith("<!-- diff0-report -->")).toBe(true);
 
-    // JSON report: schemaVersion 4, green verdict (deterministic mock model).
+    // JSON report: schemaVersion 5, green verdict (deterministic mock model).
     const parsed = JSON.parse(await readFile(jsonPath, "utf8")) as {
       schemaVersion: number;
       verdict: string;
       meta: { runsPerRef: number; costSource: string };
     };
-    expect(parsed.schemaVersion).toBe(4);
+    expect(parsed.schemaVersion).toBe(5);
     expect(parsed.verdict).toBe("green");
     expect(parsed.meta.runsPerRef).toBe(2);
     expect(parsed.meta.costSource).toBe("unavailable");

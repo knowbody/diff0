@@ -57,34 +57,47 @@
     "just-bash": "^3.4.2",
     "tsx": "^4.23.5",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10",
-    "zod": "4.4.3"
+    "vitest": "^4.1.10"
   },
   "dependencies": {
-    "commander": "^15.0.0",
+    "commander": "^14.0.3",
     "markdown-table": "^3.0.4",
     "minimatch": "^10.2.6",
     "picocolors": "^1.1.1",
-    "yaml": "^2.9.0"
+    "string-width": "^7.2.0",
+    "yaml": "^2.9.0",
+    "zod": "4.4.3"
   },
   "bin": {
     "diff0": "dist/cli.js"
   },
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
-    "./runner": { "types": "./dist/runner.d.ts", "import": "./dist/runner.js" },
-    "./reporters": { "types": "./dist/reporters.d.ts", "import": "./dist/reporters.js" },
-    "./eve": { "types": "./dist/eve.d.ts", "import": "./dist/eve.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./runner": {
+      "types": "./dist/runner.d.ts",
+      "import": "./dist/runner.js"
+    },
+    "./reporters": {
+      "types": "./dist/reporters.d.ts",
+      "import": "./dist/reporters.js"
+    },
+    "./eve": {
+      "types": "./dist/eve.d.ts",
+      "import": "./dist/eve.js"
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && chmod +x dist/cli.js",
     "action:build": "node scripts/build-action.mjs",
-    "typecheck": "tsc --noEmit && pnpm agent:typecheck",
+    "typecheck": "tsc --noEmit && pnpm agent:typecheck && pnpm typecheck:tests",
     "test": "pnpm test:unit",
     "calibrate": "pnpm build && node scripts/calibrate.mjs",
     "test:unit": "vitest run --exclude '**/*.integration.test.ts' --exclude '**/*.package.test.ts'",
     "test:package": "pnpm build && vitest run test/library.package.test.ts",
-    "test:integration": "vitest run integration.test.ts",
+    "test:integration": "vitest run integration.test.ts --maxWorkers=2",
     "agent:build": "eve build",
     "agent:check": "biome check agent evals test/agent-security.test.ts test/agent-publishing.test.ts test/agent-runtime.test.ts",
     "agent:dev": "eve dev",
@@ -101,6 +114,7 @@
     "lint": "biome check .",
     "format": "biome format --write .",
     "refresh-prices": "node scripts/refresh-prices.mjs",
-    "prepublishOnly": "pnpm build && pnpm action:build"
+    "prepublishOnly": "pnpm build && pnpm action:build",
+    "typecheck:tests": "tsc -p tsconfig.tests.json"
   }
 }

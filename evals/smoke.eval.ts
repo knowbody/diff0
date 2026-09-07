@@ -1,5 +1,5 @@
 import { defineEval } from "eve/evals";
-import { GITHUB_WRITE_TOOLS } from "./helpers.js";
+import { WRITE_TOOLS } from "./helpers.js";
 
 export default defineEval({
   description:
@@ -10,7 +10,7 @@ export default defineEval({
     t.succeeded();
     t.calledSubagent("implementer", { count: 0 });
     t.calledSubagent("reviewer", { count: 0 });
-    for (const tool of GITHUB_WRITE_TOOLS) {
+    for (const tool of WRITE_TOOLS) {
       t.notCalledTool(tool);
     }
   },
