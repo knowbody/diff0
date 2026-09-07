@@ -9,6 +9,8 @@ on:
       - "scripts/action-*"
       - "scripts/build-action.mjs"
       - "prices.json"
+      - ".pnpmfile.cjs"
+      - "scripts/check-pack-manager.mjs"
       - "package.json"
       - "pnpm-lock.yaml"
       - "fixtures/demo-agent/agent/**"

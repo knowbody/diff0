@@ -1,6 +1,6 @@
 # Model selection and planning estimates
 
-Selected on 2026-09-05 using the public [AI Gateway catalog](https://ai-gateway.vercel.sh/v1/models).
+Historical price reference collected on 2026-09-05 using the public [AI Gateway catalog](https://ai-gateway.vercel.sh/v1/models).
 All prices below are USD per million tokens at the listed standard global rate. Provider routing,
 regional rates, context tiers, cache behavior, and future price changes can change the bill.
 
@@ -8,16 +8,15 @@ regional rates, context tiers, cache behavior, and future price changes can chan
 | --- | --- | ---: | ---: | ---: |
 | Classification, orchestration | GPT-5.6 Luna | 0.20 | 1.20 | 0.02 |
 | Analysis, research | GPT-5.4 Mini | 0.75 | 4.50 | 0.075 |
-| Implementation | Claude Sonnet 5 | 2.00 | 10.00 | 0.20 |
+| Implementation (current Luna trial) | GPT-5.6 Luna | 0.20 | 1.20 | 0.02 |
 | Independent review | GPT-5.6 Terra | 2.00 | 12.00 | 0.20 |
 
-Luna handles structured routing and coordination. Mini handles bounded investigation.
-Sonnet handles repository edits and tools. Terra retains a stronger independent review gate from
-a different provider family. One small connected task has now completed; see
-[`SMALL-TASK-RUN.md`](SMALL-TASK-RUN.md) for measured costs and validation gaps.
-No automatic upgrade to a more expensive model is configured. These assignments live only in
-`agent/lib/models.ts` and are deployed to `diff0-eve.vercel.app`. The controlled production
-verification shares the same non-refreshing $3 Gateway key as the fully verified follow-up.
+Luna handles classification, orchestration, and the current implementation trial; implementation
+uses `xhigh` reasoning. Mini handles analysis and research. Terra reviews in a separate context,
+but both implementer and reviewer currently use OpenAI, so provider diversity is relaxed.
+`agent/lib/models.ts` is the source of truth. Historical Sonnet measurements below describe earlier
+runs and do not establish Luna's cost or quality. Live deployment settings and remaining budgets
+must be checked before a paid run; the historical balances below are not current allowances.
 
 ## Estimates
 

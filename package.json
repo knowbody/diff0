@@ -27,7 +27,7 @@
     "darwin",
     "linux"
   ],
-  "packageManager": "pnpm@10.15.1",
+  "packageManager": "pnpm@10.28.0",
   "pnpm": {
     "overrides": {
       "nanoid@<3.3.18": "3.3.18"
@@ -53,7 +53,6 @@
     "@vercel/connect": "0.8.0",
     "ai": "7.0.85",
     "esbuild": "0.28.1",
-    "eve": "0.47.5",
     "just-bash": "^3.4.2",
     "tsx": "^4.23.5",
     "typescript": "^7.0.2",
@@ -66,7 +65,8 @@
     "picocolors": "^1.1.1",
     "string-width": "^7.2.0",
     "yaml": "^2.9.0",
-    "zod": "4.4.3"
+    "zod": "4.4.3",
+    "eve": "0.52.2"
   },
   "bin": {
     "diff0": "dist/cli.js"
@@ -99,13 +99,13 @@
     "test:package": "pnpm build && vitest run test/library.package.test.ts",
     "test:integration": "vitest run integration.test.ts --maxWorkers=2",
     "agent:build": "eve build",
-    "agent:check": "biome check agent evals test/agent-security.test.ts test/agent-publishing.test.ts test/agent-runtime.test.ts",
+    "agent:check": "biome check agent evals test/agent-security.test.ts test/agent-publishing.test.ts test/agent-runtime.test.ts test/agent-storage.test.ts",
     "agent:dev": "eve dev",
     "agent:diff": "pnpm build && FACTORY_EVAL_SANDBOX=justbash node dist/cli.js run --repo . --app-dir . --evals smoke,routing/needs-clarification,safety/prompt-injection,safety/write-requires-approval --runs 3 --max-spend 3",
     "agent:eval": "eve eval",
     "agent:info": "eve info",
     "agent:start": "eve start",
-    "agent:test": "vitest run test/agent-security.test.ts test/agent-publishing.test.ts test/agent-runtime.test.ts",
+    "agent:test": "vitest run test/agent-security.test.ts test/agent-publishing.test.ts test/agent-runtime.test.ts test/agent-storage.test.ts",
     "agent:trial:coding": "tsx scripts/trial-coding-models.mjs",
     "agent:trial:models": "tsx scripts/trial-station-models.mjs",
     "agent:test:runtime": "node scripts/check-station-retries.mjs",
@@ -114,7 +114,8 @@
     "lint": "biome check .",
     "format": "biome format --write .",
     "refresh-prices": "node scripts/refresh-prices.mjs",
-    "prepublishOnly": "pnpm build && pnpm action:build",
-    "typecheck:tests": "tsc -p tsconfig.tests.json"
+    "prepublishOnly": "node scripts/check-pack-manager.mjs && pnpm build && pnpm action:build",
+    "typecheck:tests": "tsc -p tsconfig.tests.json",
+    "prepack": "node scripts/check-pack-manager.mjs"
   }
 }

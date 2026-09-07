@@ -10,9 +10,15 @@ export default defineEval({
       "Work item: users report that password reset emails sometimes arrive twice. Classify this and produce the implementation plan, but stop after analysis and report the plan to me; do not implement anything yet.",
     );
     t.succeeded();
-    t.calledSubagent("classifier");
-    t.calledSubagent("analyst");
-    t.calledSubagent("implementer", { count: 0 });
+    t.calledTool("run_station", { input: { station: "classifier" } });
+    t.calledTool("run_station", { input: { station: "analyst" } });
+    t.eventsSatisfy(
+      "implementer is not invoked",
+      (events) =>
+        !events.some(
+          (event) => event.type === "subagent.called" && event.data.name === "implementer",
+        ),
+    );
     t.eventsSatisfy("classifier is delegated to before the analyst", (events) =>
       calledInOrder(events, ["classifier", "analyst"]),
     );

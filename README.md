@@ -223,7 +223,7 @@ structured reports without exposing internal fingerprints.
 
 ## Eve compatibility
 
-The end-to-end suite targets Eve `0.47.5`; parsing fixtures also cover result identity from Eve
+The end-to-end suite targets Eve `0.52.2`; parsing fixtures also cover result identity from Eve
 `0.29.5`. Other Eve versions may work, but they are not part of the tested compatibility boundary.
 
 ## Security
@@ -241,14 +241,28 @@ For untrusted contributions, use a disposable, network-restricted, secret-free r
 protected comparison after review. See the [Action security guide](https://github.com/knowbody/diff0/blob/main/action/README.md#security-and-fork-prs)
 and [deterministic CI guide](https://github.com/knowbody/diff0/blob/main/docs/credential-free-ci.md).
 
-## This repository's Eve agent
+## Repository layout
 
-The `agent/` directory contains the Eve agent that helps maintain diff0. It is based on the public
-Eve Software Factory pattern and uses classifier, analyst, implementer, and independent reviewer
-stages. It can open reviewed draft pull requests, but it cannot merge or mark them ready.
+```text
+src/           diff0 CLI and library
+agent/         Eve maintenance agent: configuration, tools, and subagents
+evals/         Maintenance-agent evaluations
+fixtures/      Example agents used to test diff0
+test/          Tests and test helpers
+```
 
-Read [agent/README.md](https://github.com/knowbody/diff0/blob/main/agent/README.md) for its trust
-boundaries, local validation, and deployment instructions.
+Use Node 24 for development (`nvm use`) and the pnpm version pinned in `package.json`.
+Run `pnpm agent:*` commands from the repository root. The
+[maintenance-agent guide](agent/README.md) explains its behavior and deployment.
+
+### Packaging the CLI
+
+Use `pnpm pack` or `pnpm publish` to release the CLI. Eve requires a runtime dependency
+in this repository, but CLI users do not need it. The small `beforePacking` hook in
+[.pnpmfile.cjs](.pnpmfile.cjs) removes Eve from the published manifest without changing
+the local manifest. The `files` allowlist excludes the maintenance agent itself.
+Package tests install that tarball and verify its dependency boundary. The published
+CLI still supports Node 20 and installation through npm, pnpm, or another npm client.
 
 ## Contributing
 

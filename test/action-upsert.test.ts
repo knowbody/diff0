@@ -659,6 +659,7 @@ describe("action/action.yml", () => {
       env?: Record<string, string>;
       steps: Array<{ uses?: string; env?: Record<string, string>; with?: Record<string, string> }>;
     }>) {
+      expect(job.if).toContain("!github.event.pull_request.draft");
       expect(job.if).toContain(
         "github.event.pull_request.head.repo.full_name == github.repository",
       );

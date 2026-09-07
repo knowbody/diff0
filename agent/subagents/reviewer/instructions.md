@@ -33,6 +33,11 @@ For changes to the diff0 engine or Action, require evidence from both the ordina
 
 Do not approve out of politeness, and do not request changes over pure style preference. Every blocking finding must trace back to correctness, the acceptance criteria, safety, or scope.
 
+`checkout_branch` records the GitHub-verified merge base, head SHA, and changed paths in trusted
+durable state. Editing the sandbox baseline file cannot change the required checks. A moved
+checkout requires `checkout_branch` again. GitHub comparisons at its 300-file cap are refused;
+split such work into smaller branches.
+
 Call `check_review` with the reviewed branch sequentially until it returns `complete: true`.
 Each call runs one required check, records its passing result durably against the exact clean
 commit, and returns `nextCheck` if more remain. The standard checks come from `agent/lib/verification.ts`, including package validation and the

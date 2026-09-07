@@ -14,6 +14,7 @@ import { MODELS } from "../../lib/models.js";
  * twice), reject stops the line.
  */
 export default defineAgent({
+  defaultTools: false,
   description:
     "Independently review a pushed factory branch against the original work item and its " +
     "acceptance criteria: fetch the branch, read the real diff, re-run cheap checks, and " +

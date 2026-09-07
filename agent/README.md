@@ -59,7 +59,7 @@ sandbox or process.
 pnpm install --frozen-lockfile --ignore-scripts
 pnpm agent:validate
 pnpm agent:test:runtime
-pnpm exec eve eval --list --json
+pnpm agent:eval --list --json
 ```
 
 Deterministic evals can run without a GitHub connector. Evals tagged `needs-connect` inspect live
@@ -186,11 +186,12 @@ the root dependencies is insufficient for these offline checks.
 
 Before deploying a fork:
 
-1. Create a Vercel project with Sandbox access and deploy from the repository root.
+1. Create a Vercel project with Sandbox access, Node 24, and the repository root as
+   its Root Directory. Run `pnpm exec eve link` from the repository root before deploying.
 2. Create a Vercel Connect GitHub connector, install its GitHub App on `FACTORY_REPO`, and grant
    read/write access to contents, issues, and pull requests plus metadata read access.
 3. Set `GITHUB_CONNECTOR`, `FACTORY_REPO`, `FACTORY_LABEL`, `FACTORY_BRANCH_PREFIX`, and
-   `FACTORY_SETUP_COMMAND` from `.env.example`.
+   `FACTORY_SETUP_COMMAND` and `FACTORY_BOOTSTRAP_REVISION` from `.env.example`.
 4. Provision a private Vercel Blob store and make its token available to the deployment.
 5. Enable AI Gateway access for every model configured in the root agent and stations.
 6. Create the intake label named by `FACTORY_LABEL`; protect the default branch and require review.
@@ -205,14 +206,14 @@ Before deploying a fork:
 Follow Eve's online [GitHub channel](https://eve.dev/docs/channels/github),
 [Vercel deployment](https://eve.dev/docs/guides/deployment/vercel), and
 [sandbox](https://eve.dev/docs/sandbox) guides, checking APIs against the pinned package.
-The online docs can include features that are newer than Eve 0.47.5.
+The online docs can include features that are newer than Eve 0.52.2.
 
 Keep `.vercelignore` in place: Vercel CLI uploads do not inherit `.gitignore`, and `.eve/`
 contains local credentials and traces. Local eval backend factories must only execute when
 that backend is selected; hosted bundles prune local implementations.
 
 Stage production builds without moving the public alias, then verify the built runtime before
-promotion (substitute the actual linked team and deployment URL):
+promotion from the linked repository root (substitute the actual linked team and deployment URL):
 
 ```sh
 vercel deploy --prod --skip-domain --yes --scope YOUR_TEAM
@@ -228,3 +229,22 @@ builds, use `vercel logs DEPLOYMENT_URL --no-branch` so the local Git branch doe
 Set spend and concurrency limits appropriate to the selected models. Intake is at-most-once while
 the label remains present: if a delivery fails after it claims the issue, inspect the Eve delivery
 logs, remove the intake label, then apply it again to retry.
+
+## Runtime and packaging
+
+The authored agent lives in `agent/` and its evals in the root `evals/` directory.
+Eve 0.52.2 runs from the repository root on Node 24. Keep local environment variables
+in the root `.env.local`; Vercel also builds from the repository root.
+
+The CLI and the maintenance agent share the repository manifest. Eve is a local runtime
+dependency for discovery and deployment. `pnpm pack` and `pnpm publish` exclude it from
+the CLI tarball through the supported hook in `.pnpmfile.cjs`; use the pinned pnpm version.
+There is no separate agent package or workspace.
+
+Stations run through the blocking `run_station` workflow so failures settle before
+the orchestrator continues. Built-in tools are explicitly enabled per station; only
+the researcher receives web tools. Review checks use GitHub-authenticated immutable
+base/head metadata, independent of writable sandbox markers. Dependency caches are
+reconciled offline after each checkout; bump `FACTORY_BOOTSTRAP_REVISION` and rebuild
+the snapshot when the locked dependencies are missing. Brain updates require the
+version returned by `read_factory_brain`; conflicts must be reread and merged.

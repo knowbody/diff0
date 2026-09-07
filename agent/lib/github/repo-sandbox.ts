@@ -14,6 +14,7 @@ import {
 } from "./bootstrap-diagnostics.js";
 import { FALLBACK_BOT_NAME, resolveBotName } from "./bot-name.js";
 import { githubCredentials } from "./credentials.js";
+import { syncFactoryDependencies } from "./dependencies.js";
 import {
   brokerPolicy,
   fetchFactoryRepositoryMetadata,
@@ -86,7 +87,12 @@ async function mintTokenOrExplain(mint: () => Promise<string>): Promise<string> 
  * authored sandbox source is tracked by eve automatically.
  */
 export function factoryRevalidationKey(): string {
-  return `factory-repo-v4:${FACTORY_REPO}:${process.env.FACTORY_SETUP_COMMAND ?? ""}`;
+  return JSON.stringify([
+    "factory-repo-v5",
+    FACTORY_REPO,
+    process.env.FACTORY_SETUP_COMMAND ?? "",
+    process.env.FACTORY_BOOTSTRAP_REVISION ?? "1",
+  ]);
 }
 
 /**
@@ -207,6 +213,8 @@ export async function factoryOnSession({ use }: SandboxSessionContext): Promise<
       sandbox,
       `cd repo && git fetch ${REMOTE_URL} '${defaultBranch}' && git checkout -B '${defaultBranch}' FETCH_HEAD`,
     );
+    await sandbox.setNetworkPolicy("deny-all");
+    await syncFactoryDependencies(sandbox);
     const head = await sandbox.run({ command: `git -C /workspace/repo rev-parse HEAD` });
     const sha = String(head.stdout).trim();
     if (head.exitCode !== 0 || !/^[a-f0-9]{40}$/.test(sha)) {
