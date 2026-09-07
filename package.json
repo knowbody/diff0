@@ -97,7 +97,7 @@
     "calibrate": "pnpm build && node scripts/calibrate.mjs",
     "test:unit": "vitest run --exclude '**/*.integration.test.ts' --exclude '**/*.package.test.ts'",
     "test:package": "pnpm build && vitest run test/library.package.test.ts",
-    "test:integration": "vitest run integration.test.ts",
+    "test:integration": "vitest run integration.test.ts --maxWorkers=2",
     "agent:build": "eve build",
     "agent:check": "biome check agent evals test/agent-security.test.ts test/agent-publishing.test.ts test/agent-runtime.test.ts",
     "agent:dev": "eve dev",
