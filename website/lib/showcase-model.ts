@@ -19,6 +19,7 @@ const ref = z.object({ ref: nonempty, commitSha: z.string().regex(/^[a-f0-9]{40}
 export const showcaseSchema = z
   .object({
     sourceUrl: z.url(),
+    archivePath: z.string().regex(/^\/evidence\/showcase-\d{4}-\d{2}-\d{2}\.txt$/),
     pullRequestUrl: z.url(),
     capturedAt: z.iso.date(),
     releaseVersion: nonempty,
@@ -53,15 +54,17 @@ export const showcaseSchema = z
     const issue = (message: string) => ctx.addIssue({ code: "custom", message });
     const pr = new URL(data.pullRequestUrl);
     const report = new URL(data.sourceUrl);
+    const workflow = report.pathname.match(/^(\/[^/]+\/[^/]+)\/actions\/runs\/\d+\/attempts\/\d+$/);
     if (
       pr.protocol !== "https:" ||
       pr.hostname !== "github.com" ||
       !/\/pull\/\d+$/.test(pr.pathname) ||
       report.origin !== pr.origin ||
-      report.pathname !== pr.pathname ||
-      !report.hash.startsWith("#issuecomment-")
+      workflow?.[1] !== pr.pathname.replace(/\/pull\/\d+$/, "") ||
+      report.hash !== "" ||
+      report.search !== ""
     )
-      issue("Provenance must identify a GitHub PR and its source comment.");
+      issue("Provenance must identify a GitHub PR and a workflow attempt in the same repository.");
     const confirmedDrift =
       data.subagent.confidence === "confirmed" &&
       data.subagent.baseUsedRuns * data.subagent.headTotalRuns !==
@@ -197,6 +200,7 @@ export function createShowcase(input: unknown) {
         .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
         .join(" ") ?? source.model,
     pullRequestNumber: Number(new URL(source.pullRequestUrl).pathname.split("/").at(-1)),
+    sourceDiffUrl: `${source.pullRequestUrl.replace(/\/pull\/\d+$/, "")}/compare/${source.base.commitSha}...${source.head.commitSha}`,
     snapshotLabel: `Captured ${source.capturedAt} · diff0 v${source.releaseVersion}`,
     verdictTitle,
     verdictIcon: { green: "🟢", yellow: "🟡", red: "🔴" }[source.verdict],

@@ -21,7 +21,7 @@ test("preserves the captured source report values in web and OG evidence", () =>
   assert.equal(model.ogTitle, "real-model drift · no confirmed regression");
   assert.equal(
     model.sourceUrl,
-    "https://github.com/knowbody/diff0/pull/15#issuecomment-5539022795",
+    "https://github.com/knowbody/diff0/actions/runs/33861384290/attempts/1",
   );
   assert.equal(model.snapshotLabel, "Captured 2026-09-04 · diff0 v0.1.3");
   assert.deepEqual(model.evalObservationTotal, { passed: 60, total: 60 });
@@ -56,6 +56,15 @@ test("rejects malformed counts, missing metrics, invalid ranges, and unrelated p
     },
     (s) => {
       s.sourceUrl = "https://example.com/report";
+    },
+    (s) => {
+      s.sourceUrl = `${s.pullRequestUrl}#issuecomment-5539022795`;
+    },
+    (s) => {
+      s.sourceUrl = "https://github.com/other/repo/actions/runs/33861384290/attempts/1";
+    },
+    (s) => {
+      s.archivePath = "https://example.com/report.txt";
     },
     (s) => {
       s.subagent.evalNames = ["missing-eval"];
@@ -99,4 +108,21 @@ test("all headline and metadata claims follow accepted regression and unchanged 
   assert.match(stable.delegationSummary, /unchanged delegation/);
   assert.doesNotMatch(stable.verdictSummary, /drift requires review/);
   assert.throws(() => createShowcase({ ...snapshot, verdict: "green" }), /green snapshot/);
+});
+
+test("historical evidence is archived separately from the refreshed PR", () => {
+  const model = createShowcase(snapshot);
+  const archive = readFileSync(new URL(`../public${model.archivePath}`, import.meta.url), "utf8");
+  assert.ok(archive.includes(model.sourceUrl));
+  assert.ok(archive.includes(`${model.base.commitSha}...${model.head.commitSha}`));
+  for (const metric of model.metrics.filter(({ id }) => id !== "toolCalls")) {
+    assert.ok(archive.includes(metric.base), `archive must contain ${metric.id} base`);
+    assert.ok(archive.includes(metric.head), `archive must contain ${metric.id} head`);
+    assert.ok(archive.includes(metric.delta), `archive must contain ${metric.id} delta`);
+  }
+  assert.match(
+    archive,
+    /reporter in eval revenue\/total-revenue: used in 10 of 10 base runs -> 0 of 10 head runs/,
+  );
+  assert.notEqual(model.sourceUrl, model.pullRequestUrl);
 });

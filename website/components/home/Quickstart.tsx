@@ -20,11 +20,18 @@ export default function Quickstart({ actionYaml }: { actionYaml: string }) {
               </h2>
               <p className="mt-6 max-w-[480px] leading-7 opacity-55">
                 From a repository with an Eve eval suite, compare the branch you plan to merge
-                against its base. No global diff0 install is required.
+                against its base. Commit both refs, install your app’s dependencies, and configure
+                its model credentials. No global diff0 install is required.
               </p>
             </div>
             <div className="min-w-0">
               <Command command={RUN_CMD} inverse />
+              <a
+                href={`${GITHUB}/blob/main/GETTING_STARTED.md`}
+                className="mt-4 inline-flex items-center gap-2 text-sm underline underline-offset-4"
+              >
+                Getting Started: baseline, evals, and credentials <Arrow diagonal />
+              </a>
             </div>
           </div>
           <div className="relative mt-12 border-t border-current/15 pt-8">
@@ -63,10 +70,10 @@ export default function Quickstart({ actionYaml }: { actionYaml: string }) {
             the workflow and where the results go.
           </p>
           <p className="mt-3 max-w-[680px] text-sm leading-6 text-muted">
-            Available to try from source; not included in the published npm version 0.1.3.
+            Included as a preview in diff0 v0.1.4.
           </p>
           <a
-            href={`${GITHUB}/pull/18`}
+            href={`${GITHUB}/blob/main/docs/library-api.md`}
             className="mt-5 inline-flex items-center gap-2 text-sm font-medium underline underline-offset-4"
           >
             Explore the library API preview <Arrow diagonal />

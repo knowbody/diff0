@@ -106,7 +106,7 @@ jobs:
         with:
           node-version: 24
 
-      - uses: knowbody/diff0/action@v0.1.3
+      - uses: knowbody/diff0/action@v0.1.4
         with:
           working-directory: .
           runs: "3"
@@ -145,7 +145,7 @@ The report includes:
 - the model, Eve version, run counts, actual sandbox as unknown, and the separately labeled host-default sandbox candidate; and
 - uncertainty instead of treating one nondeterministic run as proof.
 
-In the next release, inconclusive behavioral observations remain in report details without
+In v0.1.4, inconclusive behavioral observations remain in report details without
 triggering yellow or drift enforcement on their own. This differs from v0.1.3. Eval uncertainty
 and incomplete evidence still need review. See [warning calibration](docs/calibration.md).
 
@@ -209,9 +209,9 @@ diff0's table, the threshold cannot be enforced.
 
 ## Use as a library
 
-The library API is an unreleased preview; npm version `0.1.3` does not include these
-entrypoints. See the [source installation instructions](docs/library-api.md#try-the-preview)
-to try it before the next release.
+Version `0.1.4` includes the library API as a preview. Install it with
+`npm install @knowbody/diff0@0.1.4`; see the [library documentation](docs/library-api.md)
+for usage and source installation instructions.
 
 The package exposes a pure comparison engine, a Node.js execution runner, an Eve
 adapter, and report renderers. Use `compareRefs` from `@knowbody/diff0/runner` for

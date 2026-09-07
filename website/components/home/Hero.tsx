@@ -7,7 +7,7 @@ export default function Hero() {
     <section className="hero-grid relative overflow-hidden border-b border-line">
       <div className="mx-auto max-w-[1240px] px-5 pt-20 pb-14 text-center sm:px-8 sm:pt-28 lg:pt-36">
         <a
-          href={showcase.pullRequestUrl}
+          href={showcase.archivePath}
           className="group mx-auto mb-8 inline-flex items-center gap-2 rounded-full border border-line bg-card px-3 py-1.5 text-xs text-muted shadow-sm transition-colors hover:text-fg"
         >
           <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2 py-0.5 font-mono text-[10px] font-semibold tracking-wider text-accent uppercase">
@@ -35,7 +35,7 @@ export default function Hero() {
             href={showcase.pullRequestUrl}
             className="group inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-fg px-5 text-sm font-medium text-bg transition-transform hover:-translate-y-0.5 sm:w-auto"
           >
-            Open the showcase PR <Arrow diagonal />
+            See the latest live comparison <Arrow diagonal />
           </a>
           <a
             href={GITHUB}

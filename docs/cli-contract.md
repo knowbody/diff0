@@ -75,7 +75,7 @@ Behavior:
 - Inconclusive behavioral observations (skills, subagents, tool paths/counts, input/output
   fingerprints) remain in report details and JSON. They do not independently make the verdict
   yellow or create a `behavioral-drift` violation. Supported drift still gates. This policy
-  changes in the next release; v0.1.3 gated inconclusive observations too.
+  changes in v0.1.4; v0.1.3 gated inconclusive observations too.
 - Incomplete final-output capture remains a yellow `comparison-validity` finding, but does not
   confound otherwise complete eval pass/fail evidence. Explicitly absent responses, including
   parked questions reported with a null final message and no output, are tracked separately

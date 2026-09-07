@@ -1,0 +1,113 @@
+diff0 showcase — archived console report
+
+Source: https://github.com/knowbody/diff0/actions/runs/33861384290/attempts/1
+Job: https://github.com/knowbody/diff0/actions/runs/33861384290/job/100986385786
+Run completed: 2026-09-04. Archived from GitHub Actions logs: 2026-09-07.
+Extraction: the console report emitted by the Run ./action step, with GitHub log
+prefixes (job, step, timestamp) removed. Report text and rounding are unchanged.
+This is a console-report excerpt, not the original PR comment or raw eval traces.
+PR #15 is refreshed separately and its current comment is not this snapshot.
+
+wrote markdown report: /home/runner/work/_temp/diff0.dtKVYQ/report.md
+wrote JSON report: /home/runner/work/_temp/diff0.dtKVYQ/report.json
+diff0 84cb96d59bbbfcadf19e7ae625ba878a3525c0a3...fc5efb982b03fe527c852bd317e8ea9958db65d1 
+  YELLOW
+  — No confirmed eval regressions across 10 runs per ref — behavioral drift detected, additional
+    behavioral differences inconclusive, cost comparability unavailable
+eve 0.47.5 | model anthropic/claude-haiku-4.5 | 10 runs per ref | actual sandbox unknown
+  host default candidate microsandbox | comparison cost unavailable
+
+EVALS
+  revenue/no-failed-actions  base 10/10  head 10/10  pass
+    [score 1 -> 1 (+0)]
+  revenue/total-revenue      base 10/10  head 10/10  pass
+    [score 1 -> 1 (+0)]
+  revenue/uses-sql-tool      base 10/10  head 10/10  pass
+    [score 1 -> 1 (+0)]
+
+BEHAVIORAL DRIFT
+  subagents:
+    reporter in eval revenue/no-failed-actions: used in 10 of 10 base runs -> 0 of 10 head runs
+      [statistically-confirmed; Fisher raw p=<0.0001; Holm p=<0.0001]
+    reporter in eval revenue/total-revenue: used in 10 of 10 base runs -> 0 of 10 head runs
+      [statistically-confirmed; Fisher raw p=<0.0001; Holm p=<0.0001]
+    reporter in eval revenue/uses-sql-tool: used in 10 of 10 base runs -> 0 of 10 head runs
+      [statistically-confirmed; Fisher raw p=<0.0001; Holm p=<0.0001]
+  tool inputs:
+    run_sql call 1 in eval revenue/no-failed-actions: input fingerprint changed [inconclusive;
+      10 base / 10 head captured; raw inputs not stored]
+    run_sql call 1 in eval revenue/total-revenue: input fingerprint changed [inconclusive; 10
+      base / 10 head captured; raw inputs not stored]
+    run_sql call 1 in eval revenue/uses-sql-tool: input fingerprint changed [inconclusive; 10
+      base / 10 head captured; raw inputs not stored]
+  final output in eval revenue/no-failed-actions: fingerprint changed [inconclusive; captured
+    10/10 base, 10/10 head; lengths 16/20/78/80/88/123/176 -> 40/48/50/53/62/70/71/81/87/94
+    chars; raw output not stored]
+  final output in eval revenue/total-revenue: fingerprint changed [inconclusive; captured 10/10
+    base, 10/10 head; lengths 16/81/85 -> 48/53/57/60/62/64/65/66/80 chars; raw output not
+    stored]
+  final output in eval revenue/uses-sql-tool: fingerprint changed [inconclusive; captured 10/10
+    base, 10/10 head; lengths 16/71/81/82/83/86/100/165/173/184 -> 52/72/73/74/75 chars; raw
+    output not stored]
+
+COST & PERFORMANCE
+  cost/session           base unavailable             head $0.0076 ($0.0073–$0.0079)  n/a
+  uncached input tokens  base 10,623 (10,606–14,313)  head 42                         -100%
+  tokens out             base 1,017 (941–1,481)       head 675 (654–714)              -34%
+  cache-read tokens      base 57,984 (57,855–74,325)  head 42,544 (37,206–42,693)     -27%
+  cache-write tokens     base 1,702 (1,407–7,735)     head 1,148 (972–6,584)          -33%
+  duration               base 20.2s (19.0s–27.2s)     head 11.8s (10.8s–12.5s)        -41%
+
+CHANGED FILES
+  fixtures/demo-agent/agent/instructions.md (+1 -2)
+  1 file changed, 1 insertion(+), 2 deletions(-). File attribution is correlational, not causal.
+
+PER-RUN RAW SUMMARIES
+  base 84cb96d59bbbfcadf19e7ae625ba878a3525c0a3 @ 84cb96d
+    run 1: 3/3 evals passed, 10 tool calls (agents excluded), skills: revenue-definitions, cost
+      n/a, 27.2s
+    run 2: 3/3 evals passed, 6 tool calls (agents excluded), skills: revenue-definitions, cost
+      n/a, 19.0s
+    run 3: 3/3 evals passed, 8 tool calls (agents excluded), skills: revenue-definitions, cost
+      n/a, 22.7s
+    run 4: 3/3 evals passed, 6 tool calls (agents excluded), skills: revenue-definitions, cost
+      n/a, 19.8s
+    run 5: 3/3 evals passed, 6 tool calls (agents excluded), skills: revenue-definitions, cost
+      n/a, 19.7s
+    run 6: 3/3 evals passed, 6 tool calls (agents excluded), skills: revenue-definitions, cost
+      n/a, 20.3s
+    run 7: 3/3 evals passed, 6 tool calls (agents excluded), skills: revenue-definitions, cost
+      n/a, 20.1s
+    run 8: 3/3 evals passed, 6 tool calls (agents excluded), skills: revenue-definitions, cost
+      n/a, 20.3s
+    run 9: 3/3 evals passed, 6 tool calls (agents excluded), skills: revenue-definitions, cost
+      n/a, 19.5s
+    run 10: 3/3 evals passed, 6 tool calls (agents excluded), skills: revenue-definitions, cost
+      n/a, 22.8s
+  head fc5efb982b03fe527c852bd317e8ea9958db65d1 @ fc5efb9
+    run 1: 3/3 evals passed, 6 tool calls (agents excluded), skills: revenue-definitions,
+      $0.0073, 11.9s
+    run 2: 3/3 evals passed, 6 tool calls (agents excluded), skills: revenue-definitions,
+      $0.0077, 12.2s
+    run 3: 3/3 evals passed, 6 tool calls (agents excluded), skills: revenue-definitions,
+      $0.0079, 11.7s
+    run 4: 3/3 evals passed, 6 tool calls (agents excluded), skills: revenue-definitions,
+      $0.0077, 11.3s
+    run 5: 3/3 evals passed, 6 tool calls (agents excluded), skills: revenue-definitions,
+      $0.0076, 11.3s
+    run 6: 3/3 evals passed, 6 tool calls (agents excluded), skills: revenue-definitions,
+      $0.0078, 12.5s
+    run 7: 3/3 evals passed, 6 tool calls (agents excluded), skills: revenue-definitions,
+      $0.0076, 10.8s
+    run 8: 3/3 evals passed, 6 tool calls (agents excluded), skills: revenue-definitions,
+      $0.0076, 11.9s
+    run 9: 3/3 evals passed, 6 tool calls (agents excluded), skills: revenue-definitions,
+      $0.0077, 12.0s
+    run 10: 3/3 evals passed, 6 tool calls (agents excluded), skills: revenue-definitions,
+      $0.0076, 11.6s
+
+  ! External side effects (for example writes to third-party systems) are not observed; the
+    comparison covers captured eval JSON/events, fingerprints, cost, and timing only.
+
+Statistical comparison across 10 runs per ref —
+LLM runs are nondeterministic; treat proportions, not absolutes.

@@ -57,7 +57,7 @@ jobs:
         with:
           node-version: 24
 
-      - uses: knowbody/diff0/action@v0.1.3
+      - uses: knowbody/diff0/action@v0.1.4
         with:
           working-directory: . # path of your eve app within the repo
           runs: "3"
@@ -188,7 +188,7 @@ eval and runtime code can read credentials intentionally exposed to the eval job
 
 ## Inconclusive observations
 
-In the next release, ordinary inconclusive behavioral variation stays in the full report
+In v0.1.4, ordinary inconclusive behavioral variation stays in the full report
 without making it yellow or violating drift enforcement. Supported drift and eval, validity,
 and performance findings still gate. Tagged v0.1.3 retains the earlier behavior. See the
 [calibration guide](https://github.com/knowbody/diff0/blob/main/docs/calibration.md).
