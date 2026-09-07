@@ -7,6 +7,8 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import { showcaseInstructions, showcasePath } from "../scripts/refresh-showcase.mjs";
 
+// Keep the baseline independent of the live demo instructions: the showcase PR
+// intentionally changes those instructions, while these tests exercise the refresh transform.
 describe("showcase refresh", () => {
   it("rebases the exact patch without touching the checkout and refuses unrelated branch edits", () => {
     const root = mkdtempSync(join(tmpdir(), "diff0-refresh-test-"));
@@ -25,7 +27,10 @@ describe("showcase refresh", () => {
       git("config", "user.email", "test@example.com");
       git("config", `url.${remote}.insteadOf`, "https://github.com/knowbody/diff0.git");
       git("remote", "add", "origin", remote);
-      const source = readFileSync(new URL(`../${showcasePath}`, import.meta.url), "utf8");
+      const source = readFileSync(
+        new URL("./fixtures/showcase/instructions.md", import.meta.url),
+        "utf8",
+      );
       mkdirSync(join(cwd, "fixtures/demo-agent/agent"), { recursive: true });
       writeFileSync(join(cwd, showcasePath), source);
       git("add", ".");
@@ -100,7 +105,10 @@ describe("showcase refresh", () => {
   }, 30_000);
 
   it("preserves the demo contract and changes only the delegation rule", () => {
-    const source = readFileSync(new URL(`../${showcasePath}`, import.meta.url), "utf8");
+    const source = readFileSync(
+      new URL("./fixtures/showcase/instructions.md", import.meta.url),
+      "utf8",
+    );
     const changed = showcaseInstructions(source);
     expect(changed).toContain("give a one-line executive summary before replying.");
     expect(changed).not.toContain("`reporter` subagent");
