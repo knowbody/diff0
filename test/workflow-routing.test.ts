@@ -97,7 +97,8 @@ describe("verification policy matches CI", () => {
     const workflow = parse(
       readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"),
     );
-    const commands = workflow.jobs.ci.steps
+    const commands = Object.values(workflow.jobs)
+      .flatMap((job: unknown) => (job as { steps: { run?: string }[] }).steps)
       .flatMap((step: { run?: string }) => (step.run ?? "").split("\n"))
       .map((command: string) => command.trim());
     for (const id of [
@@ -108,7 +109,20 @@ describe("verification policy matches CI", () => {
       "package",
       ...CI_ONLY_CHECK_IDS,
     ] as const) {
-      expect(commands).toContain(VERIFICATION_CHECKS[id]);
+      if (id === "integration") {
+        expect(commands).toContain(`${VERIFICATION_CHECKS[id]} --shard=\${{ matrix.shard }}/3`);
+        expect(workflow.jobs.integration.strategy.matrix.shard).toEqual([1, 2, 3]);
+      } else {
+        expect(commands).toContain(VERIFICATION_CHECKS[id]);
+      }
+    }
+    expect(workflow.jobs.ci.if).toBe(`\${{ always() }}`);
+    expect(workflow.jobs.ci.needs).toEqual(["core", "runtime", "integration"]);
+    const gate = workflow.jobs.ci.steps[0];
+    for (const job of workflow.jobs.ci.needs) {
+      const variable = `${job.toUpperCase()}_RESULT`;
+      expect(gate.env[variable]).toBe(`\${{ needs.${job}.result }}`);
+      expect(gate.run).toContain(`test "$${variable}" = success`);
     }
     expect(commands).toContain("pnpm action:build");
     expect(commands).toContain("git diff --exit-code -- action/dist");

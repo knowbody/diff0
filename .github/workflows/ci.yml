@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  ci:
+  core:
     runs-on: ubuntu-latest
     env:
       # corepack downloads the pinned pnpm from package.json's packageManager
@@ -38,12 +38,6 @@ jobs:
 
       - name: Unit tests
         run: pnpm test
-
-      - name: Verify durable station retries
-        run: pnpm agent:test:runtime
-
-      - name: Integration tests
-        run: pnpm test:integration
 
       - name: Build and test the library package in an isolated consumer
         run: pnpm test:package
@@ -80,6 +74,59 @@ jobs:
           package_path="$(find "$RUNNER_TEMP/diff0-pack" -maxdepth 1 -name '*.tgz' -print -quit)"
           npm install --engine-strict --ignore-scripts --prefix "$minimum_consumer" "$package_path"
           "$minimum_consumer/node_modules/.bin/diff0" --help >/dev/null
+
+  runtime:
+    runs-on: ubuntu-latest
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: Verify durable station retries
+        run: pnpm agent:test:runtime
+
+  integration:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: Integration tests
+        run: pnpm test:integration --shard=${{ matrix.shard }}/3
+
+  # Keep the protected branch's required check stable, and fail closed even
+  # when a prerequisite is cancelled or skipped rather than failing normally.
+  ci:
+    if: ${{ always() }}
+    needs: [core, runtime, integration]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every test job to pass
+        env:
+          CORE_RESULT: ${{ needs.core.result }}
+          RUNTIME_RESULT: ${{ needs.runtime.result }}
+          INTEGRATION_RESULT: ${{ needs.integration.result }}
+        run: |
+          test "$CORE_RESULT" = success
+          test "$RUNTIME_RESULT" = success
+          test "$INTEGRATION_RESULT" = success
 
   website:
     runs-on: ubuntu-latest
