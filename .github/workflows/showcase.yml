@@ -1,0 +1,89 @@
+name: Refresh showcase PR
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "action/**"
+      - "fixtures/demo-agent/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".pnpmfile.cjs"
+      - "scripts/refresh-showcase.mjs"
+      - "scripts/validate-reviewed-pr.mjs"
+      - ".github/workflows/showcase.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: showcase-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    if: >-
+      github.repository == 'knowbody/diff0' &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Refresh the existing showcase branch
+        id: refs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/refresh-showcase.mjs
+      # GITHUB_TOKEN pushes do not trigger pull_request workflows. Compare here,
+      # using only main plus our validated, generated instruction change.
+      - name: Compare showcase
+        id: compare
+        continue-on-error: true
+        uses: ./action
+        env:
+          AI_GATEWAY_API_KEY: ${{ secrets.DIFF0_AI_GATEWAY_API_KEY }}
+          DIFF0_DEMO_MODEL: anthropic/claude-haiku-4.5
+        with:
+          base: ${{ steps.refs.outputs.base-sha }}
+          head: ${{ steps.refs.outputs.head-sha }}
+          working-directory: fixtures/demo-agent
+          runs: "10"
+          max-spend: "0.30"
+          fail-on: regression
+      - name: Update the existing report comment
+        if: ${{ !cancelled() && steps.compare.outputs.exit-code != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: "15"
+          REVIEWED_SHA: ${{ steps.refs.outputs.head-sha }}
+          EXPECTED_BASE_SHA: ${{ steps.refs.outputs.base-sha }}
+          BASE_REF: ${{ steps.refs.outputs.base-sha }}
+          HEAD_REF: ${{ steps.refs.outputs.head-sha }}
+          HEAD_SHA: ${{ steps.refs.outputs.head-sha }}
+          REPORT_PATH: ${{ steps.compare.outputs.report-md }}
+          CLI_EXIT: ${{ steps.compare.outputs.exit-code }}
+        run: |
+          node scripts/validate-reviewed-pr.mjs
+          node action/upsert-comment.mjs
+      - name: Retain each comparison
+        if: ${{ !cancelled() && steps.compare.outputs.report-json != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: showcase-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ steps.compare.outputs.report-json }}
+            ${{ steps.compare.outputs.report-md }}
+      - name: Preserve comparison failure
+        if: ${{ !cancelled() && steps.compare.outcome == 'failure' }}
+        run: exit 1
