@@ -123,5 +123,13 @@
   "inconclusiveSignalCount": 2,
   "numericPrecision": "Values and percentage changes preserve the rounding of the captured source report; percentages are not recomputed from its rounded medians.",
   "confirmedEvalRegressions": 0,
-  "archivePath": "/evidence/showcase-2026-09-04.txt"
+  "archivePath": "/evidence/showcase-2026-09-04.txt",
+  "costUsd": {
+    "base": null,
+    "head": {
+      "median": 0.0076,
+      "min": 0.0073,
+      "max": 0.0079
+    }
+  }
 }

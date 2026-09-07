@@ -6,6 +6,8 @@
   --muted: #6f6f69;
   --line: #deded8;
   --accent: #a9640d;
+  --positive: #187638;
+  --negative: #bd2929;
   --accent-soft: rgba(204, 132, 30, 0.11);
   --card: #fdfdfb;
   --code-bg: #efefeb;
@@ -35,6 +37,8 @@
   --muted: #999994;
   --line: #2b2b28;
   --accent: #f5ae2d;
+  --positive: #7bdd91;
+  --negative: #ff8585;
   --accent-soft: rgba(245, 174, 45, 0.12);
   --card: #141413;
   --code-bg: #1a1a18;
@@ -50,6 +54,8 @@
 }
 
 @theme inline {
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
   --color-panel: var(--panel-bg);
   --color-terminal: var(--terminal-bg);
   --color-panel-warning: var(--panel-warning);

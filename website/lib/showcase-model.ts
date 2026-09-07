@@ -47,6 +47,7 @@ export const showcaseSchema = z
       evalNames: z.array(nonempty).min(1),
     }),
     changedFile: z.object({ path: nonempty, insertions: count, deletions: count }),
+    costUsd: z.object({ base: stats.nullable(), head: stats.nullable() }),
     costNote: nonempty,
     numericPrecision: nonempty,
   })
@@ -192,6 +193,10 @@ export function createShowcase(input: unknown) {
   const ogTitle = `real-model ${source.verdict === "red" ? "regression" : confirmedDrift ? "drift" : "comparison"} · ${ogRegression}`;
   return {
     ...source,
+    headCostLabel:
+      source.costUsd.head === null
+        ? "Unavailable"
+        : `$${source.costUsd.head.median.toFixed(4)} / session`,
     modelDisplay:
       source.model
         .split("/")

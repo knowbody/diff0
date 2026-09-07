@@ -124,6 +124,20 @@ export default function PrComment() {
                     head={showcase.evalsPassingEveryRun.head}
                     change={showcase.evalsPassingEveryRun.change}
                   />
+                  <SummaryRow
+                    label="Cost / session (median)"
+                    base={
+                      showcase.costUsd.base === null
+                        ? "unavailable"
+                        : `$${showcase.costUsd.base.median.toFixed(4)}`
+                    }
+                    head={
+                      showcase.costUsd.head === null
+                        ? "unavailable"
+                        : `$${showcase.costUsd.head.median.toFixed(4)}`
+                    }
+                    change="n/a"
+                  />
                   {showcase.metrics.map((metric) => (
                     <SummaryRow
                       key={metric.id}

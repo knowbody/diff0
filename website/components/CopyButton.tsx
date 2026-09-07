@@ -6,9 +6,11 @@ import { copyText } from "@/lib/clipboard";
 export default function CopyButton({
   text,
   label = "Copy command",
+  inverse = false,
 }: {
   text: string;
   label?: string;
+  inverse?: boolean;
 }) {
   const [status, setStatus] = useState<"idle" | "copied" | "failed">("idle");
   const timer = useRef<number | undefined>(undefined);
@@ -43,7 +45,7 @@ export default function CopyButton({
             ? "Copy failed. Try again or select the text to copy it manually."
             : label
       }
-      className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-line px-2 font-mono text-xs text-muted transition-colors hover:text-fg"
+      className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2 font-mono text-xs transition-colors ${inverse ? "border-white/25 text-white/75 hover:border-white/50 hover:text-white" : "border-line text-muted hover:text-fg"}`}
     >
       <span aria-live="polite">
         {status === "copied" ? "copied" : status === "failed" ? "copy failed" : "copy"}

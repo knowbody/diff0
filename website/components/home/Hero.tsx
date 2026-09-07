@@ -6,19 +6,6 @@ export default function Hero() {
   return (
     <section className="hero-grid relative overflow-hidden border-b border-line">
       <div className="mx-auto max-w-[1240px] px-5 pt-20 pb-14 text-center sm:px-8 sm:pt-28 lg:pt-36">
-        <a
-          href={showcase.archivePath}
-          className="group mx-auto mb-8 inline-flex items-center gap-2 rounded-full border border-line bg-card px-3 py-1.5 text-xs text-muted shadow-sm transition-colors hover:text-fg"
-        >
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2 py-0.5 font-mono text-[10px] font-semibold tracking-wider text-accent uppercase">
-            v{showcase.releaseVersion}
-          </span>
-          See the captured real-model run
-          <span className="transition-transform group-hover:translate-x-0.5">
-            <Arrow />
-          </span>
-        </a>
-
         <h1 className="mx-auto max-w-[970px] text-[clamp(3.25rem,7.8vw,7rem)] leading-[0.92] font-medium tracking-[-0.065em] text-balance">
           Review the agent,
           <br />

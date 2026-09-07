@@ -50,7 +50,26 @@ const og = el(
       border: `2px solid ${LINE}`,
     },
   },
-  el("div", { style: { display: "flex", fontSize: "30px", color: FG, fontWeight: 500 } }, "diff0"),
+  el(
+    "div",
+    {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        fontSize: "30px",
+        letterSpacing: "-1.8px",
+        color: FG,
+        fontWeight: 500,
+      },
+    },
+    "diff",
+    el(
+      "svg",
+      { width: 18, height: 24, viewBox: "14 8 36 48", fill: "none", style: { marginLeft: "2px" } },
+      el("rect", { x: 18, y: 12, width: 28, height: 40, rx: 14, stroke: FG, strokeWidth: 5 }),
+      el("path", { d: "M23 43L41 21", stroke: FG, strokeWidth: 5 }),
+    ),
+  ),
   el(
     "div",
     { style: { display: "flex", flexDirection: "column", gap: "26px" } },

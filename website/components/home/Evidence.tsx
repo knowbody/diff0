@@ -60,8 +60,8 @@ export default function Evidence() {
         <p className="mt-7 max-w-[780px] text-sm leading-6 text-white/60">
           Drift is not automatically bad. diff0 reports only what Eve captured; it does not prove
           semantic equivalence or decide whether a change is desirable. In the showcase, removing
-          delegation coincided with {showcase.performanceSummary}. Cost stayed unavailable because
-          delegated base usage was not fully attributed, so diff0 makes no savings claim.
+          delegation coincided with {showcase.performanceSummary}. Base cost stayed unavailable
+          because delegated base usage was not fully attributed, so diff0 makes no savings claim.
         </p>
       </div>
     </section>
