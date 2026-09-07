@@ -216,8 +216,8 @@ export default function PrComment() {
             <p className="italic" style={{ color: gh.muted }}>
               {showcase.snapshotLabel}. Statistical comparison across {showcase.runsPerRef} runs per
               ref — LLM runs are nondeterministic; treat proportions, not absolutes.{" "}
-              <a className="not-italic underline" href={showcase.sourceUrl}>
-                View the source GitHub report.
+              <a className="not-italic underline" href={showcase.archivePath}>
+                Read the archived console report.
               </a>
             </p>
           </div>

@@ -46,3 +46,8 @@ ones, never as mocks of diff0's own internals.
   them.
 - Paper-inspired features must be implemented from primary literature and independently written,
   not copied from another implementation.
+
+## Release preparation
+
+See the [v0.1.4 release checklist](docs/release-0.1.4.md) for validation, pnpm packaging,
+CLI and Action publication, and website rollout order.

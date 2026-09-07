@@ -7,7 +7,7 @@ inconclusive, but the report still asked for review.
 
 ## What affects the gate
 
-The next release separates observations from findings:
+Version 0.1.4 separates observations from findings:
 
 - Statistically supported skill/subagent changes and repeated stable changes in
   tool paths, counts, inputs, or outputs remain behavioral findings.
