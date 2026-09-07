@@ -32,6 +32,8 @@ Verification: [public runner tests](../test/runner-api.test.ts), [CLI tests](../
 
 Compatibility: a legacy zero with no provenance remains unavailable, preserving conservative treatment of mock usage. A zero explicitly marked `gateway` or `priced-tokens` is a known measured value. Custom adapters can state that distinction. Mixed gateway/table data retains the table-pricing qualification.
 
+The Eve adapter preserves gateway provenance for complete reported costs, including zero. [Adapter-to-enforcement tests](../src/adapters/eve-cost.test.ts) cover a measured zero increasing to a positive cost, decreases to zero, unchanged zero, and legacy caller records without provenance. This closes the independent review finding that normalization could discard the source before the performance gate evaluated it.
+
 Verification: [pricing tests](../src/collect/pricing.test.ts), [delta tests](../test/delta.test.ts), and [estimate tests](../src/harness/estimate.test.ts) cover missing, mixed, legacy-zero, explicitly sourced zero, repeated pricing, and tiny values.
 
 ### 5. External JSON schemas — implemented

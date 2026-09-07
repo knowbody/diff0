@@ -177,6 +177,9 @@ export function summaryToRunRecord(summary: EveEvalRunSummary, ctx: SummaryConte
     dataSources: { evalJson: true, spans: false, logs: false },
     startedAt: summary.startedAt ?? new Date(0).toISOString(),
   };
+  // Eve emits step cost only when gateway metadata supplies it; an explicit zero
+  // is measured, unlike a legacy caller's zero without provenance.
+  if (record.costUsd !== null) record.costSource = "gateway";
   if (finalOutputs.length > 0) {
     const canonical = stableStringify(finalOutputs);
     record.finalOutput = {
