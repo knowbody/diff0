@@ -126,3 +126,19 @@ test("historical evidence is archived separately from the refreshed PR", () => {
   );
   assert.notEqual(model.sourceUrl, model.pullRequestUrl);
 });
+
+test("preserves the known head cost without inventing an unavailable base cost", () => {
+  const model = createShowcase(snapshot);
+  const archive = readFileSync(new URL(`../public${model.archivePath}`, import.meta.url), "utf8");
+  assert.match(
+    archive,
+    /cost\/session\s+base unavailable\s+head \$0\.0076 \(\$0\.0073–\$0\.0079\)/,
+  );
+  assert.equal(model.costUsd.base, null);
+  assert.deepEqual(model.costUsd.head, { median: 0.0076, min: 0.0073, max: 0.0079 });
+  assert.equal(model.headCostLabel, "$0.0076 / session");
+  assert.equal(
+    createShowcase({ ...snapshot, costUsd: { base: null, head: null } }).headCostLabel,
+    "Unavailable",
+  );
+});

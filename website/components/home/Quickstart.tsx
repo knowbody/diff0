@@ -18,7 +18,7 @@ export default function Quickstart({ actionYaml }: { actionYaml: string }) {
                 <br />
                 Review one report.
               </h2>
-              <p className="mt-6 max-w-[480px] leading-7 opacity-55">
+              <p className="mt-6 max-w-[480px] leading-7 text-white/65">
                 From a repository with an Eve eval suite, compare the branch you plan to merge
                 against its base. Commit both refs, install your app’s dependencies, and configure
                 its model credentials. No global diff0 install is required.
@@ -70,7 +70,7 @@ export default function Quickstart({ actionYaml }: { actionYaml: string }) {
             the workflow and where the results go.
           </p>
           <p className="mt-3 max-w-[680px] text-sm leading-6 text-muted">
-            Included as a preview in diff0 v0.1.4.
+            The package includes a library API preview. See the guide for installation and examples.
           </p>
           <a
             href={`${GITHUB}/blob/main/docs/library-api.md`}

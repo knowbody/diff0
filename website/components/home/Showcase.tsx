@@ -12,13 +12,13 @@ export default function Showcase() {
           </h2>
         </div>
         <p className="max-w-[430px] text-sm leading-6 text-muted">
-          GitHub Actions called {showcase.modelDisplay} for {showcase.runsPerRef} runs per ref. The
+          GitHub Actions called {showcase.modelDisplay} for {showcase.runsPerRef} runs per ref. The{" "}
           {showcase.capturedAt} snapshot below preserves that run. The live PR is refreshed
           separately and may show different results.
         </p>
       </div>
       <div className="grid overflow-hidden rounded-[20px] border border-line bg-card shadow-[0_28px_90px_rgba(0,0,0,0.1)] lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="p-7 sm:p-10 lg:border-r lg:border-line">
+        <div className="border-b border-line p-7 sm:p-10 lg:border-r lg:border-b-0">
           <p className="font-mono text-[11px] tracking-[0.16em] text-muted uppercase">
             Source-linked evidence
           </p>
@@ -57,13 +57,17 @@ export default function Showcase() {
               `median ${showcase.featuredMetrics.outputTokens.delta.replace("-", "−")}`,
             ],
             ["Duration", `median ${showcase.featuredMetrics.duration.delta.replace("-", "−")}`],
-            ["Cost", "unavailable; no savings claim"],
+            ["Head cost (median)", showcase.headCostLabel],
           ].map(([label, value]) => (
             <div key={label} className="flex items-center justify-between gap-5 px-7 py-5 text-sm">
               <span className="text-muted">{label}</span>
-              <span className="text-right font-mono text-xs">{value}</span>
+              <span className="min-w-0 break-words text-right font-mono text-xs">{value}</span>
             </div>
           ))}
+          <p className="px-7 py-5 text-xs leading-5 text-muted">
+            Base cost is unavailable because subagent usage was not fully attributed. A savings
+            percentage cannot be calculated for this captured run.
+          </p>
         </div>
       </div>
     </section>

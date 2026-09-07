@@ -5,7 +5,7 @@ export default function ReportPreview() {
   return (
     <section className="mx-auto max-w-[1240px] px-5 py-24 sm:px-8 sm:py-32">
       <div className="mb-12 text-center">
-        <Eyebrow>In your pull request</Eyebrow>
+        <Eyebrow centered>In your pull request</Eyebrow>
         <h2 className="mx-auto max-w-[760px] text-[clamp(2.6rem,5vw,4.5rem)] leading-[1] font-medium tracking-[-0.055em]">
           The report goes where the decision happens.
         </h2>

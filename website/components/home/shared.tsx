@@ -2,23 +2,16 @@ import CopyButton from "@/components/CopyButton";
 
 export function Mark() {
   return (
-    <span className="inline-flex items-center gap-2.5">
-      <svg className="h-[18px] w-[18px]" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-        <path
-          d="M38 16.1A17 17 0 1 0 38 47.9"
-          stroke="currentColor"
-          strokeWidth="4"
-          strokeLinecap="square"
-        />
-        <path
-          d="m36 23 9 9-9 9"
-          stroke="currentColor"
-          strokeWidth="4"
-          strokeLinecap="square"
-          strokeLinejoin="miter"
-        />
+    <span
+      role="img"
+      aria-label="diff0"
+      className="inline-flex items-center font-mono text-xl leading-none font-medium tracking-[-0.06em]"
+    >
+      <span aria-hidden="true">diff</span>
+      <svg className="ml-px h-4 w-3" viewBox="14 8 36 48" fill="none" aria-hidden="true">
+        <rect x="18" y="12" width="28" height="40" rx="14" stroke="currentColor" strokeWidth="5" />
+        <path d="M23 43L41 21" stroke="currentColor" strokeWidth="5" />
       </svg>
-      <span className="text-[15px] font-semibold tracking-[-0.02em]">diff0</span>
     </span>
   );
 }
@@ -44,9 +37,17 @@ export function Arrow({ diagonal = false }: { diagonal?: boolean }) {
   );
 }
 
-export function Eyebrow({ children }: { children: React.ReactNode }) {
+export function Eyebrow({
+  children,
+  centered = false,
+}: {
+  children: React.ReactNode;
+  centered?: boolean;
+}) {
   return (
-    <p className="mb-5 flex items-center justify-center gap-2 font-mono text-[11px] font-medium tracking-[0.16em] text-muted uppercase lg:justify-start">
+    <p
+      className={`mb-5 flex items-center gap-2 font-mono text-[11px] font-medium tracking-[0.16em] text-muted uppercase ${centered ? "justify-center" : "justify-start"}`}
+    >
       <span className="h-1.5 w-1.5 rounded-full bg-accent" />
       {children}
     </p>
@@ -56,17 +57,17 @@ export function Eyebrow({ children }: { children: React.ReactNode }) {
 export function Command({ command, inverse = false }: { command: string; inverse?: boolean }) {
   return (
     <div
-      className={`flex min-w-0 items-center gap-3 rounded-full border py-2 pr-2 pl-4 ${
+      className={`flex min-w-0 items-center gap-3 rounded-xl border py-2 pr-2 pl-4 sm:rounded-full ${
         inverse
           ? "border-white/15 bg-white/[0.06] text-white"
           : "border-line bg-card text-fg shadow-[0_1px_0_rgba(0,0,0,0.03)]"
       }`}
     >
-      <code className="min-w-0 flex-1 overflow-x-auto font-mono text-[12px] whitespace-nowrap">
+      <code className="min-w-0 flex-1 overflow-x-auto font-mono text-[12px] leading-5 whitespace-pre-wrap sm:whitespace-nowrap">
         <span className={inverse ? "text-white/60" : "text-muted"}>$ </span>
         {command}
       </code>
-      <CopyButton text={command} />
+      <CopyButton text={command} inverse={inverse} />
     </div>
   );
 }
